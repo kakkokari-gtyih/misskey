@@ -360,6 +360,10 @@ const routes = [{
 		name: 'avatarDecorations',
 		component: page(() => import('@/pages/avatar-decorations.vue')),
 	}, {
+		path: '/bubble-game',
+		name: 'bubbleGame',
+		component: page(() => import('@/pages/admin/bubble-game.vue')),
+	}, {
 		path: '/queue',
 		name: 'queue',
 		component: page(() => import('@/pages/admin/queue.vue')),

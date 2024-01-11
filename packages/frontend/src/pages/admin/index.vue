@@ -122,6 +122,11 @@ const menuDef = computed(() => [{
 		to: '/admin/avatar-decorations',
 		active: currentPage.value?.route.name === 'avatarDecorations',
 	}, {
+		icon: 'ti ti-apple',
+		text: i18n.ts.bubbleGame,
+		to: '/admin/bubble-game',
+		active: currentPage.value?.route.name === 'bubbleGame',
+	}, {
 		icon: 'ti ti-whirl',
 		text: i18n.ts.federation,
 		to: '/admin/federation',
