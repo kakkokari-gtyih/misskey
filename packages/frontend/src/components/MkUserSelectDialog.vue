@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <MkModalWindow
 	ref="dialogEl"
 	:withOkButton="true"
-	:okButtonDisabled="selected == null"
+	:okButtonDisabled="(selected == null && multipleSelected.length < 1)"
 	@click="cancel()"
 	@close="cancel()"
 	@ok="ok()"
@@ -31,9 +31,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</MkInput>
 			</FormSplit>
 		</div>
+
 		<div v-if="username != '' || host != ''" :class="[$style.result, { [$style.hit]: users.length > 0 }]">
 			<div v-if="users.length > 0" :class="$style.users">
-				<div v-for="user in users" :key="user.id" class="_button" :class="[$style.user, { [$style.selected]: selected && selected.id === user.id }]" @click="selected = user" @dblclick="ok()">
+				<div v-for="user in users" :key="user.id" class="_button" :class="[$style.user, { [$style.selected]: selected && selected.id === user.id || multipleSelected.includes(user)}]" @click="multiple ? (multipleSelected.includes(user) ? multipleSelected.splice(multipleSelected.indexOf(user), 1) : multipleSelected.push(user)) : selected = user" @dblclick="ok()">
 					<MkAvatar :user="user" :class="$style.avatar" indicator/>
 					<div :class="$style.userBody">
 						<MkUserName :user="user" :class="$style.userName"/>
@@ -47,7 +48,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div v-if="username == '' && host == ''" :class="$style.recent">
 			<div :class="$style.users">
-				<div v-for="user in recentUsers" :key="user.id" class="_button" :class="[$style.user, { [$style.selected]: selected && selected.id === user.id }]" @click="selected = user" @dblclick="ok()">
+				<div v-for="user in recentUsers" :key="user.id" class="_button" :class="[$style.user, { [$style.selected]: selected && selected.id === user.id || multipleSelected.includes(user) }]" @click="multiple ? (multipleSelected.includes(user) ? multipleSelected.splice(multipleSelected.indexOf(user), 1) : multipleSelected.push(user)) : selected = user" @dblclick="ok()">
 					<MkAvatar :user="user" :class="$style.avatar" indicator/>
 					<div :class="$style.userBody">
 						<MkUserName :user="user" :class="$style.userName"/>
@@ -73,7 +74,7 @@ import { $i } from '@/account.js';
 import { host as currentHost, hostname } from '@@/js/config.js';
 
 const emit = defineEmits<{
-	(ev: 'ok', selected: Misskey.entities.UserDetailed): void;
+	(ev: 'ok', selected: Misskey.entities.UserDetailed | Misskey.entities.UserDetailed[]): void;
 	(ev: 'cancel'): void;
 	(ev: 'closed'): void;
 }>();
@@ -81,17 +82,20 @@ const emit = defineEmits<{
 const props = withDefaults(defineProps<{
 	includeSelf?: boolean;
 	localOnly?: boolean;
+	multiple?: boolean;
 }>(), {
 	includeSelf: false,
 	localOnly: false,
+	multiple: false,
 });
 
 const username = ref('');
 const host = ref('');
 const users = ref<Misskey.entities.UserLite[]>([]);
 const recentUsers = ref<Misskey.entities.UserDetailed[]>([]);
-const selected = ref<Misskey.entities.UserLite | null>(null);
-const dialogEl = shallowRef<InstanceType<typeof MkModalWindow>>();
+const selected = ref<Misskey.entities.UserDetailed | null>(null);
+const multipleSelected = ref<Misskey.entities.UserDetailed[]>([]);
+const dialogEl = ref();
 
 function search() {
 	if (username.value === '' && host.value === '') {
@@ -114,17 +118,13 @@ function search() {
 	});
 }
 
-async function ok() {
-	if (selected.value == null) return;
-
-	const user = await misskeyApi('users/show', {
-		userId: selected.value.id,
-	});
-	emit('ok', user);
-
-	dialogEl.value?.close();
+function ok() {
+	if ((!selected.value && multipleSelected.value.length < 1)) return;
+	emit('ok', selected.value ?? multipleSelected.value);
+	dialogEl.value.close();
 
 	// 最近使ったユーザー更新
+	if (multipleSelected.value.length < 0) return;
 	let recents = defaultStore.state.recentlyUsedUsers;
 	recents = recents.filter(x => x !== selected.value?.id);
 	recents.unshift(selected.value.id);

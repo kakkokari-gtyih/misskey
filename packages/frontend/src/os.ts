@@ -550,11 +550,14 @@ export function form<F extends Form>(title: string, f: F): Promise<{ canceled: t
 	});
 }
 
-export async function selectUser(opts: { includeSelf?: boolean; localOnly?: boolean; } = {}): Promise<Misskey.entities.UserDetailed> {
+export async function selectUser(opts: { includeSelf?: boolean; localOnly?: boolean; multiple: true; }): Promise<Misskey.entities.UserDetailed[]>;
+export async function selectUser(opts: { includeSelf?: boolean; localOnly?: boolean; multiple?: false; }): Promise<Misskey.entities.UserDetailed>;
+export async function selectUser(opts: { includeSelf?: boolean; localOnly?: boolean; multiple?: boolean; } = {}): Promise<Misskey.entities.UserDetailed | Misskey.entities.UserDetailed[]> {
 	return new Promise(resolve => {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkUserSelectDialog.vue')), {
 			includeSelf: opts.includeSelf,
 			localOnly: opts.localOnly,
+			multiple: opts.multiple,
 		}, {
 			ok: user => {
 				resolve(user);
