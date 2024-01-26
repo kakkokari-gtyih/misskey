@@ -9,6 +9,7 @@ import { id } from './util/id.js';
 import { MiUser } from './User.js';
 import { MiPage } from './Page.js';
 import { MiUserList } from './UserList.js';
+import { MiNoteReaction } from './NoteReaction.js';
 
 // TODO: このテーブルで管理している情報すべてレジストリで管理するようにしても良いかも
 //       ただ、「emailVerified が true なユーザーを find する」のようなクエリは書けなくなるからウーン
@@ -267,6 +268,11 @@ export class MiUserProfile {
 		name: string;
 		unlockedAt: number;
 	}[];
+
+	@Column('varchar', {
+		length: 260, array: true, default: '{}',
+	})
+	public unacceptedReactions: MiNoteReaction['reaction'][];
 
 	//#region Denormalized fields
 	@Index()

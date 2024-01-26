@@ -6,7 +6,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import * as Redis from 'ioredis';
 import { DI } from '@/di-symbols.js';
-import type { EmojisRepository, NoteReactionsRepository, UsersRepository, NotesRepository } from '@/models/_.js';
+import type { EmojisRepository, NoteReactionsRepository, UsersRepository, UserProfilesRepository, NotesRepository } from '@/models/_.js';
 import { IdentifiableError } from '@/misc/identifiable-error.js';
 import type { MiRemoteUser, MiUser } from '@/models/User.js';
 import type { MiNote } from '@/models/Note.js';
@@ -75,6 +75,9 @@ export class ReactionService {
 
 		@Inject(DI.usersRepository)
 		private usersRepository: UsersRepository,
+
+		@Inject(DI.userProfilesRepository)
+		private userProfilesRepository: UserProfilesRepository,
 
 		@Inject(DI.notesRepository)
 		private notesRepository: NotesRepository,
@@ -151,6 +154,21 @@ export class ReactionService {
 				}
 			} else {
 				reaction = this.normalize(reaction);
+			}
+
+			// ノート作者がローカルで、そのユーザーが受け取り拒否している絵文字だったらfallbackにする
+			if (note.userHost == null && reaction !== FALLBACK) {
+				const author = await this.userProfilesRepository.findOneBy({ userId: note.userId });
+				if (author) {
+					if (custom) {
+						const name = custom[1];
+						if (author.unacceptedReactions.includes(name)) {
+							reaction = FALLBACK;
+						}
+					} else if (author.unacceptedReactions.includes(reaction)) {
+						reaction = FALLBACK;
+					}
+				}
 			}
 		}
 

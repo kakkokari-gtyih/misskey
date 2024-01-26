@@ -689,6 +689,14 @@ export const packedMeDetailedOnlySchema = {
 				},
 			},
 		},
+		unacceptedReactions: {
+			type: 'array',
+			nullable: false, optional: false,
+			items: {
+				type: 'string',
+				nullable: false, optional: false,
+			},
+		},
 		//#region secrets
 		email: {
 			type: 'string',

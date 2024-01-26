@@ -2,8 +2,8 @@
 /* eslint @typescript-eslint/no-explicit-any: 0 */
 
 /*
- * version: 2024.2.0-beta.4
- * generatedAt: 2024-01-24T01:14:40.815Z
+ * version: 2024.2.0-beta.6
+ * generatedAt: 2024-01-26T04:31:55.301Z
  */
 
 /**
@@ -3770,6 +3770,7 @@ export type components = {
         rateLimitFactor: number;
         avatarDecorationLimit: number;
       };
+      unacceptedReactions: string[];
       email?: string | null;
       emailVerified?: boolean | null;
       securityKeysList?: {
@@ -18266,6 +18267,7 @@ export type operations = {
           notificationRecieveConfig?: Record<string, never>;
           emailNotificationTypes?: string[];
           alsoKnownAs?: string[];
+          unacceptedReactions?: string[];
         };
       };
     };

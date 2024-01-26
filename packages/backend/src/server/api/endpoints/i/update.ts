@@ -194,6 +194,15 @@ export const paramDef = {
 			uniqueItems: true,
 			items: { type: 'string' },
 		},
+		unacceptedReactions: {
+			type: 'array',
+			uniqueItems: true,
+			items: {
+				type: 'string',
+				minLength: 3,
+				maxLength: 260,
+			},
+		},
 	},
 } as const;
 
@@ -398,6 +407,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				}
 
 				updates.alsoKnownAs = newAlsoKnownAs.size > 0 ? Array.from(newAlsoKnownAs) : null;
+			}
+
+			if (ps.unacceptedReactions) {
+				// 重複を削除
+				profileUpdates.unacceptedReactions = Array.from(new Set(ps.unacceptedReactions));
 			}
 
 			//#region emojis/tags
