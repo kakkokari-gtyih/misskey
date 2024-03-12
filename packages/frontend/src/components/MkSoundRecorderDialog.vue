@@ -101,10 +101,7 @@ async function getPermission() {
 		mediaRecorder.addEventListener('dataavailable', (ev) => {
 			audioData.value.push(ev.data);
 			const _gex = ev.data.type.match(/audio\/([^;]+)/);
-			const _codexEx = ev.data.type.match(/;codecs=([^,]+)/);
-			if (_codexEx) {
-				extension.value = _codexEx[1];
-			} else if (_gex) {
+			if (_gex) {
 				extension.value = _gex[1];
 			} else {
 				extension.value = 'wav';
