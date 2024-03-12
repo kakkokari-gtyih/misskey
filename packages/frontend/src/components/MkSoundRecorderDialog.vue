@@ -6,7 +6,7 @@
 	@close="close()"
 	@closed="$emit('closed')"
 >
-	<template #header>{{ i18n.ts.signup }}</template>
+	<template #header>{{ i18n.ts._soundRecorder.title }}</template>
 
 	<MkSpacer :marginMin="20" :marginMax="28">
 		<div class="_gaps">
