@@ -364,14 +364,8 @@ export class FileInfoService {
 				const newMime = `audio/${type.mime.split('/')[1]}`;
 				if (newMime === 'audio/mp4') {
 					return {
-						mime: 'audio/aac',
+						mime: 'audio/mp4',
 						ext: 'm4a',
-					};
-				}
-				if (newMime === 'audio/webm') {
-					return {
-						mime: 'audio/webm',
-						ext: 'webm',
 					};
 				}
 				return {
