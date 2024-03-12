@@ -28,7 +28,7 @@
 				<MkButton v-else-if="recordStats === 'recording'" primary large rounded @click="stop">{{ i18n.ts._soundRecorder.stop }}</MkButton>
 				<template v-else-if="recordStats === 'done'">
 					<MkButton primary large rounded @click="uploadAndDone">{{ i18n.ts.upload }}</MkButton>
-					<MkButton danger large rounded>{{ i18n.ts.delete }}</MkButton>
+					<MkButton danger large rounded @click="reset">{{ i18n.ts.delete }}</MkButton>
 				</template>
 			</div>
 		</div>
@@ -137,6 +137,13 @@ function stop() {
 		mediaRecorder?.stop();
 		recordStats.value = 'done';
 	}
+}
+
+function reset() {
+	audioData.value = [];
+	completedAudioData.value = null;
+	completedAudioDataUrl.value = null;
+	recordStats.value = 'ready';
 }
 
 async function upload(): Promise<Misskey.entities.DriveFile | null> {
