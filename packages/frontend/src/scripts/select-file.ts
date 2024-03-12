@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { ref } from 'vue';
+import { ref, defineAsyncComponent } from 'vue';
 import * as Misskey from 'misskey-js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/scripts/misskey-api.js';
@@ -80,7 +80,20 @@ export function chooseFileFromUrl(): Promise<Misskey.entities.DriveFile> {
 	});
 }
 
-function select(src: any, label: string | null, multiple: boolean): Promise<Misskey.entities.DriveFile[]> {
+export function launchSoundRecorder(): Promise<Misskey.entities.DriveFile> {
+	return new Promise((res, rej) => {
+		os.popup(defineAsyncComponent(() => import('@/components/MkSoundRecorderDialog.vue')), {}, {
+			done: (file: Misskey.entities.DriveFile) => {
+				res(file);
+			},
+			closed: () => {
+				rej();
+			},
+		}, 'closed');
+	});
+}
+
+function select(src: any, label: string | null, multiple: boolean, withSoundRecorder = false): Promise<Misskey.entities.DriveFile[]> {
 	return new Promise((res, rej) => {
 		const keepOriginal = ref(defaultStore.state.keepOriginalUploading);
 
@@ -103,14 +116,18 @@ function select(src: any, label: string | null, multiple: boolean): Promise<Miss
 			text: i18n.ts.fromUrl,
 			icon: 'ti ti-link',
 			action: () => chooseFileFromUrl().then(file => res([file])),
-		}], src);
+		}, ...(withSoundRecorder ? [{
+			text: i18n.ts._soundRecorder.title,
+			icon: 'ti ti-microphone',
+			action: () => launchSoundRecorder().then(file => res([file])),
+		}] : [])], src);
 	});
 }
 
-export function selectFile(src: any, label: string | null = null): Promise<Misskey.entities.DriveFile> {
-	return select(src, label, false).then(files => files[0]);
+export function selectFile(src: any, label: string | null = null, withSoundRecorder = false): Promise<Misskey.entities.DriveFile> {
+	return select(src, label, false, withSoundRecorder).then(files => files[0]);
 }
 
-export function selectFiles(src: any, label: string | null = null): Promise<Misskey.entities.DriveFile[]> {
-	return select(src, label, true);
+export function selectFiles(src: any, label: string | null = null, withSoundRecorder = false): Promise<Misskey.entities.DriveFile[]> {
+	return select(src, label, true, withSoundRecorder);
 }

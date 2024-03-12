@@ -2599,3 +2599,12 @@ _offlineScreen:
   title: "オフライン - サーバーに接続できません"
   header: "サーバーに接続できません"
 
+_soundRecorder:
+  title: "音声レコーダー"
+  micRequestNeeded: "使用するにはブラウザのマイク使用許可が必要です。"
+  micRequestFailed: "マイクの使用許可が取得できませんでした。"
+  requestMicPermission: "マイクの使用権限をリクエスト"
+  micForUse: "使用するマイク"
+  rec: "録音"
+  play: "再生"
+  stop: "停止"

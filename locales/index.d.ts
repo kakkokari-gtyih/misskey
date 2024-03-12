@@ -9756,6 +9756,40 @@ export interface Locale extends ILocale {
          */
         "header": string;
     };
+    "_soundRecorder": {
+        /**
+         * 音声レコーダー
+         */
+        "title": string;
+        /**
+         * 使用するにはブラウザのマイク使用許可が必要です。
+         */
+        "micRequestNeeded": string;
+        /**
+         * マイクの使用許可が取得できませんでした。
+         */
+        "micRequestFailed": string;
+        /**
+         * マイクの使用権限をリクエスト
+         */
+        "requestMicPermission": string;
+        /**
+         * 使用するマイク
+         */
+        "micForUse": string;
+        /**
+         * 録音
+         */
+        "rec": string;
+        /**
+         * 再生
+         */
+        "play": string;
+        /**
+         * 停止
+         */
+        "stop": string;
+    };
 }
 declare const locales: {
     [lang: string]: Locale;

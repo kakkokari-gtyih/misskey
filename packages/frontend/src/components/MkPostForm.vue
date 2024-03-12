@@ -415,7 +415,7 @@ function focus() {
 function chooseFileFrom(ev) {
 	if (props.mock) return;
 
-	selectFiles(ev.currentTarget ?? ev.target, i18n.ts.attachFile).then(files_ => {
+	selectFiles(ev.currentTarget ?? ev.target, i18n.ts.attachFile, true).then(files_ => {
 		for (const file of files_) {
 			files.value.push(file);
 		}
