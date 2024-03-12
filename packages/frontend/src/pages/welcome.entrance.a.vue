@@ -36,7 +36,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import * as Misskey from 'misskey-js';
 import XTimeline from './welcome.timeline.vue';
 import MarqueeText from '@/components/MkMarquee.vue';
@@ -44,7 +44,9 @@ import MkFeaturedPhotos from '@/components/MkFeaturedPhotos.vue';
 import misskeysvg from '/client-assets/misskey.svg';
 import { misskeyApi, misskeyApiGet } from '@/scripts/misskey-api.js';
 import MkVisitorDashboard from '@/components/MkVisitorDashboard.vue';
+import MkSignupDialog from '@/components/MkSignupDialog.vue';
 import { getProxiedImageUrl } from '@/scripts/media-proxy.js';
+import * as os from '@/os.js';
 
 const meta = ref<Misskey.entities.MetaResponse>();
 const instances = ref<Misskey.entities.FederationInstance[]>();
@@ -65,6 +67,18 @@ misskeyApiGet('federation/instances', {
 	limit: 20,
 }).then(_instances => {
 	instances.value = _instances;
+});
+
+onMounted(() => {
+	const params = new URLSearchParams(location.search);
+	if (params.has('showSignupDialog', 'true')) {
+		os.popup(MkSignupDialog, {
+			autoSet: true,
+		}, {}, 'closed');
+
+		// Remove query parameter
+		history.replaceState(null, '', location.pathname);
+	}
 });
 </script>
 
