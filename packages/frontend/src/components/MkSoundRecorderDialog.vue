@@ -13,12 +13,7 @@
 
 	<MkSpacer :marginMin="20" :marginMax="28">
 		<div class="_gaps">
-			<MkSelect v-model="audioDeviceId">
-				<template #label>{{ i18n.ts._soundRecorder.micForUse }}</template>
-				<option v-for="device in audioDevices" :key="device.deviceId" :value="device.deviceId">{{ device.label }}</option>
-			</MkSelect>
-			<audio :class="$style.audio" :src="completedAudioDataUrl ?? undefined" controls></audio>
-			<MkInfo v-if="!audioStream">
+			<MkInfo v-if="!oncePermitted">
 				<div class="_gaps_s">
 					<div>{{ i18n.ts._soundRecorder.micRequestNeeded }}</div>
 					<div class="_buttonsCenter">
@@ -26,6 +21,11 @@
 					</div>
 				</div>
 			</MkInfo>
+			<MkSelect v-model="audioDeviceId">
+				<template #label>{{ i18n.ts._soundRecorder.micForUse }}</template>
+				<option v-for="device in audioDevices" :key="device.deviceId" :value="device.deviceId">{{ device.label }}</option>
+			</MkSelect>
+			<audio :class="$style.audio" :src="completedAudioDataUrl ?? undefined" controls></audio>
 			<div class="_buttonsCenter">
 				<MkButton v-if="recordStats === 'initializing' || recordStats === 'ready'" :disabled="recordStats === 'initializing'" primary large rounded @click="rec">{{ i18n.ts._soundRecorder.rec }}</MkButton>
 				<MkButton v-else-if="recordStats === 'recording'" primary large rounded @click="stop">{{ i18n.ts._soundRecorder.stop }}</MkButton>
@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { shallowRef, ref, onMounted, watch } from 'vue';
+import { shallowRef, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as Misskey from 'misskey-js';
 import fixWebmDuration from 'fix-webm-duration';
 import MkModalWindow from '@/components/MkModalWindow.vue';
@@ -73,10 +73,10 @@ let mediaRecorder: MediaRecorder | null = null;
 let startTime: number | null = null;
 
 const audioDevices = ref<MediaDeviceInfo[]>([]);
-
 const audioDeviceId = ref<string | null>(null);
 
 const recordStats = ref<'initializing' | 'ready' | 'recording' | 'done'>('initializing');
+const oncePermitted = ref(false);
 
 const audioData = ref<Blob[]>([]);
 
@@ -99,6 +99,16 @@ async function getPermission() {
 				echoCancellation: false,
 				noiseSuppression: false,
 			},
+		});
+		oncePermitted.value = true;
+		await setAvailableAudioDevices();
+		watch(audioDeviceId, () => {
+			// 一度同意が取れている場合は勝手にstreamを作り直す
+			if (audioStream.value) {
+				audioStream.value = null;
+				reset();
+				getPermission();
+			}
 		});
 		mediaRecorder = new MediaRecorder(audioStream.value, {
 			mimeType: getSupportedAudioMime() ?? 'audio/wav',
@@ -132,15 +142,6 @@ async function getPermission() {
 		});
 	}
 }
-
-watch(audioDeviceId, () => {
-	// 一度同意が取れている場合は勝手にstreamを作り直す
-	if (audioStream.value) {
-		audioStream.value = null;
-		reset();
-		getPermission();
-	}
-});
 
 function rec() {
 	if (recordStats.value === 'ready') {
@@ -190,7 +191,7 @@ async function uploadAndDone() {
 	}
 }
 
-function close() {
+function close(sendActualCloseSignal = true) {
 	audioStream.value?.getTracks().forEach((track) => {
 		track.stop();
 	});
@@ -201,21 +202,30 @@ function close() {
 	completedAudioDataUrl.value = null;
 	startTime = null;
 	recordStats.value = 'initializing';
-	dialog.value?.close();
+	if (sendActualCloseSignal) {
+		dialog.value?.close();
+	}
 }
 
 async function setAvailableAudioDevices() {
 	audioDevices.value = (await navigator.mediaDevices.enumerateDevices()).filter((v) => {
 		return v.kind === 'audioinput';
 	});
+
+	if (!audioDeviceId.value && audioDevices.value.length > 0) {
+		audioDeviceId.value = audioDevices.value[0]?.deviceId ?? null;
+	}
 }
 
 onMounted(async () => {
 	await setAvailableAudioDevices();
 
 	navigator.mediaDevices.addEventListener('devicechange', setAvailableAudioDevices);
+});
 
-	audioDeviceId.value = audioDevices.value[0]?.deviceId ?? null;
+onBeforeUnmount(() => {
+	navigator.mediaDevices.removeEventListener('devicechange', setAvailableAudioDevices);
+	close(false);
 });
 </script>
 
