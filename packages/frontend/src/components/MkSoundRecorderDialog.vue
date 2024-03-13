@@ -3,6 +3,9 @@
 	ref="dialog"
 	:width="450"
 	:height="500"
+	:scroll="false"
+	:withOkButton="false"
+	:zPriority="'middle'"
 	@close="close()"
 	@closed="$emit('closed')"
 >
@@ -10,6 +13,11 @@
 
 	<MkSpacer :marginMin="20" :marginMax="28">
 		<div class="_gaps">
+			<MkSelect v-model="audioDeviceId">
+				<template #label>{{ i18n.ts._soundRecorder.micForUse }}</template>
+				<option v-for="device in audioDevices" :key="device.deviceId" :value="device.deviceId">{{ device.label }}</option>
+			</MkSelect>
+			<audio :class="$style.audio" :src="completedAudioDataUrl ?? undefined" controls></audio>
 			<MkInfo v-if="!audioStream">
 				<div class="_gaps_s">
 					<div>{{ i18n.ts._soundRecorder.micRequestNeeded }}</div>
@@ -18,11 +26,6 @@
 					</div>
 				</div>
 			</MkInfo>
-			<MkSelect v-model="audioDeviceId">
-				<template #label>{{ i18n.ts._soundRecorder.micForUse }}</template>
-				<option v-for="device in audioDevices" :key="device.deviceId" :value="device.deviceId">{{ device.label }}</option>
-			</MkSelect>
-			<audio :class="$style.audio" :src="completedAudioDataUrl ?? undefined" controls></audio>
 			<div class="_buttonsCenter">
 				<MkButton v-if="recordStats === 'initializing' || recordStats === 'ready'" :disabled="recordStats === 'initializing'" primary large rounded @click="rec">{{ i18n.ts._soundRecorder.rec }}</MkButton>
 				<MkButton v-else-if="recordStats === 'recording'" primary large rounded @click="stop">{{ i18n.ts._soundRecorder.stop }}</MkButton>
@@ -37,8 +40,9 @@
 </template>
 
 <script setup lang="ts">
-import { shallowRef, ref, onMounted } from 'vue';
+import { shallowRef, ref, onMounted, watch } from 'vue';
 import * as Misskey from 'misskey-js';
+import fixWebmDuration from 'fix-webm-duration';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkInfo from '@/components/MkInfo.vue';
 import MkButton from '@/components/MkButton.vue';
@@ -66,6 +70,7 @@ const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
 
 const audioStream = ref<MediaStream | null>(null);
 let mediaRecorder: MediaRecorder | null = null;
+let startTime: number | null = null;
 
 const audioDevices = ref<MediaDeviceInfo[]>([]);
 
@@ -90,6 +95,7 @@ async function getPermission() {
 	try {
 		audioStream.value = await navigator.mediaDevices.getUserMedia({
 			audio: {
+				deviceId: audioDeviceId.value ? { exact: audioDeviceId.value } : undefined,
 				echoCancellation: false,
 				noiseSuppression: false,
 			},
@@ -107,8 +113,13 @@ async function getPermission() {
 				extension.value = 'wav';
 			}
 		});
-		mediaRecorder.addEventListener('stop', () => {
-			completedAudioData.value = new Blob(audioData.value, { type: audioData.value[0].type });
+		mediaRecorder.addEventListener('stop', async () => {
+			const duration = Date.now() - startTime;
+			if (audioData.value[0].type.includes('webm')) {
+				completedAudioData.value = await fixWebmDuration(new Blob(audioData.value, { type: audioData.value[0].type }), duration, { logger: false });
+			} else {
+				completedAudioData.value = new Blob(audioData.value, { type: audioData.value[0].type });
+			}
 			completedAudioDataUrl.value = URL.createObjectURL(completedAudioData.value);
 			recordStats.value = 'done';
 		});
@@ -122,9 +133,19 @@ async function getPermission() {
 	}
 }
 
+watch(audioDeviceId, () => {
+	// 一度同意が取れている場合は勝手にstreamを作り直す
+	if (audioStream.value) {
+		audioStream.value = null;
+		reset();
+		getPermission();
+	}
+});
+
 function rec() {
 	if (recordStats.value === 'ready') {
 		mediaRecorder?.start();
+		startTime = Date.now();
 		recordStats.value = 'recording';
 	}
 }
@@ -132,7 +153,6 @@ function rec() {
 function stop() {
 	if (recordStats.value === 'recording') {
 		mediaRecorder?.stop();
-		recordStats.value = 'done';
 	}
 }
 
@@ -140,6 +160,7 @@ function reset() {
 	audioData.value = [];
 	completedAudioData.value = null;
 	completedAudioDataUrl.value = null;
+	startTime = null;
 	recordStats.value = 'ready';
 }
 
@@ -178,14 +199,21 @@ function close() {
 	audioData.value = [];
 	completedAudioData.value = null;
 	completedAudioDataUrl.value = null;
+	startTime = null;
 	recordStats.value = 'initializing';
 	dialog.value?.close();
 }
 
-onMounted(async () => {
+async function setAvailableAudioDevices() {
 	audioDevices.value = (await navigator.mediaDevices.enumerateDevices()).filter((v) => {
 		return v.kind === 'audioinput';
 	});
+}
+
+onMounted(async () => {
+	await setAvailableAudioDevices();
+
+	navigator.mediaDevices.addEventListener('devicechange', setAvailableAudioDevices);
 
 	audioDeviceId.value = audioDevices.value[0]?.deviceId ?? null;
 });
