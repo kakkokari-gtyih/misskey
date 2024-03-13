@@ -62,8 +62,8 @@ const PREFERRED_MIME = [
 	'audio/ogg',
 	'audio/opus',
 	'audio/webm;codecs=opus',
-	'audio/wav',
 	'audio/webm',
+	'audio/wav',
 ];
 
 const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
@@ -124,8 +124,8 @@ async function getPermission() {
 			}
 		});
 		mediaRecorder.addEventListener('stop', async () => {
-			const duration = Date.now() - startTime;
-			if (audioData.value[0].type.includes('webm')) {
+			if (audioData.value[0].type.includes('webm') && startTime != null) {
+				const duration = Date.now() - startTime;
 				completedAudioData.value = await fixWebmDuration(new Blob(audioData.value, { type: audioData.value[0].type }), duration, { logger: false });
 			} else {
 				completedAudioData.value = new Blob(audioData.value, { type: audioData.value[0].type });
