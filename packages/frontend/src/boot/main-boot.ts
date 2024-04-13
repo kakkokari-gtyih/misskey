@@ -14,6 +14,7 @@ import { $i, signout, updateAccount } from '@/account.js';
 import { instance } from '@/instance.js';
 import { ColdDeviceStorage, defaultStore } from '@/store.js';
 import { makeHotkey } from '@/scripts/hotkey.js';
+import { eEggCommand } from '@/scripts/eegg-command.js';
 import { reactionPicker } from '@/scripts/reaction-picker.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { claimAchievement, claimedAchievements } from '@/scripts/achievements.js';
@@ -96,7 +97,7 @@ export async function mainBoot() {
 					}).render();
 				}
 			}
-		}	
+		}
 	} catch (error) {
 		// console.error(error);
 		console.error('Failed to initialise the seasonal screen effect canvas context:', error);
@@ -322,6 +323,7 @@ export async function mainBoot() {
 	}
 
 	// shortcut
+	document.addEventListener('keydown', eEggCommand(), { passive: true });
 	document.addEventListener('keydown', makeHotkey(hotkeys));
 
 	initializeSw();

@@ -58,9 +58,9 @@ const parseKeymap = (keymap: Keymap) => Object.entries(keymap).map(([patterns, c
 	return result;
 });
 
-const ignoreElements = ['input', 'textarea'];
+export const ignoreElements = ['input', 'textarea'];
 
-function match(ev: KeyboardEvent, patterns: Action['patterns']): boolean {
+export function match(ev: KeyboardEvent, patterns: Action['patterns']): boolean {
 	const key = ev.key.toLowerCase();
 	return patterns.some(pattern => pattern.which.includes(key) &&
 		pattern.ctrl === ev.ctrlKey &&

@@ -9,7 +9,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.top">
 			<div :class="$style.banner" :style="{ backgroundImage: `url(${ instance.bannerUrl })` }"></div>
 			<button v-tooltip.noDelay.right="instance.name ?? i18n.ts.instance" class="_button" :class="$style.instance" @click="openInstanceMenu">
-				<img :src="instance.iconUrl || instance.faviconUrl || '/favicon.ico'" alt="" :class="$style.instanceIcon"/>
+				<img :src="instance.iconUrl || instance.faviconUrl || '/favicon.ico'" alt="" :class="[$style.instanceIcon, { [$style.animated]: eEggInvoked }]"/>
 			</button>
 		</div>
 		<div :class="$style.middle">
@@ -68,8 +68,17 @@ import { $i, openAccountMenu as openAccountMenu_ } from '@/account.js';
 import { defaultStore } from '@/store.js';
 import { i18n } from '@/i18n.js';
 import { instance } from '@/instance.js';
+import { globalEvents } from '@/events.js';
 
 const iconOnly = ref(false);
+const eEggInvoked = ref(false);
+
+globalEvents.on('eEggCommandInvoked', () => {
+	eEggInvoked.value = true;
+	window.setTimeout(() => {
+		eEggInvoked.value = false;
+	}, 500);
+});
 
 const menu = computed(() => defaultStore.state.menu);
 const otherMenuItemIndicated = computed(() => {
@@ -171,6 +180,11 @@ function more(ev: MouseEvent) {
 		display: inline-block;
 		width: 38px;
 		aspect-ratio: 1;
+
+		&.animated {
+			animation: spin ease-in-out .5s;
+			animation-iteration-count: 1;
+		}
 	}
 
 	.bottom {
@@ -492,6 +506,15 @@ function more(ev: MouseEvent) {
 			right: 4px;
 			font-size: 10px;
 		}
+	}
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
 	}
 }
 </style>
