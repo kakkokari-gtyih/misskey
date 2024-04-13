@@ -8,10 +8,7 @@ import keyCode from './keycode.js';
 import { globalEvents } from '@/events.js';
 
 // コナミコマンド
-export let eEggCommandHandlerLoaded = false;
 export function eEggCommand() {
-	eEggCommandHandlerLoaded = true;
-
 	const easterEgg = [
 		'up',
 		'up',
