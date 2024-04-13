@@ -22,6 +22,7 @@ export function eEggCommand() {
 		'a',
 	];
 	let easterEggPosition = 0;
+	let eEggTimeout: number | null = null;
 
 	return (ev: KeyboardEvent) => {
 		if (document.activeElement) {
@@ -31,10 +32,20 @@ export function eEggCommand() {
 
 		const keys = keyCode(easterEgg[easterEggPosition]).map(k => k.toLowerCase());
 		if (keys.includes(ev.key.toLowerCase())) {
+			if (eEggTimeout !== null) {
+				window.clearTimeout(eEggTimeout);
+				eEggTimeout = null;
+			}
+
 			easterEggPosition++;
+
 			if (easterEggPosition === easterEgg.length) {
 				easterEggPosition = 0;
 				globalEvents.emit('eEggCommandInvoked');
+			} else {
+				eEggTimeout = window.setTimeout(() => {
+					easterEggPosition = 0;
+				}, 5000);
 			}
 		} else {
 			easterEggPosition = 0;
