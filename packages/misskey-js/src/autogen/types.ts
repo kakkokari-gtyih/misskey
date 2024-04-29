@@ -3992,6 +3992,7 @@ export type components = {
       repliesCount: number;
       uri?: string;
       url?: string;
+      forceShowFullText?: boolean;
       reactionAndUserPairCache?: string[];
       clippedCount?: number;
       myReaction?: string | null;
@@ -4684,6 +4685,7 @@ export type components = {
       userEachUserListsLimit: number;
       rateLimitFactor: number;
       avatarDecorationLimit: number;
+      avoidNoteCollapse: boolean;
     };
     ReversiGameLite: {
       /** Format: id */

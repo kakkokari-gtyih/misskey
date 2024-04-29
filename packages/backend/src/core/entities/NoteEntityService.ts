@@ -20,6 +20,7 @@ import { IdService } from '@/core/IdService.js';
 import type { OnModuleInit } from '@nestjs/common';
 import type { CustomEmojiService } from '../CustomEmojiService.js';
 import type { ReactionService } from '../ReactionService.js';
+import type { RoleService } from '../RoleService.js';
 import type { UserEntityService } from './UserEntityService.js';
 import type { DriveFileEntityService } from './DriveFileEntityService.js';
 
@@ -29,6 +30,7 @@ export class NoteEntityService implements OnModuleInit {
 	private driveFileEntityService: DriveFileEntityService;
 	private customEmojiService: CustomEmojiService;
 	private reactionService: ReactionService;
+	private roleService: RoleService;
 	private idService: IdService;
 	private noteLoader = new DebounceLoader(this.findNoteOrFail);
 
@@ -68,6 +70,7 @@ export class NoteEntityService implements OnModuleInit {
 		this.driveFileEntityService = this.moduleRef.get('DriveFileEntityService');
 		this.customEmojiService = this.moduleRef.get('CustomEmojiService');
 		this.reactionService = this.moduleRef.get('ReactionService');
+		this.roleService = this.moduleRef.get('RoleService');
 		this.idService = this.moduleRef.get('IdService');
 	}
 
@@ -355,6 +358,7 @@ export class NoteEntityService implements OnModuleInit {
 			mentions: note.mentions.length > 0 ? note.mentions : undefined,
 			uri: note.uri ?? undefined,
 			url: note.url ?? undefined,
+			forceShowFullText: (await this.roleService.getUserPolicies(note.userId)).avoidNoteCollapse,
 
 			...(opts.detail ? {
 				clippedCount: note.clippedCount,

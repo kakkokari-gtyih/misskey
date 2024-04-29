@@ -268,6 +268,10 @@ export const packedRolePoliciesSchema = {
 			type: 'integer',
 			optional: false, nullable: false,
 		},
+		avoidNoteCollapse: {
+			type: 'boolean',
+			optional: false, nullable: false,
+		},
 	},
 } as const;
 

@@ -243,6 +243,10 @@ export const packedNoteSchema = {
 			type: 'string',
 			optional: true, nullable: false,
 		},
+		forceShowFullText: {
+			type: 'boolean',
+			optional: true, nullable: false,
+		},
 		reactionAndUserPairCache: {
 			type: 'array',
 			optional: true, nullable: false,

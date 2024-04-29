@@ -6578,6 +6578,10 @@ export interface Locale extends ILocale {
              * アイコンデコレーションの最大取付個数
              */
             "avatarDecorationLimit": string;
+            /**
+             * ノートの「もっと見る」制限を回避
+             */
+            "avoidNoteCollapse": string;
         };
         "_condition": {
             /**

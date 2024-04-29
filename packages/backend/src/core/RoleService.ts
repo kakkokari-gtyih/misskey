@@ -57,6 +57,7 @@ export type RolePolicies = {
 	userEachUserListsLimit: number;
 	rateLimitFactor: number;
 	avatarDecorationLimit: number;
+	avoidNoteCollapse: boolean;
 };
 
 export const DEFAULT_POLICIES: RolePolicies = {
@@ -85,6 +86,7 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	userEachUserListsLimit: 50,
 	rateLimitFactor: 1,
 	avatarDecorationLimit: 1,
+	avoidNoteCollapse: false,
 };
 
 @Injectable()
@@ -386,6 +388,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			userEachUserListsLimit: calc('userEachUserListsLimit', vs => Math.max(...vs)),
 			rateLimitFactor: calc('rateLimitFactor', vs => Math.max(...vs)),
 			avatarDecorationLimit: calc('avatarDecorationLimit', vs => Math.max(...vs)),
+			avoidNoteCollapse: calc('avoidNoteCollapse', vs => vs.some(v => v === true)),
 		};
 	}
 

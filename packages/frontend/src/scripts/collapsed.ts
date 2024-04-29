@@ -6,6 +6,8 @@
 import * as Misskey from 'misskey-js';
 
 export function shouldCollapsed(note: Misskey.entities.Note, urls: string[]): boolean {
+	if (note.forceShowFullText) return false;
+
 	const collapsed = note.cw == null && note.text != null && (
 		(note.text.includes('$[x2')) ||
 		(note.text.includes('$[x3')) ||
