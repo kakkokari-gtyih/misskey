@@ -34,6 +34,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span :class="$style.item_content_text">{{ item.text }}</span>
 					<span v-if="item.indicate" :class="$style.indicator"><i class="_indicatorCircle"></i></span>
 				</div>
+				<span v-if="item.target === '_blank'" :class="$style.caret" style="pointer-events: none;"><i class="ti ti-external-link ti-fw"></i></span>
 			</a>
 			<button v-else-if="item.type === 'user'" role="menuitem" :tabindex="i" class="_button" :class="[$style.item, { [$style.active]: item.active }]" :disabled="item.active" @click="clicked(item.action, $event)" @mouseenter.passive="onItemMouseEnter(item)" @mouseleave.passive="onItemMouseLeave(item)">
 				<MkAvatar :user="item.user" :class="$style.avatar"/><MkUserName :user="item.user"/>
@@ -493,7 +494,9 @@ onBeforeUnmount(() => {
 }
 
 .caret {
+	display: inline-block;
 	margin-left: auto;
+	padding-left: 16px;
 }
 
 .avatar {
