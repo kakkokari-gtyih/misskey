@@ -23,6 +23,7 @@ type Keys =
 	'colorScheme' |
 	'useSystemFont' |
 	'fontSize' |
+	'adjustScreenScaleToFontSize' |
 	'ui' |
 	'ui_temp' |
 	'locale' |

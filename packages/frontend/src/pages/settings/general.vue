@@ -147,13 +147,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div style="margin: 8px 0 0 0; font-size: 1.5em;"><Mfm :key="emojiStyle" text="🍮🍦🍭🍩🍰🍫🍬🥞🍪"/></div>
 			</div>
 
-			<MkRadios v-model="fontSize">
-				<template #label>{{ i18n.ts.fontSize }}</template>
-				<option :value="null"><span style="font-size: 14px;">Aa</span></option>
-				<option value="1"><span style="font-size: 15px;">Aa</span></option>
-				<option value="2"><span style="font-size: 16px;">Aa</span></option>
-				<option value="3"><span style="font-size: 17px;">Aa</span></option>
-			</MkRadios>
+			<div class="_gaps_s">
+				<MkRadios v-model="fontSize">
+					<template #label>{{ i18n.ts.fontSize }}</template>
+					<option value="-2"><span style="font-size: 12px">Aa</span></option>
+					<option value="-1"><span style="font-size: 13px">Aa</span></option>
+					<option :value="null"><span style="font-size: 14px;">Aa</span></option>
+					<option value="1"><span style="font-size: 15px;">Aa</span></option>
+					<option value="2"><span style="font-size: 16px;">Aa</span></option>
+					<option value="3"><span style="font-size: 17px;">Aa</span></option>
+				</MkRadios>
+				<MkSwitch v-model="adjustScreenScaleToFontSize">{{ i18n.ts.adjustScreenScaleToFontSize }}</MkSwitch>
+			</div>
 		</div>
 	</FormSection>
 
@@ -260,6 +265,7 @@ import { claimAchievement } from '@/scripts/achievements.js';
 
 const lang = ref(miLocalStorage.getItem('lang'));
 const fontSize = ref(miLocalStorage.getItem('fontSize'));
+const adjustScreenScaleToFontSize = ref(miLocalStorage.getItem('adjustScreenScaleToFontSize') === 't');
 const useSystemFont = ref(miLocalStorage.getItem('useSystemFont') != null);
 const dataSaver = ref(defaultStore.state.dataSaver);
 
@@ -325,8 +331,17 @@ watch(lang, () => {
 watch(fontSize, () => {
 	if (fontSize.value == null) {
 		miLocalStorage.removeItem('fontSize');
+		miLocalStorage.removeItem('adjustScreenScaleToFontSize');
 	} else {
 		miLocalStorage.setItem('fontSize', fontSize.value);
+	}
+});
+
+watch(adjustScreenScaleToFontSize, () => {
+	if (adjustScreenScaleToFontSize.value === true) {
+		miLocalStorage.setItem('adjustScreenScaleToFontSize', 't');
+	} else {
+		miLocalStorage.removeItem('adjustScreenScaleToFontSize');
 	}
 });
 
@@ -342,6 +357,7 @@ watch([
 	hemisphere,
 	lang,
 	fontSize,
+	adjustScreenScaleToFontSize,
 	useSystemFont,
 	enableInfiniteScroll,
 	squareAvatars,

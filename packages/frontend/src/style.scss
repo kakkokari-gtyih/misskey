@@ -75,6 +75,14 @@ html {
 		}
 	}
 
+	&.f--2 {
+		font-size: 12px;
+	}
+
+	&.f--1 {
+		font-size: 13px;
+	}
+
 	&.f-1 {
 		font-size: 15px;
 	}
@@ -85,6 +93,37 @@ html {
 
 	&.f-3 {
 		font-size: 17px;
+	}
+
+	&.s--2 {
+		transform-origin: top left;
+		transform: scale(calc(12 / 14));
+		width: calc(100% * 14 / 12);
+		height: calc(100% * 14 / 12);
+	}
+
+	&.s--1 {
+		transform-origin: top left;
+		transform: scale(calc(13 / 14));
+		width: calc(100% * 14 / 13);
+	}
+
+	&.s-1 {
+		transform-origin: top left;
+		transform: scale(calc(15 / 14));
+		width: calc(100% * 14 / 15);
+	}
+
+	&.s-2 {
+		transform-origin: top left;
+		transform: scale(calc(16 / 14));
+		width: calc(100% * 14 / 16);
+	}
+
+	&.s-3 {
+		transform-origin: top left;
+		transform: scale(calc(17 / 14));
+		width: calc(100% * 14 / 17);
 	}
 
 	&.useSystemFont {

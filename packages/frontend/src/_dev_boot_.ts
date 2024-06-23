@@ -68,8 +68,13 @@ async function main() {
 	//#endregion
 
 	const fontSize = localStorage.getItem('fontSize');
+	const adjustScreenScaleToFontSize = localStorage.getItem('adjustScreenScaleToFontSize');
 	if (fontSize) {
-		document.documentElement.classList.add('f-' + fontSize);
+		if (adjustScreenScaleToFontSize && adjustScreenScaleToFontSize === 't') {
+			document.documentElement.classList.add('s-' + fontSize);
+		} else {
+			document.documentElement.classList.add('f-' + fontSize);
+		}
 	}
 
 	const useSystemFont = localStorage.getItem('useSystemFont');
