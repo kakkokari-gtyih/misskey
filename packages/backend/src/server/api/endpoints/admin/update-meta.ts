@@ -619,7 +619,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			}
 
 			if (ps.urlPreviewRequireContentLength !== undefined) {
-				set.urlPreviewRequireContentLength = ps.urlPreviewRequireContentLength;
+				set.urlPreviewRequireContentLength = ps.urlPreviewRequireContentLength ?? undefined;
 			}
 
 			if (ps.urlPreviewUserAgent !== undefined) {

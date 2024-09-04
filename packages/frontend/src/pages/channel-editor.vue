@@ -58,10 +58,32 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</Sortable>
 				</div>
 			</MkFolder>
+			<MkFolder v-if="collaboratorUsers.some(x => x.id !== $i.id)" :defaultOpen="true">
+				<template #label>{{ i18n.ts._channel.collaborators }}</template>
+				<div class="_gaps">
+					<MkButton @click="addUser()">
+						{{ i18n.ts._channel.addCollaborator }}
+					</MkButton>
+					<div v-for="user in collaboratorUsers" :class="$style.collaborator">
+						<MkAvatar :user="user" style="height: 48px; width: 48px"/>
+						<MkAcct :user="user"/>
+					</div>
+				</div>
+			</MkFolder>
 
-			<div class="_buttons">
-				<MkButton primary @click="save()"><i class="ti ti-device-floppy"></i> {{ channelId ? i18n.ts.save : i18n.ts.create }}</MkButton>
-				<MkButton v-if="channelId" danger @click="archive()"><i class="ti ti-trash"></i> {{ i18n.ts.archive }}</MkButton>
+			<MkFolder v-if="collaboratorUsers.some(x => x.id !== $i.id)">
+				<template #label>{{ i18n.ts._channel.dangerSettings }}</template>
+
+				<MkButton danger @click="transferAdmin()">
+					{{ i18n.ts._channel.transferAdminConfirmTitle }}
+				</MkButton>
+			</MkFolder>
+
+			<div>
+				<div class="_buttons">
+					<MkButton primary @click="save()"><i class="ti ti-device-floppy"></i> {{ channelId ? i18n.ts.save : i18n.ts.create }}</MkButton>
+					<MkButton v-if="channelId" danger @click="archive()"><i class="ti ti-trash"></i> {{ i18n.ts.archive }}</MkButton>
+				</div>
 			</div>
 		</div>
 	</MkSpacer>
@@ -83,6 +105,7 @@ import MkFolder from '@/components/MkFolder.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import MkTextarea from '@/components/MkTextarea.vue';
 import { useRouter } from '@/router/supplier.js';
+import { $i } from '@/account.js';
 
 const Sortable = defineAsyncComponent(() => import('vuedraggable').then(x => x.default));
 
@@ -111,6 +134,7 @@ watch(() => bannerId.value, async () => {
 		})).url;
 	}
 });
+const collaboratorUsers = ref<Misskey.entities.User[]>([]);
 
 async function fetchChannel() {
 	if (props.channelId == null) return;
@@ -129,6 +153,49 @@ async function fetchChannel() {
 	}));
 	color.value = channel.value.color;
 	allowRenoteToExternal.value = channel.value.allowRenoteToExternal;
+	collaboratorUsers.value = channel.value.collaboratorUsers;
+}
+
+function transferAdmin() {
+	os.selectUser({ includeSelf: true, multiple: false, localOnly: true }).then(user => {
+		os.confirm({
+			type: 'warning',
+			title: i18n.ts._channel.transferAdminConfirmTitle,
+			text: i18n.tsx._channel.transferAdminConfirmDescription({ user: user.name }),
+		}).then(({ canceled }) => {
+			if (canceled) return;
+			os.confirm({
+				type: 'warning',
+				title: i18n.ts._channel.transferAdminConfirmTitle,
+				text: i18n.ts._channel.transferAdminReConfirmDescription,
+			}).then(({ canceled: a }) => {
+				if (a) return;
+
+				misskeyApi('channels/update', {
+					channelId: props.channelId,
+					transferAdminUserId: user.id,
+				}).then(() => {
+					os.success();
+				});
+			});
+		});
+	});
+}
+
+function addUser() {
+	os.selectUser({ includeSelf: true, multiple: true, localOnly: true }).then(user => {
+		if (Array.isArray(user)) {
+			collaboratorUsers.value = [
+				...collaboratorUsers.value,
+				...user,
+			];
+		} else {
+			collaboratorUsers.value = [
+				...collaboratorUsers.value,
+				user,
+			];
+		}
+	});
 }
 
 fetchChannel();
@@ -159,6 +226,7 @@ function save() {
 		color: color.value,
 		isSensitive: isSensitive.value,
 		allowRenoteToExternal: allowRenoteToExternal.value,
+		collaboratorIds: collaboratorUsers.value.map(x => x.id),
 	};
 
 	if (props.channelId) {
@@ -235,5 +303,11 @@ definePageMetadata(() => ({
 	height: 32px;
 	margin: 0 8px;
 	opacity: 0.5;
+}
+
+.collaborator{
+	display: flex;
+	margin: 8px 0;
+	align-items: center;
 }
 </style>

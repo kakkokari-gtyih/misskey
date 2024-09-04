@@ -98,4 +98,9 @@ export class MiChannel {
 		default: true,
 	})
 	public allowRenoteToExternal: boolean;
+
+	@Column('jsonb', {
+		default: [],
+	})
+	public collaboratorIds: string[];
 }
