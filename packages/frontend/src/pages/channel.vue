@@ -122,17 +122,17 @@ watch(() => props.channelId, async () => {
 	channel.value = await misskeyApi('channels/show', {
 		channelId: props.channelId,
 	});
-	favorited.value = channel.value.isFavorited ?? false;
-	if (favorited.value || channel.value.isFollowing) {
+	favorited.value = channel.value?.isFavorited ?? false;
+	if (favorited.value || channel.value?.isFollowing) {
 		tab.value = 'timeline';
 	}
 
-	if ((favorited.value || channel.value.isFollowing) && channel.value.lastNotedAt) {
-		const lastReadedAt: number = miLocalStorage.getItemAsJson(`channelLastReadedAt:${channel.value.id}`) ?? 0;
-		const lastNotedAt = Date.parse(channel.value.lastNotedAt);
+	if ((favorited.value || channel.value?.isFollowing) && channel.value?.lastNotedAt) {
+		const lastReadedAt: number = miLocalStorage.getItemAsJson(`channelLastReadedAt:${channel.value?.id}`) ?? 0;
+		const lastNotedAt = Date.parse(channel.value?.lastNotedAt);
 
 		if (lastNotedAt > lastReadedAt) {
-			miLocalStorage.setItemAsJson(`channelLastReadedAt:${channel.value.id}`, lastNotedAt);
+			miLocalStorage.setItemAsJson(`channelLastReadedAt:${channel.value?.id}`, lastNotedAt);
 		}
 	}
 }, { immediate: true });
@@ -151,7 +151,7 @@ function favorite() {
 	if (!channel.value) return;
 
 	os.apiWithDialog('channels/favorite', {
-		channelId: channel.value.id,
+		channelId: channel.value?.id,
 	}).then(() => {
 		favorited.value = true;
 		favoritedChannelsCache.delete();
@@ -167,7 +167,7 @@ async function unfavorite() {
 	});
 	if (confirm.canceled) return;
 	os.apiWithDialog('channels/unfavorite', {
-		channelId: channel.value.id,
+		channelId: channel.value?.id,
 	}).then(() => {
 		favorited.value = false;
 		favoritedChannelsCache.delete();
@@ -186,7 +186,7 @@ async function search() {
 		limit: 10,
 		params: {
 			query: query,
-			channelId: channel.value.id,
+			channelId: channel.value?.id,
 		},
 	};
 
@@ -194,7 +194,7 @@ async function search() {
 }
 
 const headerActions = computed(() => {
-	if (channel.value && channel.value.userId) {
+	if (channel.value && channel.value?.userId) {
 		const headerItems: PageHeaderItem[] = [];
 
 		headerItems.push({
@@ -205,7 +205,7 @@ const headerActions = computed(() => {
 					console.warn('failed to copy channel URL. channel.value is null.');
 					return;
 				}
-				copyToClipboard(`${url}/channels/${channel.value.id}`);
+				copyToClipboard(`${url}/channels/${channel.value?.id}`);
 				os.success();
 			},
 		});
@@ -221,15 +221,15 @@ const headerActions = computed(() => {
 					}
 
 					navigator.share({
-						title: channel.value.name,
-						text: channel.value.description ?? undefined,
-						url: `${url}/channels/${channel.value.id}`,
+						title: channel.value?.name,
+						text: channel.value?.description ?? undefined,
+						url: `${url}/channels/${channel.value?.id}`,
 					});
 				},
 			});
 		}
 
-		if (($i && $i.id === channel.value.userId) || iAmModerator || ($i && channel.value.collaboratorUsers.some(x => x.id === $i.id))) {
+		if (($i && $i.id === channel.value?.userId) || iAmModerator || ($i && channel.value?.collaboratorUsers.some(x => x.id === $i!.id))) {
 			headerItems.push({
 				icon: 'ti ti-settings',
 				text: i18n.ts.edit,
@@ -262,7 +262,7 @@ const headerTabs = computed(() => [{
 }]);
 
 definePageMetadata(() => ({
-	title: channel.value ? channel.value.name : i18n.ts.channel,
+	title: channel.value ? channel.value?.name : i18n.ts.channel,
 	icon: 'ti ti-device-tv',
 }));
 </script>

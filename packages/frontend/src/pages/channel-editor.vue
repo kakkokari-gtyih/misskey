@@ -150,6 +150,8 @@ async function fetchChannel() {
 		channelId: props.channelId,
 	});
 
+	if (channel.value == null) return;
+
 	name.value = channel.value.name;
 	description.value = channel.value.description;
 	bannerId.value = channel.value.bannerId;
@@ -231,7 +233,7 @@ function removePinnedNote(index: number) {
 
 function save() {
 	const params = {
-		name: name.value,
+		name: name.value ?? '',
 		description: description.value,
 		bannerId: bannerId.value,
 		pinnedNoteIds: pinnedNotes.value.map(x => x.id),
