@@ -4518,6 +4518,7 @@ export type components = {
       isFollowing?: boolean;
       isFavorited?: boolean;
       pinnedNotes?: components['schemas']['Note'][];
+      collaboratorUsers: components['schemas']['User'][] | null;
     };
     QueueCount: {
       waiting: number;
@@ -11442,6 +11443,7 @@ export type operations = {
           color?: string;
           isSensitive?: boolean | null;
           allowRenoteToExternal?: boolean | null;
+          collaboratorIds?: string[];
         };
       };
     };
@@ -11895,6 +11897,9 @@ export type operations = {
           color?: string;
           isSensitive?: boolean | null;
           allowRenoteToExternal?: boolean | null;
+          collaboratorIds?: string[];
+          /** Format: misskey:id */
+          transferAdminUserId?: string | null;
         };
       };
     };
