@@ -194,17 +194,10 @@ function transferAdmin() {
 
 function addUser() {
 	os.selectUser({ includeSelf: true, multiple: true, localOnly: true }).then(user => {
-		if (Array.isArray(user)) {
-			collaboratorUsers.value = [
-				...collaboratorUsers.value,
-				...user,
-			];
-		} else {
-			collaboratorUsers.value = [
-				...collaboratorUsers.value,
-				user,
-			];
-		}
+		collaboratorUsers.value = [
+			...collaboratorUsers.value,
+			...user,
+		];
 	});
 }
 
