@@ -1055,6 +1055,10 @@ export interface Locale extends ILocale {
      */
     "federating": string;
     /**
+     * ブロックされています
+     */
+    "blockingYou": string;
+    /**
      * ブロック中
      */
     "blocked": string;
