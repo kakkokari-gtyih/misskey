@@ -67,6 +67,12 @@ type AdminAbuseUserReportsRequest = operations['admin___abuse-user-reports']['re
 type AdminAbuseUserReportsResponse = operations['admin___abuse-user-reports']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type AdminAccountsBulkRequest = operations['admin___accounts___bulk']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminAccountsBulkResponse = operations['admin___accounts___bulk']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type AdminAccountsCreateRequest = operations['admin___accounts___create']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -1234,6 +1240,8 @@ declare namespace entities {
         AdminAbuseReportNotificationRecipientUpdateRequest,
         AdminAbuseReportNotificationRecipientUpdateResponse,
         AdminAbuseReportNotificationRecipientDeleteRequest,
+        AdminAccountsBulkRequest,
+        AdminAccountsBulkResponse,
         AdminAccountsCreateRequest,
         AdminAccountsCreateResponse,
         AdminAccountsDeleteRequest,

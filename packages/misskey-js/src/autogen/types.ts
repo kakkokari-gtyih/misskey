@@ -80,6 +80,15 @@ export type paths = {
      */
     post: operations['admin___abuse-report___notification-recipient___delete'];
   };
+  '/admin/accounts/bulk': {
+    /**
+     * admin/accounts/bulk
+     * @description No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *write:admin:account*
+     */
+    post: operations['admin___accounts___bulk'];
+  };
   '/admin/accounts/create': {
     /**
      * admin/accounts/create
@@ -5596,6 +5605,74 @@ export type operations = {
       /** @description OK (without any results) */
       204: {
         content: never;
+      };
+      /** @description Client error */
+      400: {
+        content: {
+          'application/json': components['schemas']['Error'];
+        };
+      };
+      /** @description Authentication error */
+      401: {
+        content: {
+          'application/json': components['schemas']['Error'];
+        };
+      };
+      /** @description Forbidden error */
+      403: {
+        content: {
+          'application/json': components['schemas']['Error'];
+        };
+      };
+      /** @description I'm Ai */
+      418: {
+        content: {
+          'application/json': components['schemas']['Error'];
+        };
+      };
+      /** @description Internal server error */
+      500: {
+        content: {
+          'application/json': components['schemas']['Error'];
+        };
+      };
+    };
+  };
+  /**
+   * admin/accounts/bulk
+   * @description No description provided.
+   *
+   * **Credential required**: *Yes* / **Permission**: *write:admin:account*
+   */
+  admin___accounts___bulk: {
+    requestBody: {
+      content: {
+        'application/json': {
+          unsuspend?: string[];
+          suspend?: string[];
+          delete?: string[];
+        };
+      };
+    };
+    responses: {
+      /** @description OK (with results) */
+      200: {
+        content: {
+          'application/json': {
+            unsuspend?: {
+              success: string[];
+              failure: string[];
+            };
+            suspend?: {
+              success: string[];
+              failure: string[];
+            };
+            delete?: {
+              success: string[];
+              failure: string[];
+            };
+          };
+        };
       };
       /** @description Client error */
       400: {

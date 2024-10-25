@@ -13,6 +13,7 @@ import * as ep___admin_abuseReport_notificationRecipient_update from '@/server/a
 import * as ep___admin_abuseReport_notificationRecipient_delete from '@/server/api/endpoints/admin/abuse-report/notification-recipient/delete.js';
 import * as ep___admin_abuseUserReports from './endpoints/admin/abuse-user-reports.js';
 import * as ep___admin_meta from './endpoints/admin/meta.js';
+import * as ep___admin_accounts_bulk from './endpoints/admin/accounts/bulk.js';
 import * as ep___admin_accounts_create from './endpoints/admin/accounts/create.js';
 import * as ep___admin_accounts_delete from './endpoints/admin/accounts/delete.js';
 import * as ep___admin_accounts_findByEmail from './endpoints/admin/accounts/find-by-email.js';
@@ -400,6 +401,7 @@ const $admin_abuseReport_notificationRecipient_show: Provider = { provide: 'ep:a
 const $admin_abuseReport_notificationRecipient_create: Provider = { provide: 'ep:admin/abuse-report/notification-recipient/create', useClass: ep___admin_abuseReport_notificationRecipient_create.default };
 const $admin_abuseReport_notificationRecipient_update: Provider = { provide: 'ep:admin/abuse-report/notification-recipient/update', useClass: ep___admin_abuseReport_notificationRecipient_update.default };
 const $admin_abuseReport_notificationRecipient_delete: Provider = { provide: 'ep:admin/abuse-report/notification-recipient/delete', useClass: ep___admin_abuseReport_notificationRecipient_delete.default };
+const $admin_accounts_bulk: Provider = { provide: 'ep:admin/accounts/bulk', useClass: ep___admin_accounts_bulk.default };
 const $admin_accounts_create: Provider = { provide: 'ep:admin/accounts/create', useClass: ep___admin_accounts_create.default };
 const $admin_accounts_delete: Provider = { provide: 'ep:admin/accounts/delete', useClass: ep___admin_accounts_delete.default };
 const $admin_accounts_findByEmail: Provider = { provide: 'ep:admin/accounts/find-by-email', useClass: ep___admin_accounts_findByEmail.default };
@@ -791,6 +793,7 @@ const $reversi_verify: Provider = { provide: 'ep:reversi/verify', useClass: ep__
 		$admin_abuseReport_notificationRecipient_create,
 		$admin_abuseReport_notificationRecipient_update,
 		$admin_abuseReport_notificationRecipient_delete,
+		$admin_accounts_bulk,
 		$admin_accounts_create,
 		$admin_accounts_delete,
 		$admin_accounts_findByEmail,
@@ -1176,6 +1179,7 @@ const $reversi_verify: Provider = { provide: 'ep:reversi/verify', useClass: ep__
 		$admin_abuseReport_notificationRecipient_create,
 		$admin_abuseReport_notificationRecipient_update,
 		$admin_abuseReport_notificationRecipient_delete,
+		$admin_accounts_bulk,
 		$admin_accounts_create,
 		$admin_accounts_delete,
 		$admin_accounts_findByEmail,

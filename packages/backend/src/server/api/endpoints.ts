@@ -18,6 +18,7 @@ import * as ep___admin_abuseReport_notificationRecipient_delete
 	from '@/server/api/endpoints/admin/abuse-report/notification-recipient/delete.js';
 import * as ep___admin_abuseUserReports from './endpoints/admin/abuse-user-reports.js';
 import * as ep___admin_meta from './endpoints/admin/meta.js';
+import * as ep___admin_accounts_bulk from './endpoints/admin/accounts/bulk.js';
 import * as ep___admin_accounts_create from './endpoints/admin/accounts/create.js';
 import * as ep___admin_accounts_delete from './endpoints/admin/accounts/delete.js';
 import * as ep___admin_accounts_findByEmail from './endpoints/admin/accounts/find-by-email.js';
@@ -404,6 +405,7 @@ const eps = [
 	['admin/abuse-report/notification-recipient/create', ep___admin_abuseReport_notificationRecipient_create],
 	['admin/abuse-report/notification-recipient/update', ep___admin_abuseReport_notificationRecipient_update],
 	['admin/abuse-report/notification-recipient/delete', ep___admin_abuseReport_notificationRecipient_delete],
+	['admin/accounts/bulk', ep___admin_accounts_bulk],
 	['admin/accounts/create', ep___admin_accounts_create],
 	['admin/accounts/delete', ep___admin_accounts_delete],
 	['admin/accounts/find-by-email', ep___admin_accounts_findByEmail],

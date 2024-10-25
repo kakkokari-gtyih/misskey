@@ -13,6 +13,8 @@ import type {
 	AdminAbuseReportNotificationRecipientUpdateRequest,
 	AdminAbuseReportNotificationRecipientUpdateResponse,
 	AdminAbuseReportNotificationRecipientDeleteRequest,
+	AdminAccountsBulkRequest,
+	AdminAccountsBulkResponse,
 	AdminAccountsCreateRequest,
 	AdminAccountsCreateResponse,
 	AdminAccountsDeleteRequest,
@@ -586,6 +588,7 @@ export type Endpoints = {
 	'admin/abuse-report/notification-recipient/create': { req: AdminAbuseReportNotificationRecipientCreateRequest; res: AdminAbuseReportNotificationRecipientCreateResponse };
 	'admin/abuse-report/notification-recipient/update': { req: AdminAbuseReportNotificationRecipientUpdateRequest; res: AdminAbuseReportNotificationRecipientUpdateResponse };
 	'admin/abuse-report/notification-recipient/delete': { req: AdminAbuseReportNotificationRecipientDeleteRequest; res: EmptyResponse };
+	'admin/accounts/bulk': { req: AdminAccountsBulkRequest; res: AdminAccountsBulkResponse };
 	'admin/accounts/create': { req: AdminAccountsCreateRequest; res: AdminAccountsCreateResponse };
 	'admin/accounts/delete': { req: AdminAccountsDeleteRequest; res: EmptyResponse };
 	'admin/accounts/find-by-email': { req: AdminAccountsFindByEmailRequest; res: AdminAccountsFindByEmailResponse };
