@@ -42,8 +42,11 @@ import { notePage } from '@/filters/note.js';
 import { userPage } from '@/filters/user.js';
 import { defaultStore } from '@/store.js';
 
-defineProps<{
-	note: Misskey.entities.Note;
+const props = defineProps<{
+	note: Misskey.entities.Note & {
+		isSchedule?: boolean
+	};
+	scheduled?: boolean;
 }>();
 
 const mock = inject<boolean>('mock', false);

@@ -1662,6 +1662,10 @@ declare namespace entities {
         NotesRenotesResponse,
         NotesRepliesRequest,
         NotesRepliesResponse,
+        NotesScheduleCreateRequest,
+        NotesScheduleDeleteRequest,
+        NotesScheduleListRequest,
+        NotesScheduleListResponse,
         NotesSearchByTagRequest,
         NotesSearchByTagResponse,
         NotesSearchRequest,
@@ -2747,6 +2751,18 @@ type NotesRequest = operations['notes']['requestBody']['content']['application/j
 
 // @public (undocumented)
 type NotesResponse = operations['notes']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type NotesScheduleCreateRequest = operations['notes___schedule___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type NotesScheduleDeleteRequest = operations['notes___schedule___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type NotesScheduleListRequest = operations['notes___schedule___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type NotesScheduleListResponse = operations['notes___schedule___list']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type NotesSearchByTagRequest = operations['notes___search-by-tag']['requestBody']['content']['application/json'];

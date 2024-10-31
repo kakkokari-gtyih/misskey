@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div :class="$style.root">
+<div v-show="!isDeleted" :class="$style.root" :tabindex="!isDeleted ? '-1' : undefined">
 	<MkAvatar :class="$style.avatar" :user="note.user" link preview/>
 	<div :class="$style.main">
 		<MkNoteHeader :class="$style.header" :note="note" :mini="true"/>
@@ -14,7 +14,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<MkCwButton v-model="showContent" :text="note.text" :files="note.files" :poll="note.poll"/>
 			</p>
 			<div v-show="note.cw == null || showContent">
-				<MkSubNoteContent :class="$style.text" :note="note"/>
+				<MkSubNoteContent :hideFiles="hideFiles" :class="$style.text" :note="note" :expandAllCws="props.expandAllCws"/>
+				<div v-if="note.isSchedule" style="margin-top: 10px;">
+					<MkButton :class="$style.button" inline @click.stop.prevent="editScheduleNote()"><i class="ti ti-eraser"></i> {{ i18n.ts.deleteAndEdit }}</MkButton>
+					<MkButton :class="$style.button" inline danger @click.stop.prevent="deleteScheduleNote()"><i class="ti ti-trash"></i> {{ i18n.ts.delete }}</MkButton>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -24,15 +28,63 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref } from 'vue';
 import * as Misskey from 'misskey-js';
+import * as os from '@/os.js';
 import MkNoteHeader from '@/components/MkNoteHeader.vue';
 import MkSubNoteContent from '@/components/MkSubNoteContent.vue';
 import MkCwButton from '@/components/MkCwButton.vue';
 
 const props = defineProps<{
-	note: Misskey.entities.Note;
+	note: Misskey.entities.Note & {
+		isSchedule? : boolean,
+		scheduledNoteId?: string
+	};
+	expandAllCws?: boolean;
+	hideFiles?: boolean;
 }>();
 
-const showContent = ref(false);
+const showContent = ref(defaultStore.state.uncollapseCW);
+const isDeleted = ref(false);
+
+const emit = defineEmits<{
+	(ev: 'editScheduleNote'): void;
+}>();
+
+async function deleteScheduleNote() {
+	const { canceled } = await os.confirm({
+		type: 'warning',
+		text: i18n.ts.deleteConfirm,
+		okText: i18n.ts.delete,
+		cancelText: i18n.ts.cancel,
+	});
+	if (canceled) return;
+	await os.apiWithDialog('notes/schedule/delete', { noteId: props.note.id })
+		.then(() => {
+			isDeleted.value = true;
+		});
+}
+
+async function editScheduleNote() {
+	try {
+		await misskeyApi('notes/schedule/delete', { noteId: props.note.id })
+			.then(() => {
+				isDeleted.value = true;
+			});
+	} catch (err) {
+		console.error(err);
+	}
+
+	await os.post({
+		initialNote: props.note,
+		renote: props.note.renote,
+		reply: props.note.reply,
+		channel: props.note.channel,
+	});
+	emit('editScheduleNote');
+}
+
+watch(() => props.expandAllCws, (expandAllCws) => {
+	if (expandAllCws !== showContent.value) showContent.value = expandAllCws;
+});
 </script>
 
 <style lang="scss" module>
@@ -41,6 +93,11 @@ const showContent = ref(false);
 	margin: 0;
 	padding: 0;
 	font-size: 0.95em;
+}
+
+.button{
+	margin-right: var(--margin);
+	margin-bottom: var(--margin);
 }
 
 .avatar {
