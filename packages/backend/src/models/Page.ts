@@ -36,14 +36,22 @@ export class MiPage {
 	})
 	public summary: string | null;
 
+	@Column('integer', {
+		default: 2,
+	})
+	public version: 1 | 2;
+
+	// v2では不使用
 	@Column('boolean')
 	public alignCenter: boolean;
 
+	// v2では不使用
 	@Column('boolean', {
 		default: false,
 	})
 	public hideTitleWhenPinned: boolean;
 
+	// v2では不使用
 	@Column('varchar', {
 		length: 32,
 	})
@@ -79,11 +87,13 @@ export class MiPage {
 	})
 	public content: Record<string, any>[];
 
+	// v1（静的ページ）以降では不使用
 	@Column('jsonb', {
 		default: [],
 	})
 	public variables: Record<string, any>[];
 
+	// v1（静的ページ）以降では不使用
 	@Column('varchar', {
 		length: 16384,
 		default: '',
@@ -91,9 +101,9 @@ export class MiPage {
 	public script: string;
 
 	/**
-	 * public ... 公開
-	 * followers ... フォロワーのみ
-	 * specified ... visibleUserIds で指定したユーザーのみ
+	 * - `public` ... 公開
+	 * - `followers` ... フォロワーのみ
+	 * - `specified` ... visibleUserIds で指定したユーザーのみ
 	 */
 	@Column('enum', { enum: ['public', 'followers', 'specified'] })
 	public visibility: 'public' | 'followers' | 'specified';

@@ -25,7 +25,14 @@ import { packedBlockingSchema } from '@/models/json-schema/blocking.js';
 import { packedNoteReactionSchema } from '@/models/json-schema/note-reaction.js';
 import { packedHashtagSchema } from '@/models/json-schema/hashtag.js';
 import { packedInviteCodeSchema } from '@/models/json-schema/invite-code.js';
-import { packedPageBlockSchema, packedPageSchema } from '@/models/json-schema/page.js';
+import {
+	packedPageBlockSchema,
+	packedPageBlockV1Schema,
+	packedPageBlockV2Schema,
+	packedPageSchema,
+	packedPageV1Schema,
+	packedPageV2Schema,
+} from '@/models/json-schema/page.js';
 import { packedNoteFavoriteSchema } from '@/models/json-schema/note-favorite.js';
 import { packedChannelSchema } from '@/models/json-schema/channel.js';
 import { packedAntennaSchema } from '@/models/json-schema/antenna.js';
@@ -86,7 +93,11 @@ export const refs = {
 	Hashtag: packedHashtagSchema,
 	InviteCode: packedInviteCodeSchema,
 	Page: packedPageSchema,
+	PageV1: packedPageV1Schema,
+	PageV2: packedPageV2Schema,
 	PageBlock: packedPageBlockSchema,
+	PageBlockV1: packedPageBlockV1Schema,
+	PageBlockV2: packedPageBlockV2Schema,
 	Channel: packedChannelSchema,
 	QueueCount: packedQueueCountSchema,
 	Antenna: packedAntennaSchema,
@@ -154,7 +165,7 @@ export interface Schema extends OfSchema {
 	readonly format?: string;
 	readonly ref?: keyof typeof refs;
 	readonly selfRef?: boolean;
-	readonly enum?: ReadonlyArray<string | null>;
+	readonly enum?: ReadonlyArray<string | number | null>;
 	readonly default?: (this['type'] extends TypeStringef ? StringDefToType<this['type']> : any) | null;
 	readonly maxLength?: number;
 	readonly minLength?: number;
@@ -218,8 +229,16 @@ type ObjectSchemaType<p extends Schema> = NullOrUndefined<p, ObjectSchemaTypeDef
 
 export type SchemaTypeDef<p extends Schema> =
 	p['type'] extends 'null' ? null :
-	p['type'] extends 'integer' ? number :
-	p['type'] extends 'number' ? number :
+	p['type'] extends 'integer' ? (
+		p['enum'] extends readonly number[] ?
+		p['enum'][number] :
+		number
+	) :
+	p['type'] extends 'number' ? (
+		p['enum'] extends readonly number[] ?
+		p['enum'][number] :
+		number
+	) :
 	p['type'] extends 'string' ? (
 		p['enum'] extends readonly (string | null)[] ?
 		p['enum'][number] :

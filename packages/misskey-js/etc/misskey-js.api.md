@@ -1827,7 +1827,11 @@ declare namespace entities {
         Hashtag,
         InviteCode,
         Page,
+        PageV1,
+        PageV2,
         PageBlock,
+        PageBlockV1,
+        PageBlockV2,
         Channel,
         QueueCount,
         Antenna,
@@ -2821,6 +2825,12 @@ type Page = components['schemas']['Page'];
 type PageBlock = components['schemas']['PageBlock'];
 
 // @public (undocumented)
+type PageBlockV1 = components['schemas']['PageBlockV1'];
+
+// @public (undocumented)
+type PageBlockV2 = components['schemas']['PageBlockV2'];
+
+// @public (undocumented)
 type PageEvent = {
     pageId: Page['id'];
     event: string;
@@ -2858,6 +2868,12 @@ type PagesUnlikeRequest = operations['pages___unlike']['requestBody']['content']
 
 // @public (undocumented)
 type PagesUpdateRequest = operations['pages___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type PageV1 = components['schemas']['PageV1'];
+
+// @public (undocumented)
+type PageV2 = components['schemas']['PageV2'];
 
 // @public (undocumented)
 function parse(_acct: string): Acct;

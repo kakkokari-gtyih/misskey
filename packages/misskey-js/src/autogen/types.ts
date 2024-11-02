@@ -4506,12 +4506,15 @@ export type components = {
       usedAt: string | null;
       used: boolean;
     };
-    Page: {
+    Page: components['schemas']['PageV1'] | components['schemas']['PageV2'];
+    PageV1: {
       /**
        * Format: id
        * @example xxxxxxxxxx
        */
       id: string;
+      /** @enum {number} */
+      version: 1;
       /** Format: date-time */
       createdAt: string;
       /** Format: date-time */
@@ -4519,22 +4522,48 @@ export type components = {
       /** Format: id */
       userId: string;
       user: components['schemas']['UserLite'];
-      content: components['schemas']['PageBlock'][];
-      variables: Record<string, never>[];
       title: string;
       name: string;
       summary: string | null;
-      hideTitleWhenPinned: boolean;
-      alignCenter: boolean;
-      font: string;
-      script: string;
       eyeCatchingImageId: string | null;
       eyeCatchingImage: components['schemas']['DriveFile'] | null;
       attachedFiles: components['schemas']['DriveFile'][];
       likedCount: number;
       isLiked?: boolean;
+      content: components['schemas']['PageBlockV1'][];
+      variables: Record<string, never>[];
+      hideTitleWhenPinned: boolean;
+      alignCenter: boolean;
+      font: string;
+      script: string;
     };
-    PageBlock: OneOf<[{
+    PageV2: {
+      /**
+       * Format: id
+       * @example xxxxxxxxxx
+       */
+      id: string;
+      /** @enum {number} */
+      version: 2;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+      /** Format: id */
+      userId: string;
+      user: components['schemas']['UserLite'];
+      title: string;
+      name: string;
+      summary: string | null;
+      eyeCatchingImageId: string | null;
+      eyeCatchingImage: components['schemas']['DriveFile'] | null;
+      attachedFiles: components['schemas']['DriveFile'][];
+      likedCount: number;
+      isLiked?: boolean;
+      content: components['schemas']['PageBlockV2'][];
+    };
+    PageBlock: components['schemas']['PageBlockV1'] | components['schemas']['PageBlockV2'];
+    PageBlockV1: OneOf<[{
       id: string;
       /** @enum {string} */
       type: 'text';
@@ -4556,6 +4585,36 @@ export type components = {
       type: 'note';
       detailed: boolean;
       note: string | null;
+    }]>;
+    PageBlockV2: OneOf<[{
+      id: string;
+      /** @enum {string} */
+      type: 'text';
+      text: string;
+    }, {
+      id: string;
+      /** @enum {string} */
+      type: 'heading';
+      level: number;
+      text: string;
+    }, {
+      id: string;
+      /** @enum {string} */
+      type: 'note';
+      detailed: boolean;
+      note: string | null;
+    }, {
+      id: string;
+      /** @enum {string} */
+      type: 'files';
+      fileIds: string[];
+    }, {
+      id: string;
+      /** @enum {string} */
+      type: 'book';
+      /** @enum {string} */
+      binding: 'left' | 'right';
+      fileIds: string[];
     }]>;
     Channel: {
       /**
