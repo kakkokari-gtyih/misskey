@@ -55,8 +55,6 @@ const pagination: Paging = {
 	offsetMode: true,
 };
 
-console.log(pagination);
-
 function listUpdate() {
 	paginationEl.value.reload();
 }
