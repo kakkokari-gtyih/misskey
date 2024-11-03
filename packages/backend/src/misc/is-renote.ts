@@ -13,6 +13,15 @@ type Renote =
 		renoteId: NonNullable<MiNote['renoteId']>
 	};
 
+type MiPureRenote =
+	Renote & ({
+		text: null
+		cw: null
+		replyId: null
+		reply: null
+		hasPoll: false
+	});
+
 type Quote =
 	Renote & ({
 		text: NonNullable<MiNote['text']>
@@ -36,6 +45,10 @@ export function isQuote(note: Renote): note is Quote {
 		note.replyId != null ||
 		note.hasPoll ||
 		note.fileIds.length > 0;
+}
+
+export function isPureRenote(note: MiNote): note is MiPureRenote {
+	return isRenote(note) && !isQuote(note);
 }
 
 type PackedRenote =

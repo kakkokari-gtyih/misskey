@@ -9,6 +9,7 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
 import type { MiNote, MiNoteSchedule, NoteScheduleRepository } from '@/models/_.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
+import { DriveFileEntityService } from '@/core/entities/DriveFileEntityService.js';
 import { QueryService } from '@/core/QueryService.js';
 import { Packed } from '@/misc/json-schema.js';
 import { noteVisibilities } from '@/types.js';
@@ -81,6 +82,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private noteScheduleRepository: NoteScheduleRepository,
 
 		private userEntityService: UserEntityService,
+		private driveFileEntityService: DriveFileEntityService,
 		private queryService: QueryService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
@@ -115,6 +117,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 						reactionAcceptance: item.note.reactionAcceptance ?? null,
 						visibleUsers: item.note.visibleUsers ? await userEntityService.packMany(item.note.visibleUsers.map(u => u.id), me) : [],
 						fileIds: item.note.files ? item.note.files : [],
+						files: await this.driveFileEntityService.packManyByIds(item.note.files),
 						createdAt: item.scheduledAt.toISOString(),
 						isSchedule: true,
 						id: item.id,

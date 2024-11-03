@@ -52,7 +52,10 @@ const paginationEl = ref();
 const pagination: Paging = {
 	endpoint: 'notes/schedule/list',
 	limit: 10,
+	offsetMode: true,
 };
+
+console.log(pagination);
 
 function listUpdate() {
 	paginationEl.value.reload();

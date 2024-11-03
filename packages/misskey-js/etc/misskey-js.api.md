@@ -1194,6 +1194,10 @@ export type Endpoints = Overwrite<Endpoints_2, {
         }>;
         res: AdminRolesCreateResponse;
     };
+    [ep: `miauth/${string}/check`]: {
+        req: EmptyRequest;
+        res: MiAuthCheckResponse;
+    };
 }>;
 
 // @public (undocumented)
@@ -1223,6 +1227,7 @@ declare namespace entities {
         SigninWithPasskeyRequest,
         SigninWithPasskeyInitResponse,
         SigninWithPasskeyResponse,
+        MiAuthCheckResponse,
         PartialRolePolicyOverride,
         EmptyRequest,
         EmptyResponse,
@@ -1662,10 +1667,6 @@ declare namespace entities {
         NotesRenotesResponse,
         NotesRepliesRequest,
         NotesRepliesResponse,
-        NotesScheduleCreateRequest,
-        NotesScheduleDeleteRequest,
-        NotesScheduleListRequest,
-        NotesScheduleListResponse,
         NotesSearchByTagRequest,
         NotesSearchByTagResponse,
         NotesSearchRequest,
@@ -2444,6 +2445,15 @@ type MetaRequest = operations['meta']['requestBody']['content']['application/jso
 type MetaResponse = operations['meta']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type MiAuthCheckResponse = {
+    ok: true;
+    token: string;
+    user: UserDetailedNotMe;
+} | {
+    ok: false;
+};
+
+// @public (undocumented)
 type MiauthGenTokenRequest = operations['miauth___gen-token']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -2751,18 +2761,6 @@ type NotesRequest = operations['notes']['requestBody']['content']['application/j
 
 // @public (undocumented)
 type NotesResponse = operations['notes']['responses']['200']['content']['application/json'];
-
-// @public (undocumented)
-type NotesScheduleCreateRequest = operations['notes___schedule___create']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type NotesScheduleDeleteRequest = operations['notes___schedule___delete']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type NotesScheduleListRequest = operations['notes___schedule___list']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type NotesScheduleListResponse = operations['notes___schedule___list']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type NotesSearchByTagRequest = operations['notes___search-by-tag']['requestBody']['content']['application/json'];

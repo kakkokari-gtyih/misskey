@@ -6,7 +6,7 @@
 import ms from 'ms';
 import { In } from 'typeorm';
 import { Inject, Injectable } from '@nestjs/common';
-import { isPureRenote } from 'cherrypick-js/note.js';
+import { isPureRenote } from '@/misc/is-renote.js';
 import type { MiUser } from '@/models/User.js';
 import type {
 	UsersRepository,
@@ -19,7 +19,6 @@ import type {
 import type { MiDriveFile } from '@/models/DriveFile.js';
 import type { MiNote } from '@/models/Note.js';
 import type { MiChannel } from '@/models/Channel.js';
-import { MAX_NOTE_TEXT_LENGTH } from '@/const.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
 import { QueueService } from '@/core/QueueService.js';
@@ -129,7 +128,6 @@ export const paramDef = {
 		} },
 		cw: { type: 'string', nullable: true, minLength: 1, maxLength: 100 },
 		reactionAcceptance: { type: 'string', nullable: true, enum: [null, 'likeOnly', 'likeOnlyForRemote', 'nonSensitiveOnly', 'nonSensitiveOnlyForLocalLikeOnlyForRemote'], default: null },
-		disableRightClick: { type: 'boolean', default: false },
 		noExtractMentions: { type: 'boolean', default: false },
 		noExtractHashtags: { type: 'boolean', default: false },
 		noExtractEmojis: { type: 'boolean', default: false },
@@ -141,7 +139,6 @@ export const paramDef = {
 		text: {
 			type: 'string',
 			minLength: 1,
-			maxLength: MAX_NOTE_TEXT_LENGTH,
 			nullable: true,
 		},
 		fileIds: {
@@ -174,16 +171,6 @@ export const paramDef = {
 				expiredAfter: { type: 'integer', nullable: true, minimum: 1 },
 			},
 			required: ['choices'],
-		},
-		event: {
-			type: 'object',
-			nullable: true,
-			properties: {
-				title: { type: 'string', minLength: 1, maxLength: 128, nullable: false },
-				start: { type: 'integer', nullable: false },
-				end: { type: 'integer', nullable: true },
-				metadata: { type: 'object' },
-			},
 		},
 		scheduleNote: {
 			type: 'object',
@@ -227,11 +214,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private queueService: QueueService,
 		private roleService: RoleService,
-    private idService: IdService,
+		private idService: IdService,
 	) {
-		super({
-			...meta,
-		}, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, me) => {
 			const scheduleNoteCount = await this.noteScheduleRepository.countBy({ userId: me.id });
 			const scheduleNoteMax = (await this.roleService.getUserPolicies(me.id)).scheduleNoteMax;
 			if (scheduleNoteCount >= scheduleNoteMax) {
@@ -358,13 +343,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				apMentions: ps.noExtractMentions ? [] : undefined,
 				apHashtags: ps.noExtractHashtags ? [] : undefined,
 				apEmojis: ps.noExtractEmojis ? [] : undefined,
-				event: ps.event ? {
-					start: new Date(ps.event.start!).toISOString(),
-					end: ps.event.end ? new Date(ps.event.end).toISOString() : null,
-					title: ps.event.title!,
-					metadata: ps.event.metadata ?? {},
-				} : undefined,
-				disableRightClick: ps.disableRightClick,
 			};
 
 			if (ps.scheduleNote.scheduledAt) {
