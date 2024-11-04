@@ -9536,6 +9536,10 @@ export interface Locale extends ILocale {
          * Posting scheduled note failed
          */
         "scheduledNoteFailed": string;
+        /**
+         * Scheduled Note was posted
+         */
+        "scheduledNotePosted": string;
     };
     "_deck": {
         /**

@@ -107,7 +107,7 @@ export class ScheduleNotePostProcessorService {
 					return;
 				}
 
-				await this.noteCreateService.create(me, {
+				const createdNote = await this.noteCreateService.create(me, {
 					...note,
 					createdAt: new Date(),
 					files,
@@ -121,6 +121,9 @@ export class ScheduleNotePostProcessorService {
 					channel,
 				});
 				await this.noteScheduleRepository.remove(data);
+				this.notificationService.createNotification(me.id, 'scheduledNotePosted', {
+					noteId: createdNote.id,
+				});
 			}
 		});
 	}
