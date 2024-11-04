@@ -34,7 +34,6 @@ import MkSubNoteContent from '@/components/MkSubNoteContent.vue';
 import MkCwButton from '@/components/MkCwButton.vue';
 import MkButton from '@/components/MkButton.vue';
 import { defaultStore } from '@/store.js';
-import { misskeyApi } from '@/scripts/misskey-api.js';
 import { i18n } from '@/i18n.js';
 
 const props = defineProps<{
@@ -68,14 +67,10 @@ async function deleteScheduleNote() {
 }
 
 async function editScheduleNote() {
-	try {
-		await misskeyApi('notes/schedule/delete', { noteId: props.note.id })
-			.then(() => {
-				isDeleted.value = true;
-			});
-	} catch (err) {
-		console.error(err);
-	}
+	await os.apiWithDialog('notes/schedule/delete', { noteId: props.note.id })
+		.then(() => {
+			isDeleted.value = true;
+		});
 
 	await os.post({
 		initialNote: props.note,
