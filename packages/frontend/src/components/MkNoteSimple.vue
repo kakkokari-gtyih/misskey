@@ -32,6 +32,7 @@ import * as os from '@/os.js';
 import MkNoteHeader from '@/components/MkNoteHeader.vue';
 import MkSubNoteContent from '@/components/MkSubNoteContent.vue';
 import MkCwButton from '@/components/MkCwButton.vue';
+import MkButton from '@/components/MkButton.vue';
 import { defaultStore } from '@/store.js';
 import { misskeyApi } from '@/scripts/misskey-api.js';
 import { i18n } from '@/i18n.js';
