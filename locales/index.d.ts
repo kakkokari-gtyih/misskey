@@ -5218,6 +5218,14 @@ export interface Locale extends ILocale {
      * 利用可能なロール
      */
     "availableRoles": string;
+    /**
+     * 予約投稿
+     */
+    "scheduleNote": string;
+    /**
+     * 予約投稿一覧
+     */
+    "scheduleNoteList": string;
     "_accountSettings": {
         /**
          * コンテンツの表示にログインを必須にする

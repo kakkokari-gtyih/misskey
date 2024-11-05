@@ -17,6 +17,8 @@ export interface PostFormProps {
 	initialFiles?: Misskey.entities.DriveFile[];
 	initialLocalOnly?: boolean;
 	initialVisibleUsers?: Misskey.entities.UserDetailed[];
-	initialNote?: Misskey.entities.Note;
+	initialNote?: Misskey.entities.Note & {
+		isSchedule?: boolean;
+	};
 	instant?: boolean;
 };

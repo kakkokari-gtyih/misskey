@@ -1000,15 +1000,15 @@ function showOtherMenu(ev: MouseEvent) {
 	if ($i.policies.scheduleNoteMax > 0) {
 		menuItems.push({
 			type: 'button',
-			text: i18n.ts.schedulePost,
+			text: i18n.ts.scheduleNote,
 			icon: 'ti ti-calendar-time',
 			action: toggleScheduleNote,
 		}, {
 			type: 'button',
-			text: i18n.ts.schedulePostList,
+			text: i18n.ts.scheduleNoteList,
 			icon: 'ti ti-calendar-event',
 			action: () => {
-				const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkSchedulePostListDialog.vue')), {}, {
+				const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkScheduleNoteListDialog.vue')), {}, {
 					closed: () => {
 						dispose();
 					},
