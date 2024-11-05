@@ -9,6 +9,7 @@ import { bindThis } from '@/decorators.js';
 import { NoteCreateService } from '@/core/NoteCreateService.js';
 import type { ChannelsRepository, DriveFilesRepository, MiDriveFile, NoteScheduleRepository, NotesRepository, UsersRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
+import { NotificationService } from '@/core/NotificationService.js';
 import { QueueLoggerService } from '../QueueLoggerService.js';
 import type * as Bull from 'bullmq';
 import type { ScheduleNotePostJobData } from '../types.js';
@@ -32,6 +33,7 @@ export class ScheduleNotePostProcessorService {
 
 		private noteCreateService: NoteCreateService,
 		private queueLoggerService: QueueLoggerService,
+		private notificationService: NotificationService,
 	) {
 		this.logger = this.queueLoggerService.logger.createSubLogger('schedule-note-post');
 	}
@@ -50,8 +52,9 @@ export class ScheduleNotePostProcessorService {
 				const renote = note.reply ? await this.notesRepository.findOneBy({ id: note.renote }) : undefined;
 				const channel = note.channel ? await this.channelsRepository.findOneBy({ id: note.channel, isArchived: false }) : undefined;
 				let files: MiDriveFile[] = [];
-				const fileIds = note.files ?? null;
-				if (fileIds != null && fileIds.length > 0 && me) {
+				const fileIds = note.files;
+
+				if (fileIds.length > 0 && me) {
 					files = await this.driveFilesRepository.createQueryBuilder('file')
 						.where('file.userId = :userId AND file.id IN (:...fileIds)', {
 							userId: me.id,
@@ -61,22 +64,52 @@ export class ScheduleNotePostProcessorService {
 						.setParameters({ fileIds })
 						.getMany();
 				}
-				if (
-					!data.userId ||
-					!me ||
-					(note.reply && !reply) ||
-					(note.renote && !renote) ||
-					(note.channel && !channel) ||
-					(note.files.length !== files.length)
-				) {
-					//キューに積んだときは有った物が消滅してたら予約投稿をキャンセルする
-					this.logger.warn('cancel schedule note');
+
+				if (!data.userId || !me) {
+					this.logger.warn('Schedule Note Failed Reason: User Not Found');
 					await this.noteScheduleRepository.remove(data);
 					return;
 				}
+
+				if (note.files.length !== files.length) {
+					this.logger.warn('Schedule Note Failed Reason: files are missing in the user\'s drive');
+					this.notificationService.createNotification(me.id, 'scheduledNoteFailed', {
+						reason: 'Some attached files on your scheduled note no longer exist',
+					});
+					await this.noteScheduleRepository.remove(data);
+					return;
+				}
+
+				if (note.reply && !reply) {
+					this.logger.warn('Schedule Note Failed Reason: parent note to reply does not exist');
+					this.notificationService.createNotification(me.id, 'scheduledNoteFailed', {
+						reason: 'Replied to note on your scheduled note no longer exists',
+					});
+					await this.noteScheduleRepository.remove(data);
+					return;
+				}
+
+				if (note.renote && !renote) {
+					this.logger.warn('Schedule Note Failed Reason: attached quote note no longer exists');
+					this.notificationService.createNotification(me.id, 'scheduledNoteFailed', {
+						reason: 'A quoted note from one of your scheduled notes no longer exists',
+					});
+					await this.noteScheduleRepository.remove(data);
+					return;
+				}
+
+				if (note.channel && !channel) {
+					this.logger.warn('Schedule Note Failed Reason: Channel does not exist');
+					this.notificationService.createNotification(me.id, 'scheduledNoteFailed', {
+						reason: 'An attached channel on your scheduled note no longer exists',
+					});
+					await this.noteScheduleRepository.remove(data);
+					return;
+				}
+
 				await this.noteCreateService.create(me, {
 					...note,
-					createdAt: new Date(note.createdAt), //typeORMのjsonbで何故かstringにされるから戻す
+					createdAt: new Date(),
 					files,
 					poll: note.poll ? {
 						choices: note.poll.choices,

@@ -48,6 +48,7 @@ const cancel = () => {
 	emit('cancel');
 	dialogEl.value.close();
 };
+
 const paginationEl = ref();
 const pagination: Paging = {
 	endpoint: 'notes/schedule/list',

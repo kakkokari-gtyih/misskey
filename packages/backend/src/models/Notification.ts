@@ -120,6 +120,11 @@ export type MiNotification = {
 	type: 'test';
 	id: string;
 	createdAt: string;
+} | {
+	type: 'scheduledNoteFailed';
+	id: string;
+	createdAt: string;
+	reason: string;
 };
 
 export type MiGroupedNotification = MiNotification | {

@@ -985,8 +985,9 @@ function openAccountMenu(ev: MouseEvent) {
 }
 
 function toggleScheduleNote() {
-	if (scheduleNote.value) scheduleNote.value = null;
-	else {
+	if (scheduleNote.value) {
+		scheduleNote.value = null;
+	} else {
 		scheduleNote.value = {
 			scheduledAt: null,
 		};

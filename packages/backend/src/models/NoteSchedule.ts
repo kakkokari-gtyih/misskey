@@ -18,8 +18,6 @@ type MinimumUser = {
 };
 
 export type MiScheduleNoteType={
-	/** Date.toISOString() */
-	createdAt: string;
 	visibility: 'public' | 'home' | 'followers' | 'specified';
 	visibleUsers: MinimumUser[];
 	channel?: MiChannel['id'];

@@ -292,7 +292,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 				// Check blocking
 				if (reply.userId !== me.id) {
-					const blockExist = await this.blockingsRepository.exist({
+					const blockExist = await this.blockingsRepository.exists({
 						where: {
 							blockerId: reply.userId,
 							blockeeId: me.id,
@@ -324,8 +324,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			} else {
 				throw new ApiError(meta.errors.cannotCreateAlreadyExpiredSchedule);
 			}
-			const note:MiScheduleNoteType = {
-				createdAt: new Date(ps.scheduleNote.scheduledAt!).toISOString(),
+			const note: MiScheduleNoteType = {
 				files: files.map(f => f.id),
 				poll: ps.poll ? {
 					choices: ps.poll.choices,

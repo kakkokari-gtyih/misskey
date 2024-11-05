@@ -256,6 +256,13 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 						data,
 					}];
 
+				case 'scheduledNoteFailed':
+					return [i18n.ts._notification.scheduledNoteFailed, {
+						body: data.body.reason,
+						badge: iconUrl('bell'),
+						data,
+					}];
+
 				default:
 					return null;
 			}
