@@ -587,7 +587,7 @@ export interface Locale extends ILocale {
      */
     "mute": string;
     /**
-     * Muted
+     * ミュート済み
      */
     "muted": string;
     /**
