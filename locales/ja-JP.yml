@@ -2494,6 +2494,8 @@ _notification:
   flushNotification: "通知の履歴をリセットする"
   exportOfXCompleted: "{x}のエクスポートが完了しました"
   login: "ログインがありました"
+  scheduledNoteFailed: "予約投稿に失敗しました"
+  scheduledNotePosted: "予約投稿が正常に完了しました"
 
   _types:
     all: "すべて"
@@ -2513,6 +2515,8 @@ _notification:
     login: "ログイン"
     test: "通知のテスト"
     app: "連携アプリからの通知"
+    scheduledNoteFailed: "予約投稿失敗"
+    scheduledNotePosted: "予約投稿完了"
 
   _actions:
     followBack: "フォローバック"

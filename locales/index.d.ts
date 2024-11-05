@@ -9448,6 +9448,14 @@ export interface Locale extends ILocale {
          * ログインがありました
          */
         "login": string;
+        /**
+         * 予約投稿に失敗しました
+         */
+        "scheduledNoteFailed": string;
+        /**
+         * 予約投稿が正常に完了しました
+         */
+        "scheduledNotePosted": string;
         "_types": {
             /**
              * すべて
@@ -9517,6 +9525,14 @@ export interface Locale extends ILocale {
              * 連携アプリからの通知
              */
             "app": string;
+            /**
+             * 予約投稿失敗
+             */
+            "scheduledNoteFailed": string;
+            /**
+             * 予約投稿完了
+             */
+            "scheduledNotePosted": string;
         };
         "_actions": {
             /**
@@ -9532,14 +9548,6 @@ export interface Locale extends ILocale {
              */
             "renote": string;
         };
-        /**
-         * Posting scheduled note failed
-         */
-        "scheduledNoteFailed": string;
-        /**
-         * Scheduled Note was posted
-         */
-        "scheduledNotePosted": string;
     };
     "_deck": {
         /**
