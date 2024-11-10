@@ -3,13 +3,12 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { verify } from 'crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import promiseLimit from 'promise-limit';
-import { DataSource, In, Not } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { ModuleRef } from '@nestjs/core';
 import { DI } from '@/di-symbols.js';
-import type { FollowingsRepository, InstancesRepository, UserProfilesRepository, UserPublickeysRepository, UsersRepository } from '@/models/_.js';
+import type { FollowingsRepository, InstancesRepository, MiMeta, UserProfilesRepository, UserPublickeysRepository, UsersRepository } from '@/models/_.js';
 import type { Config } from '@/config.js';
 import type { MiLocalUser, MiRemoteUser } from '@/models/User.js';
 import { MiUser } from '@/models/User.js';
@@ -36,11 +35,9 @@ import type { UtilityService } from '@/core/UtilityService.js';
 import type { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { bindThis } from '@/decorators.js';
 import { RoleService } from '@/core/RoleService.js';
-import { MetaService } from '@/core/MetaService.js';
 import { DriveFileEntityService } from '@/core/entities/DriveFileEntityService.js';
 import type { AccountMoveService } from '@/core/AccountMoveService.js';
 import { checkHttps } from '@/misc/check-https.js';
-import { REMOTE_USER_CACHE_TTL, REMOTE_USER_MOVE_COOLDOWN } from '@/const.js';
 import { getApId, getApType, getOneApHrefNullable, isActor, isCollection, isCollectionOrOrderedCollection, isPropertyValue } from '../type.js';
 import { extractApHashtags } from './tag.js';
 import type { OnModuleInit } from '@nestjs/common';
@@ -48,9 +45,9 @@ import type { ApNoteService } from './ApNoteService.js';
 import type { ApMfmService } from '../ApMfmService.js';
 import type { ApResolverService, Resolver } from '../ApResolverService.js';
 import type { ApLoggerService } from '../ApLoggerService.js';
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+
 import type { ApImageService } from './ApImageService.js';
-import type { IActor, IKey, IObject } from '../type.js';
+import type { IActor, ICollection, IObject, IOrderedCollection } from '../type.js';
 
 const nameLength = 128;
 const summaryLength = 2048;
@@ -64,7 +61,6 @@ export class ApPersonService implements OnModuleInit {
 	private driveFileEntityService: DriveFileEntityService;
 	private idService: IdService;
 	private globalEventService: GlobalEventService;
-	private metaService: MetaService;
 	private federatedInstanceService: FederatedInstanceService;
 	private fetchInstanceMetadataService: FetchInstanceMetadataService;
 	private cacheService: CacheService;
@@ -85,6 +81,9 @@ export class ApPersonService implements OnModuleInit {
 
 		@Inject(DI.config)
 		private config: Config,
+
+		@Inject(DI.meta)
+		private meta: MiMeta,
 
 		@Inject(DI.db)
 		private db: DataSource,
@@ -114,7 +113,6 @@ export class ApPersonService implements OnModuleInit {
 		this.driveFileEntityService = this.moduleRef.get('DriveFileEntityService');
 		this.idService = this.moduleRef.get('IdService');
 		this.globalEventService = this.moduleRef.get('GlobalEventService');
-		this.metaService = this.moduleRef.get('MetaService');
 		this.federatedInstanceService = this.moduleRef.get('FederatedInstanceService');
 		this.fetchInstanceMetadataService = this.moduleRef.get('FetchInstanceMetadataService');
 		this.cacheService = this.moduleRef.get('CacheService');
@@ -187,38 +185,13 @@ export class ApPersonService implements OnModuleInit {
 		}
 
 		if (x.publicKey) {
-			const publicKeys = Array.isArray(x.publicKey) ? x.publicKey : [x.publicKey];
-
-			for (const publicKey of publicKeys) {
-				if (typeof publicKey.id !== 'string') {
-					throw new Error('invalid Actor: publicKey.id is not a string');
-				}
-
-				const publicKeyIdHost = this.punyHost(publicKey.id);
-				if (publicKeyIdHost !== expectHost) {
-					throw new Error('invalid Actor: publicKey.id has different host');
-				}
-			}
-		}
-
-		if (x.additionalPublicKeys) {
-			if (!x.publicKey) {
-				throw new Error('invalid Actor: additionalPublicKeys is set but publicKey is not');
+			if (typeof x.publicKey.id !== 'string') {
+				throw new Error('invalid Actor: publicKey.id is not a string');
 			}
 
-			if (!Array.isArray(x.additionalPublicKeys)) {
-				throw new Error('invalid Actor: additionalPublicKeys is not an array');
-			}
-
-			for (const key of x.additionalPublicKeys) {
-				if (typeof key.id !== 'string') {
-					throw new Error('invalid Actor: additionalPublicKeys.id is not a string');
-				}
-
-				const keyIdHost = this.punyHost(key.id);
-				if (keyIdHost !== expectHost) {
-					throw new Error('invalid Actor: additionalPublicKeys.id has different host');
-				}
+			const publicKeyIdHost = this.punyHost(x.publicKey.id);
+			if (publicKeyIdHost !== expectHost) {
+				throw new Error('invalid Actor: publicKey.id has different host');
 			}
 		}
 
@@ -255,37 +228,16 @@ export class ApPersonService implements OnModuleInit {
 		return null;
 	}
 
-	/**
-	 * uriからUser(Person)をフェッチします。
-	 *
-	 * Misskeyに対象のPersonが登録されていればそれを返し、登録がなければnullを返します。
-	 * また、TTLが0でない場合、TTLを過ぎていた場合はupdatePersonを実行します。
-	 */
-	@bindThis
-	async fetchPersonWithRenewal(uri: string, TTL = REMOTE_USER_CACHE_TTL): Promise<MiLocalUser | MiRemoteUser | null> {
-		const exist = await this.fetchPerson(uri);
-		if (exist == null) return null;
-
-		if (this.userEntityService.isRemoteUser(exist)) {
-			if (TTL === 0 || exist.lastFetchedAt == null || Date.now() - exist.lastFetchedAt.getTime() > TTL) {
-				this.logger.debug('fetchPersonWithRenewal: renew', { uri, TTL, lastFetchedAt: exist.lastFetchedAt });
-				try {
-					await this.updatePerson(exist.uri);
-					return await this.fetchPerson(uri);
-				} catch (err) {
-					this.logger.error('error occurred while renewing user', { err });
-				}
-			}
-			this.logger.debug('fetchPersonWithRenewal: use cache', { uri, TTL, lastFetchedAt: exist.lastFetchedAt });
-		}
-
-		return exist;
-	}
-
 	private async resolveAvatarAndBanner(user: MiRemoteUser, icon: any, image: any): Promise<Partial<Pick<MiRemoteUser, 'avatarId' | 'bannerId' | 'avatarUrl' | 'bannerUrl' | 'avatarBlurhash' | 'bannerBlurhash'>>> {
 		if (user == null) throw new Error('failed to create user: user is null');
 
 		const [avatar, banner] = await Promise.all([icon, image].map(img => {
+			// icon and image may be arrays
+			// see https://www.w3.org/TR/activitystreams-vocabulary/#dfn-icon
+			if (Array.isArray(img)) {
+				img = img.find(item => item && item.url) ?? null;
+			}
+			
 			// if we have an explicitly missing image, return an
 			// explicitly-null set of values
 			if ((img == null) || (typeof img === 'object' && img.url == null)) {
@@ -350,6 +302,21 @@ export class ApPersonService implements OnModuleInit {
 
 		const isBot = getApType(object) === 'Service' || getApType(object) === 'Application';
 
+		const [followingVisibility, followersVisibility] = await Promise.all(
+			[
+				this.isPublicCollection(person.following, resolver),
+				this.isPublicCollection(person.followers, resolver),
+			].map((p): Promise<'public' | 'private'> => p
+				.then(isPublic => isPublic ? 'public' : 'private')
+				.catch(err => {
+					if (!(err instanceof StatusError) || err.isRetryable) {
+						this.logger.error('error occurred while fetching following/followers collection', { stack: err });
+					}
+					return 'private';
+				}),
+			),
+		);
+
 		const bday = person['vcard:bday']?.match(/^\d{4}-\d{2}-\d{2}/);
 
 		const url = getOneApHrefNullable(person.url);
@@ -395,6 +362,9 @@ export class ApPersonService implements OnModuleInit {
 					tags,
 					isBot,
 					isCat: (person as any).isCat === true,
+					requireSigninToViewContents: (person as any).requireSigninToViewContents === true,
+					makeNotesFollowersOnlyBefore: (person as any).makeNotesFollowersOnlyBefore ?? null,
+					makeNotesHiddenBefore: (person as any).makeNotesHiddenBefore ?? null,
 					emojis,
 				})) as MiRemoteUser;
 
@@ -409,23 +379,22 @@ export class ApPersonService implements OnModuleInit {
 				await transactionalEntityManager.save(new MiUserProfile({
 					userId: user.id,
 					description: _description,
+					followedMessage: person._misskey_followedMessage != null ? truncate(person._misskey_followedMessage, 256) : null,
 					url,
 					fields,
+					followingVisibility,
+					followersVisibility,
 					birthday: bday?.[0] ?? null,
 					location: person['vcard:Address'] ?? null,
 					userHost: host,
 				}));
 
 				if (person.publicKey) {
-					const publicKeys = new Map<string, IKey>();
-					(person.additionalPublicKeys ?? []).forEach(key => publicKeys.set(key.id, key));
-					(Array.isArray(person.publicKey) ? person.publicKey : [person.publicKey]).forEach(key => publicKeys.set(key.id, key));
-
-					await transactionalEntityManager.save(Array.from(publicKeys.values(), key => new MiUserPublickey({
-						keyId: key.id,
-						userId: user!.id,
-						keyPem: key.publicKeyPem,
-					})));
+					await transactionalEntityManager.save(new MiUserPublickey({
+						userId: user.id,
+						keyId: person.publicKey.id,
+						keyPem: person.publicKey.publicKeyPem,
+					}));
 				}
 			});
 		} catch (e) {
@@ -448,13 +417,15 @@ export class ApPersonService implements OnModuleInit {
 		this.cacheService.uriPersonCache.set(user.uri, user);
 
 		// Register host
-		this.federatedInstanceService.fetch(host).then(async i => {
-			this.instancesRepository.increment({ id: i.id }, 'usersCount', 1);
-			this.fetchInstanceMetadataService.fetchInstanceMetadata(i);
-			if ((await this.metaService.fetch()).enableChartsForFederatedInstances) {
-				this.instanceChart.newUser(i.host);
-			}
-		});
+		if (this.meta.enableStatsForFederatedInstances) {
+			this.federatedInstanceService.fetchOrRegister(host).then(i => {
+				this.instancesRepository.increment({ id: i.id }, 'usersCount', 1);
+				if (this.meta.enableChartsForFederatedInstances) {
+					this.instanceChart.newUser(i.host);
+				}
+				this.fetchInstanceMetadataService.fetchInstanceMetadata(i);
+			});
+		}
 
 		this.usersChart.update(user, true);
 
@@ -522,6 +493,23 @@ export class ApPersonService implements OnModuleInit {
 
 		const tags = extractApHashtags(person.tag).map(normalizeForSearch).splice(0, 32);
 
+		const [followingVisibility, followersVisibility] = await Promise.all(
+			[
+				this.isPublicCollection(person.following, resolver),
+				this.isPublicCollection(person.followers, resolver),
+			].map((p): Promise<'public' | 'private' | undefined> => p
+				.then(isPublic => isPublic ? 'public' : 'private')
+				.catch(err => {
+					if (!(err instanceof StatusError) || err.isRetryable) {
+						this.logger.error('error occurred while fetching following/followers collection', { stack: err });
+						// Do not update the visibiility on transient errors.
+						return undefined;
+					}
+					return 'private';
+				}),
+			),
+		);
+
 		const bday = person['vcard:bday']?.match(/^\d{4}-\d{2}-\d{2}/);
 
 		const url = getOneApHrefNullable(person.url);
@@ -571,29 +559,11 @@ export class ApPersonService implements OnModuleInit {
 		// Update user
 		await this.usersRepository.update(exist.id, updates);
 
-		try {
-			// Deleteアクティビティ受信時にもここが走ってsaveがuserforeign key制約エラーを吐くことがある
-			// とりあえずtry-catchで囲っておく
-			const publicKeys = new Map<string, IKey>();
-			if (person.publicKey) {
-				(person.additionalPublicKeys ?? []).forEach(key => publicKeys.set(key.id, key));
-				(Array.isArray(person.publicKey) ? person.publicKey : [person.publicKey]).forEach(key => publicKeys.set(key.id, key));
-
-				await this.userPublickeysRepository.save(Array.from(publicKeys.values(), key => ({
-					keyId: key.id,
-					userId: exist.id,
-					keyPem: key.publicKeyPem,
-				})));
-			}
-
-			this.userPublickeysRepository.delete({
-				keyId: Not(In(Array.from(publicKeys.keys()))),
-				userId: exist.id,
-			}).catch(err => {
-				this.logger.error('something happened while deleting remote user public keys:', { userId: exist.id, err });
+		if (person.publicKey) {
+			await this.userPublickeysRepository.update({ userId: exist.id }, {
+				keyId: person.publicKey.id,
+				keyPem: person.publicKey.publicKeyPem,
 			});
-		} catch (err) {
-			this.logger.error('something happened while updating remote user public keys:', { userId: exist.id, err });
 		}
 
 		let _description: string | null = null;
@@ -608,6 +578,9 @@ export class ApPersonService implements OnModuleInit {
 			url,
 			fields,
 			description: _description,
+			followedMessage: person._misskey_followedMessage != null ? truncate(person._misskey_followedMessage, 256) : null,
+			followingVisibility,
+			followersVisibility,
 			birthday: bday?.[0] ?? null,
 			location: person['vcard:Address'] ?? null,
 		});
@@ -635,7 +608,7 @@ export class ApPersonService implements OnModuleInit {
 			exist.movedAt == null ||
 			// 以前のmovingから14日以上経過した場合のみ移行処理を許可
 			// （Mastodonのクールダウン期間は30日だが若干緩めに設定しておく）
-			exist.movedAt.getTime() + REMOTE_USER_MOVE_COOLDOWN < updated.movedAt.getTime()
+			exist.movedAt.getTime() + 1000 * 60 * 60 * 24 * 14 < updated.movedAt.getTime()
 		)) {
 			this.logger.info(`Start to process Move of @${updated.username}@${updated.host} (${uri})`);
 			return this.processRemoteMove(updated, movePreventUris)
@@ -658,9 +631,9 @@ export class ApPersonService implements OnModuleInit {
 	 * リモートサーバーからフェッチしてMisskeyに登録しそれを返します。
 	 */
 	@bindThis
-	public async resolvePerson(uri: string, resolver?: Resolver, withRenewal = false): Promise<MiLocalUser | MiRemoteUser> {
+	public async resolvePerson(uri: string, resolver?: Resolver): Promise<MiLocalUser | MiRemoteUser> {
 		//#region このサーバーに既に登録されていたらそれを返す
-		const exist = withRenewal ? await this.fetchPersonWithRenewal(uri) : await this.fetchPerson(uri);
+		const exist = await this.fetchPerson(uri);
 		if (exist) return exist;
 		//#endregion
 
@@ -778,5 +751,17 @@ export class ApPersonService implements OnModuleInit {
 		await this.accountMoveService.postMoveProcess(src, dst);
 
 		return 'ok';
+	}
+
+	@bindThis
+	private async isPublicCollection(collection: string | ICollection | IOrderedCollection | undefined, resolver: Resolver): Promise<boolean> {
+		if (collection) {
+			const resolved = await resolver.resolveCollection(collection);
+			if (resolved.first || (resolved as ICollection).items || (resolved as IOrderedCollection).orderedItems) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 }
