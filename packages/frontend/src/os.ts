@@ -43,7 +43,10 @@ export const apiWithDialog = (<E extends keyof Misskey.Endpoints, P extends Miss
 	promiseDialog(promise, null, async (err) => {
 		let title: string | undefined;
 		let text = err.message + '\n' + err.id;
-		if (err.code === 'INTERNAL_ERROR') {
+		if (customErrors && customErrors[err.id] != null) {
+			title = customErrors[err.id].title;
+			text = customErrors[err.id].text;
+		} else if (err.code === 'INTERNAL_ERROR') {
 			title = i18n.ts.internalServerError;
 			text = i18n.ts.internalServerErrorDescription;
 			const date = new Date().toISOString();
@@ -80,9 +83,6 @@ export const apiWithDialog = (<E extends keyof Misskey.Endpoints, P extends Miss
 		} else if (err.message.startsWith('Unexpected token')) {
 			title = i18n.ts.gotInvalidResponseError;
 			text = i18n.ts.gotInvalidResponseErrorDescription;
-		} else if (customErrors && customErrors[err.id] != null) {
-			title = customErrors[err.id].title;
-			text = customErrors[err.id].text;
 		}
 		alert({
 			type: 'error',

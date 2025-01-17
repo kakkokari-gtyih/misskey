@@ -726,8 +726,9 @@ function deleteDraft() {
 }
 
 async function saveServerDraft() {
-	const promise = misskeyApi(serverDraftId.value == null ? 'notes/drafts/create' : 'notes/drafts/update', {
-		...(serverDraftId.value == null ? {} : { draftId: serverDraftId.value }),
+	const create = (serverDraftId.value == null);
+
+	const req = {
 		text: text.value,
 		useCw: useCw.value,
 		cw: cw.value,
@@ -742,22 +743,43 @@ async function saveServerDraft() {
 		quoteId: quoteId.value,
 		channelId: targetChannel.value ? targetChannel.value.id : undefined,
 		reactionAcceptance: reactionAcceptance.value,
-	});
+	};
 
-	await os.promiseDialog(promise, null, (err) => {
-		if (err.id === '9ee33bbe-fde3-4c71-9b51-e50492c6b9c8') {
-			os.alert({
-				type: 'error',
-				text: i18n.ts._drafts.youCantCreateAnymore,
-			});
-		} else {
-			os.alert({
-				type: 'error',
-				title: i18n.ts.somethingHappened,
-				text: err.message + '\n' + err.id,
-			});
-		}
-	});
+	if (create) {
+		await os.promiseDialog(misskeyApi('notes/drafts/create', req), null, async (err) => {
+			if (err.id === '9ee33bbe-fde3-4c71-9b51-e50492c6b9c8') {
+				const { canceled } = await os.confirm({
+					type: 'question',
+					title: i18n.ts._drafts.youCantCreateAnymore,
+					text: i18n.ts._drafts.overwriteConfirm,
+				});
+
+				if (canceled) return;
+
+				await os.apiWithDialog('notes/drafts/create', {
+					...req,
+					removeOldestIfNeeded: true,
+				}, undefined, {
+					'9ee33bbe-fde3-4c71-9b51-e50492c6b9c8': {
+						title: i18n.ts._drafts.youCantCreateAnymore,
+						text: i18n.ts._drafts.overwriteFailedDescription,
+					},
+				});
+			} else {
+				os.alert({
+					type: 'error',
+					title: i18n.ts.somethingHappened,
+					text: err.message + '\n' + err.id,
+				});
+			}
+		});
+	} else {
+		// apiWithDialogのほうがエラーのハンドリングが丁寧なので
+		await os.apiWithDialog('notes/drafts/update', {
+			draftId: serverDraftId.value!,
+			...req,
+		});
+	}
 }
 
 async function post(ev?: MouseEvent) {

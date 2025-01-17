@@ -10754,6 +10754,14 @@ export interface Locale extends ILocale {
          */
         "youCantCreateAnymore": string;
         /**
+         * 一番古い下書きを削除して保存しますか？
+         */
+        "overwriteConfirm": string;
+        /**
+         * 一番古い下書きの削除に失敗したか、サーバーに下書きを保存する機能が無効になっている可能性があります。
+         */
+        "overwriteFailedDescription": string;
+        /**
          * 下書きを削除
          */
         "delete": string;

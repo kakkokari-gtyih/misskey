@@ -9,7 +9,7 @@ import { In } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { NoteDraftService } from '@/core/NoteDraftService.js';
 import { MAX_NOTE_TEXT_LENGTH } from '@/const.js';
-import type { MiNote, MiChannel, MiDriveFile, UsersRepository, NotesRepository, BlockingsRepository, DriveFilesRepository, ChannelsRepository } from '@/models/_.js';
+import type { MiNote, MiChannel, MiDriveFile, UsersRepository, NotesRepository, BlockingsRepository, DriveFilesRepository, ChannelsRepository, NoteDraftsRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
 import { MiUser } from '@/models/_.js';
 import { ApiError } from '@/server/api/error.js';
@@ -183,6 +183,8 @@ export const paramDef = {
 			},
 			required: ['choices'],
 		},
+
+		removeOldestIfNeeded: { type: 'boolean', default: false },
 	},
 	required: [],
 } as const;
@@ -204,6 +206,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		@Inject(DI.channelsRepository)
 		private channelsRepository: ChannelsRepository,
+
+		@Inject(DI.noteDraftsRepository)
+		private noteDraftsRepository: NoteDraftsRepository,
 
 		private noteEntityService: NoteEntityService,
 		private noteDraftService: NoteDraftService,
@@ -347,11 +352,57 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				visibility: ps.visibility,
 				visibleUsers,
 				channel,
-			}).catch((err) => {
+			}).catch(async (err) => {
 				if (err instanceof IdentifiableError && err.id === 'c9a2c1d8-d153-40be-9cac-9fc2eb56b581') {
-					throw new ApiError(meta.errors.tooManyDrafts);
+					if (ps.removeOldestIfNeeded) {
+						const oldestDraft = await this.noteDraftsRepository.findOne({
+							where: {
+								userId: me.id,
+							},
+							order: {
+								id: 'ASC',
+							},
+						});
+
+						// 下書きがいっぱいなのに下書きが見つからない場合→作れる下書きの数が0
+						if (oldestDraft == null) {
+							throw new ApiError(meta.errors.tooManyDrafts);
+						}
+
+						await this.noteDraftService.delete(me, oldestDraft.id);
+
+						return this.noteDraftService.create(me, {
+							files: files,
+							poll: ps.poll ? {
+								choices: ps.poll.choices,
+								multiple: ps.poll.multiple ?? false,
+								expiresAt: ps.poll.expiresAt ? new Date(ps.poll.expiresAt) : null,
+								expiredAfter: ps.poll.expiredAfter ?? null,
+							} : undefined,
+							text: ps.text ?? null,
+							reply,
+							renote,
+							cw: ps.cw ?? null,
+							...(ps.hashtag ? { hashtag: ps.hashtag } : {}),
+							localOnly: ps.localOnly,
+							reactionAcceptance: ps.reactionAcceptance,
+							visibility: ps.visibility,
+							visibleUsers,
+							channel,
+						}).catch((err) => {
+							// 下書きが消せたのに下書きが追加できない場合→作れる下書きの数が0
+							if (err instanceof IdentifiableError && err.id === 'c9a2c1d8-d153-40be-9cac-9fc2eb56b581') {
+								throw new ApiError(meta.errors.tooManyDrafts);
+							} else {
+								throw err;
+							}
+						});
+					} else {
+						throw new ApiError(meta.errors.tooManyDrafts);
+					}
+				} else {
+					throw err;
 				}
-				throw err;
 			});
 
 			const createdDraft = await this.noteDraftEntityService.pack(draft, me);

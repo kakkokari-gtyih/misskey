@@ -23563,6 +23563,8 @@ export type operations = {
             expiresAt?: number | null;
             expiredAfter?: number | null;
           }) | null;
+          /** @default false */
+          removeOldestIfNeeded?: boolean;
         };
       };
     };
