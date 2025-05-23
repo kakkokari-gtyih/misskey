@@ -15,6 +15,7 @@
 		"experimentalDecorators": true,
 		"noImplicitReturns": true,
 		"esModuleInterop": true,
+		"incremental": true,
 		"typeRoots": [
 			"./node_modules/@types"
 		],

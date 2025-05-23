@@ -19,6 +19,7 @@
 		"experimentalDecorators": true,
 		"resolveJsonModule": true,
 		"isolatedModules": true,
+		"incremental": true,
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"],
