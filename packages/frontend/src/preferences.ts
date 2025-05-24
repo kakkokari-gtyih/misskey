@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { BroadcastChannel } from 'broadcast-channel';
 import type { PreferencesProfile, StorageProvider } from '@/preferences/manager.js';
 import { cloudBackup } from '@/preferences/utility.js';
 import { miLocalStorage } from '@/local-storage.js';
@@ -31,7 +32,7 @@ const syncGroup = 'default';
 const storageProvider: StorageProvider = {
 	save: (ctx) => {
 		miLocalStorage.setItem('preferences', JSON.stringify(ctx.profile));
-		miLocalStorage.setItem('latestPreferencesUpdate', `${TAB_ID}/${Date.now()}`);
+		notifyPreferenceUpdate(ctx.profile);
 	},
 
 	cloudGet: async (ctx) => {
@@ -104,33 +105,43 @@ const storageProvider: StorageProvider = {
 
 export const prefer = createPrefManager(storageProvider);
 
-let latestSyncedAt = Date.now();
+//#region タブ間同期
+const preferenceChannel = new BroadcastChannel<{
+	tabId: string;
+	dataOf: number;
+	p: PreferencesProfile;
+}>('pref:sync');
 
-function syncBetweenTabs() {
-	const latest = miLocalStorage.getItem('latestPreferencesUpdate');
-	if (latest == null) return;
-
-	const latestTab = latest.split('/')[0];
-	const latestAt = parseInt(latest.split('/')[1]);
-
-	if (latestTab === TAB_ID) return;
-	if (latestAt <= latestSyncedAt) return;
-
-	prefer.rewriteProfile(PreferencesManager.normalizeProfile(JSON.parse(miLocalStorage.getItem('preferences')!)));
-
+function notifyPreferenceUpdate(p: PreferencesProfile) {
+	preferenceChannel.postMessage({
+		tabId: TAB_ID,
+		dataOf: Date.now(),
+		p,
+	});
 	latestSyncedAt = Date.now();
-
-	if (_DEV_) console.log('prefer:synced');
 }
 
-window.setInterval(syncBetweenTabs, 5000);
+let latestSyncedAt = Date.now();
 
-window.document.addEventListener('visibilitychange', () => {
-	if (window.document.visibilityState === 'visible') {
-		syncBetweenTabs();
-	}
+preferenceChannel.addEventListener('message', (ev) => {
+	if (ev.tabId === TAB_ID) return; // 自分のタブからの通知は無視
+	if (ev.dataOf <= latestSyncedAt) return; // 古い通知は無視
+
+	prefer.rewriteProfile(ev.p);
+	latestSyncedAt = ev.dataOf;
+
+	if (_DEV_) console.log('prefer:synced');
 });
 
+// visibilitychange時も同期（念のため）
+window.document.addEventListener('visibilitychange', () => {
+	if (window.document.visibilityState === 'visible') {
+		notifyPreferenceUpdate(prefer.profile);
+	}
+});
+//#endregion
+
+//#region クラウド同期
 let latestBackupAt = 0;
 
 window.setInterval(() => {
@@ -143,6 +154,7 @@ window.setInterval(() => {
 		latestBackupAt = Date.now();
 	});
 }, 1000 * 60 * 3);
+//#endregion
 
 if (_DEV_) {
 	(window as any).prefer = prefer;

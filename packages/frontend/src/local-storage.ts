@@ -31,7 +31,6 @@ export type Keys = (
 	'scratchpad' |
 	'debug' |
 	'preferences' |
-	'latestPreferencesUpdate' |
 	'hidePreferencesRestoreSuggestion' |
 	`miux:${string}` |
 	`ui:folder:${string}` |
