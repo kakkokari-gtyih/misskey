@@ -5,12 +5,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <MkContainer :naked="widgetProps.transparent" :showHeader="false" data-cy-mkw-aichan class="mkw-aichan">
-	<iframe ref="live2d" :class="$style.root" src="https://misskey-dev.github.io/mascot-web/?scale=1.5&y=1.1&eyeY=100" @click="touched"></iframe>
+	<iframe
+		ref="live2d"
+		:class="[$style.root, { [$style.loaded]: loaded }]"
+		src="https://misskey-dev.github.io/mascot-web/?scale=1.5&y=1.1&eyeY=100"
+	></iframe>
 </MkContainer>
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, useTemplateRef } from 'vue';
+import { onUnmounted, useTemplateRef, ref } from 'vue';
 import { useWidgetPropsManager } from './widget.js';
 import type { WidgetComponentProps, WidgetComponentEmits, WidgetComponentExpose } from './widget.js';
 import type { FormWithDefault, GetFormResultType } from '@/utility/form.js';
@@ -36,10 +40,7 @@ const { widgetProps, configure } = useWidgetPropsManager(name,
 );
 
 const live2d = useTemplateRef('live2d');
-
-const touched = () => {
-	//if (this.live2d) this.live2d.changeExpression('gurugurume');
-};
+const loaded = ref(false);
 
 const onMousemove = (ev: MouseEvent) => {
 	if (!live2d.value || !live2d.value.contentWindow) return;
@@ -54,12 +55,19 @@ const onMousemove = (ev: MouseEvent) => {
 	}, '*');
 };
 
-onMounted(() => {
-	window.addEventListener('mousemove', onMousemove, { passive: true });
-});
+function messageEventHandler(ev: MessageEvent) {
+	if (ev.origin === 'https://misskey-dev.github.io' && ev.data.type === 'loaded') {
+		loaded.value = true;
+		window.addEventListener('mousemove', onMousemove, { passive: true });
+		window.removeEventListener('message', messageEventHandler);
+	}
+}
+
+window.addEventListener('message', messageEventHandler);
 
 onUnmounted(() => {
 	window.removeEventListener('mousemove', onMousemove);
+	window.removeEventListener('message', messageEventHandler);
 });
 
 defineExpose<WidgetComponentExpose>({
@@ -75,6 +83,12 @@ defineExpose<WidgetComponentExpose>({
 	height: 350px;
 	border: none;
 	pointer-events: none;
-	color-scheme: light;
+	color-scheme: light dark;
+	opacity: 0;
+	transition: opacity 0.3s ease;
+
+	&.loaded {
+		opacity: 1;
+	}
 }
 </style>
