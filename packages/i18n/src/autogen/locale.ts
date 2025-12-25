@@ -9888,6 +9888,10 @@ export interface Locale extends ILocale {
          * ダイレクトメッセージ
          */
         "chat": string;
+        /**
+         * まりも
+         */
+        "marimo": string;
     };
     "_cw": {
         /**
