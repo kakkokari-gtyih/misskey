@@ -18,6 +18,8 @@ onlyBuiltDependencies:
   - '@sentry-internal/node-cpu-profiler'
   - '@swc/core'
   - '@tensorflow/tfjs-node'
+  - '@vizejs/*'
+  - '@rolldown/*'
   - bufferutil
   - canvas
   - core-js
@@ -35,3 +37,8 @@ ignorePatchFailures: false
 minimumReleaseAge: 10080 # delay 7days to mitigate supply-chain attack
 minimumReleaseAgeExclude:
   - '@syuilo/aiscript'
+  - '@vizejs/*'
+  - '@oxc-project/*'
+  - '@rolldown/*'
+  - rolldown
+  - vite

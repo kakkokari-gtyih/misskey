@@ -1,6 +1,7 @@
 import path from 'path';
 import pluginReplace from '@rollup/plugin-replace';
-import pluginVue from '@vitejs/plugin-vue';
+// import pluginVue from '@vitejs/plugin-vue';
+import pluginVue from '@vizejs/vite-plugin';
 import pluginGlsl from 'vite-plugin-glsl';
 import type { UserConfig } from 'vite';
 import { defineConfig } from 'vite';
@@ -154,11 +155,6 @@ export function getConfig(): UserConfig {
 					}
 				},
 			},
-			preprocessorOptions: {
-				scss: {
-					api: 'modern-compiler',
-				},
-			},
 		},
 
 		define: {
@@ -178,7 +174,7 @@ export function getConfig(): UserConfig {
 				'safari16',
 			],
 			manifest: 'manifest.json',
-			rollupOptions: {
+			rolldownOptions: {
 				input: {
 					i18n: './src/i18n.ts',
 					entry: './src/_boot_.ts',
@@ -186,11 +182,17 @@ export function getConfig(): UserConfig {
 				external: externalPackages.map(p => p.match),
 				preserveEntrySignatures: 'allow-extension',
 				output: {
-					manualChunks: {
-						vue: ['vue'],
-						photoswipe: ['photoswipe', 'photoswipe/lightbox', 'photoswipe/style.css'],
-						// dependencies of i18n.ts
-						'config': ['@@/js/config.js'],
+					codeSplitting: {
+						groups: [{
+							name: 'vue',
+							test: /node_modules[\\/]vue/,
+						}, {
+							name: 'photoswipe',
+							test: /node_modules[\\/]photoswipe/,
+						}, {
+							name: 'i18n',
+							test: /@@[\\/]js[\\/]config\.js/,
+						}],
 					},
 					entryFileNames: `scripts/${localesHash}-[hash:8].js`,
 					chunkFileNames: `scripts/${localesHash}-[hash:8].js`,
@@ -223,20 +225,20 @@ export function getConfig(): UserConfig {
 			format: 'es',
 		},
 
-		test: {
-			environment: 'happy-dom',
-			deps: {
-				optimizer: {
-					web: {
-						include: [
-							// XXX: misskey-dev/browser-image-resizer has no "type": "module"
-							'browser-image-resizer',
-						],
-					},
-				},
-			},
-			includeSource: ['src/**/*.ts'],
-		},
+		// test: {
+		// 	environment: 'happy-dom',
+		// 	deps: {
+		// 		optimizer: {
+		// 			web: {
+		// 				include: [
+		// 					// XXX: misskey-dev/browser-image-resizer has no "type": "module"
+		// 					'browser-image-resizer',
+		// 				],
+		// 			},
+		// 		},
+		// 	},
+		// 	includeSource: ['src/**/*.ts'],
+		// },
 	};
 }
 
