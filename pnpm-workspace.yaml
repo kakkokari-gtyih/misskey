@@ -42,3 +42,6 @@ minimumReleaseAgeExclude:
   - '@rolldown/*'
   - rolldown
   - vite
+  - 'minimatch' # 脆弱性対応 そのうち消す
+  - 'rollup' # 脆弱性対応 そのうち消す
+  - '@rollup/rollup-*' # 脆弱性対応 そのうち消す
