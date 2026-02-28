@@ -113,7 +113,7 @@
 		"@typescript-eslint/eslint-plugin": "8.56.0",
 		"@typescript-eslint/parser": "8.56.0",
 		"@vitest/coverage-v8": "4.0.18",
-		"@vizejs/vite-plugin": "0.10.0",
+		"@vizejs/vite-plugin": "0.11.0",
 		"@vue/compiler-core": "3.5.28",
 		"acorn": "8.16.0",
 		"astring": "1.9.0",
