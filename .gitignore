@@ -71,6 +71,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 vite.config.local-dev.js.timestamp-*
 vite.config.local-dev.ts.timestamp-*
+.vite-inspect
 
 # blender backups
 *.blend1
