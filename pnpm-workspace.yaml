@@ -41,5 +41,7 @@ minimumReleaseAgeExclude:
   - '@napi-rs/wasm-runtime'
   - 'lightningcss'
   - 'lightningcss-*'
+  - 'vite'
+  - 'nf3'
   - 'tar' # 脆弱性対応 そのうち消す
   - 'fastify' # 脆弱性対応 そのうち消す

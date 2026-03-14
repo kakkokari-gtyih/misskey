@@ -19,6 +19,7 @@
 		"build:test": "swc src -d src-js -D --strip-leading-paths && swc test-server -d built-test -D --config-file test-server/.swcrc --strip-leading-paths",
 		"watch:swc": "swc src -d built -D -w --strip-leading-paths",
 		"build:tsc": "tsgo -p tsconfig.json && tsc-alias -p tsconfig.json",
+		"build:vite": "vite build",
 		"watch": "pnpm compile-config && node ./scripts/watch.mjs",
 		"restart": "pnpm build && pnpm start",
 		"dev": "pnpm compile-config && node ./scripts/dev.mjs",
@@ -224,11 +225,13 @@
 		"jest": "29.7.0",
 		"jest-mock": "29.7.0",
 		"js-yaml": "4.1.1",
+		"nf3": "0.3.11",
 		"nodemon": "3.1.14",
+		"oxc-minify": "0.116.0",
 		"pid-port": "2.0.1",
 		"rolldown": "1.0.0-rc.9",
 		"simple-oauth2": "5.1.0",
 		"supertest": "7.2.2",
-		"vite": "7.3.1"
+		"vite": "8.0.0"
 	}
 }
