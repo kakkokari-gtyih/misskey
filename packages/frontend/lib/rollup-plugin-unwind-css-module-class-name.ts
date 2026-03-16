@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { generate } from "astring";
 import { walk } from "../node_modules/estree-walker/src/index.js";
 import type { Plugin } from "vite";
 import type { ESTree } from "rolldown/utils";
+import { RolldownMagicString } from "rolldown";
 
 function isFalsyIdentifier(
 	identifier: Extract<ESTree.Node, { type: "Identifier" }>,
@@ -118,7 +118,10 @@ export function normalizeClass(
 	return walked && walked.replace(/^\s+|\s+(?=\s)|\s+$/g, "");
 }
 
-export function unwindCssModuleClassName(ast: ESTree.Node): void {
+export function unwindCssModuleClassName(
+	ast: ESTree.Node,
+	magicString: RolldownMagicString,
+): void {
 	(walk as any)(ast, {
 		enter(node: ESTree.Node, parent: ESTree.Node | null): void {
 			//#region
@@ -354,10 +357,7 @@ export function unwindCssModuleClassName(ast: ESTree.Node): void {
 						console.error(
 							`Undefined style detected: ${key}.${childNode.property.name} (in ${name})`,
 						);
-						this.replace({
-							type: "Identifier",
-							name: "undefined",
-						});
+						magicString.overwrite(childNode.start, childNode.end, "undefined");
 					},
 				});
 				/* This region replaced the reference identifier of missing class names in the render function with `undefined`, as in the following code.
@@ -402,10 +402,11 @@ export function unwindCssModuleClassName(ast: ESTree.Node): void {
 						if (childNode.arguments.length !== 1) return;
 						const normalized = normalizeClass(childNode.arguments[0], name);
 						if (normalized === null) return;
-						this.replace({
-							type: "Literal",
-							value: normalized,
-						});
+						magicString.overwrite(
+							childNode.start,
+							childNode.end,
+							JSON.stringify(normalized),
+						);
 					},
 				});
 				/* This region compiled the `normalizeClass` call into a pseudo-AOT compilation, as in the following code.
@@ -448,13 +449,10 @@ export function unwindCssModuleClassName(ast: ESTree.Node): void {
 					enter(childNode: ESTree.Node) {
 						if (childNode.type !== "Identifier") return;
 						if (childNode.name !== ident) return;
-						this.replace({
-							type: "Identifier",
-							name,
-						});
+						magicString.overwrite(childNode.start, childNode.end, name);
 					},
 				});
-				this.remove();
+				magicString.remove(node.start, node.end);
 				/* NOTE: The above logic is valid as long as the following two conditions are met.
 				 *
 				 * - the uniqueness of `ident` is kept throughout the module
@@ -479,42 +477,17 @@ export function unwindCssModuleClassName(ast: ESTree.Node): void {
 				});
 				 */
 			} else {
-				this.replace({
-					type: "VariableDeclaration",
-					declarations: [
-						{
-							type: "VariableDeclarator",
-							id: {
-								type: "Identifier",
-								name,
-							},
-							init: {
-								type: "CallExpression",
-								callee: {
-									type: "Identifier",
-									name: "_export_sfc",
-								},
-								arguments: [
-									{
-										type: "Identifier",
-										name: ident,
-									},
-									{
-										type: "ArrayExpression",
-										elements: node.declarations[0].init.arguments[1].elements
-											.slice(0, __cssModulesIndex)
-											.concat(
-												node.declarations[0].init.arguments[1].elements.slice(
-													__cssModulesIndex + 1,
-												),
-											),
-									},
-								],
-							},
-						},
-					],
-					kind: "const",
-				});
+				const nextElement =
+					node.declarations[0].init.arguments[1].elements[
+						__cssModulesIndex + 1
+					];
+				const removeStart =
+					node.declarations[0].init.arguments[1].elements[__cssModulesIndex]!
+						.start;
+				const removeEnd = nextElement
+					? nextElement.start
+					: node.declarations[0].init.arguments[1].end - 1;
+				magicString.remove(removeStart, removeEnd);
 			}
 			/* This region removed the `__cssModules` reference from the second argument of `_export_sfc`, as in the following code.
 			 *
@@ -553,10 +526,11 @@ export function unwindCssModuleClassName(ast: ESTree.Node): void {
 export default function pluginUnwindCssModuleClassName(): Plugin {
 	return {
 		name: "UnwindCssModuleClassName",
-		renderChunk(code) {
+		renderChunk(code, _chunk, _options, meta) {
 			const ast = this.parse(code);
-			unwindCssModuleClassName(ast);
-			return { code: generate(ast) };
+			const magicString = meta.magicString ?? new RolldownMagicString(code);
+			unwindCssModuleClassName(ast, magicString);
+			return magicString;
 		},
 	};
 }
