@@ -993,6 +993,9 @@ importers:
       react-dom:
         specifier: 19.2.4
         version: 19.2.4(react@19.2.4)
+      rolldown:
+        specifier: 1.0.0-rc.9
+        version: 1.0.0-rc.9
       seedrandom:
         specifier: 3.0.5
         version: 3.0.5

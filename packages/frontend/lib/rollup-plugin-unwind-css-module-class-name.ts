@@ -5,16 +5,17 @@
 
 import { generate } from "astring";
 import { walk } from "../node_modules/estree-walker/src/index.js";
-import type * as estree from "estree";
-import type * as estreeWalker from "estree-walker";
 import type { Plugin } from "vite";
+import type { ESTree } from "rolldown/utils";
 
-function isFalsyIdentifier(identifier: estree.Identifier): boolean {
+function isFalsyIdentifier(
+	identifier: Extract<ESTree.Node, { type: "Identifier" }>,
+): boolean {
 	return identifier.name === "undefined" || identifier.name === "NaN";
 }
 
 function normalizeClassWalker(
-	tree: estree.Node,
+	tree: ESTree.Node,
 	stack: string | undefined,
 ): string | null {
 	if (tree.type === "Identifier") return isFalsyIdentifier(tree) ? "" : null;
@@ -40,7 +41,11 @@ function normalizeClassWalker(
 			const v =
 				i === tree.quasis.length - 1
 					? ""
-					: (tree.expressions[i] as Partial<estree.Literal>).value;
+					: (
+							tree.expressions[i] as Partial<
+								Extract<ESTree.Node, { type: "Literal" }>
+							>
+						).value;
 			return a + c.value.raw + (typeof v === "string" ? v : "");
 		}, "");
 	}
@@ -106,16 +111,16 @@ function normalizeClassWalker(
 }
 
 export function normalizeClass(
-	tree: estree.Node,
+	tree: ESTree.Node,
 	stack?: string,
 ): string | null {
 	const walked = normalizeClassWalker(tree, stack);
 	return walked && walked.replace(/^\s+|\s+(?=\s)|\s+$/g, "");
 }
 
-export function unwindCssModuleClassName(ast: estree.Node): void {
-	(walk as typeof estreeWalker.walk)(ast, {
-		enter(node, parent): void {
+export function unwindCssModuleClassName(ast: ESTree.Node): void {
+	(walk as any)(ast, {
+		enter(node: ESTree.Node, parent: ESTree.Node | null): void {
 			//#region
 			if (parent?.type !== "Program") return;
 			if (node.type !== "VariableDeclaration") return;
@@ -154,8 +159,8 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 				(
 					node.declarations[0].init.arguments[1].elements[
 						__cssModulesIndex
-					] as estree.ArrayExpression
-				).elements[1] as estree.Identifier
+					] as ESTree.ArrayExpression
+				).elements[1] as Extract<ESTree.Node, { type: "Identifier" }>
 			).name;
 			const cssModuleForestNode = parent.body.find((x) => {
 				if (x.type !== "VariableDeclaration") return false;
@@ -164,10 +169,10 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 				if (x.declarations[0].id.name !== cssModuleForestName) return false;
 				if (x.declarations[0].init?.type !== "ObjectExpression") return false;
 				return true;
-			}) as unknown as estree.VariableDeclaration;
+			}) as unknown as ESTree.VariableDeclaration;
 			const moduleForest = new Map(
 				(
-					cssModuleForestNode.declarations[0].init as estree.ObjectExpression
+					cssModuleForestNode.declarations[0].init as ESTree.ObjectExpression
 				).properties.flatMap((property) => {
 					if (property.type !== "Property") return [];
 					if (property.key.type !== "Literal") return [];
@@ -193,7 +198,7 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 				if (x.declarations[0].id.type !== "Identifier") return false;
 				if (x.declarations[0].id.name !== ident) return false;
 				return true;
-			}) as unknown as estree.VariableDeclaration;
+			}) as unknown as ESTree.VariableDeclaration;
 			if (sfcMain.declarations[0].init?.type !== "CallExpression") return;
 			if (sfcMain.declarations[0].init.callee.type !== "Identifier") return;
 			if (sfcMain.declarations[0].init.callee.name !== "defineComponent")
@@ -208,12 +213,11 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 					if (x.key.name !== "setup") return false;
 					return true;
 				},
-			) as unknown as estree.Property;
+			) as Extract<ESTree.Node, { type: "Property" }>;
 			if (setup.value.type !== "FunctionExpression") return;
-			const render = setup.value.body.body.find((x) => {
-				if (x.type !== "ReturnStatement") return false;
-				return true;
-			}) as unknown as estree.ReturnStatement;
+			const render = setup.value.body!.body.find(
+				(x) => x.type === "ReturnStatement",
+			)!;
 			if (render.argument?.type !== "ArrowFunctionExpression") return;
 			if (render.argument.params.length !== 2) return;
 			const ctx = render.argument.params[0];
@@ -242,7 +246,7 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 					if (x.declarations[0].id.type !== "Identifier") return false;
 					if (x.declarations[0].id.name !== value) return false;
 					return true;
-				}) as unknown as estree.VariableDeclaration;
+				}) as unknown as ESTree.VariableDeclaration;
 				if (cssModuleTreeNode.declarations[0].init?.type !== "ObjectExpression")
 					return;
 				const moduleTree = new Map(
@@ -266,7 +270,7 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 								if (x.declarations[0].id.type !== "Identifier") return false;
 								if (x.declarations[0].id.name !== labelledValue) return false;
 								return true;
-							}) as unknown as estree.VariableDeclaration;
+							}) as unknown as ESTree.VariableDeclaration;
 							if (actualValue.declarations[0].init?.type !== "Literal")
 								return [];
 							return [
@@ -288,8 +292,8 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 				 */
 				//#endregion
 				//#region
-				(walk as typeof estreeWalker.walk)(render.argument.body, {
-					enter(childNode) {
+				(walk as any)(render.argument.body, {
+					enter(childNode: ESTree.Node) {
 						if (childNode.type !== "MemberExpression") return;
 						if (childNode.object.type !== "MemberExpression") return;
 						if (childNode.object.object.type !== "Identifier") return;
@@ -338,8 +342,8 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 				 */
 				//#endregion
 				//#region
-				(walk as typeof estreeWalker.walk)(render.argument.body, {
-					enter(childNode) {
+				(walk as any)(render.argument.body, {
+					enter(childNode: ESTree.Node) {
 						if (childNode.type !== "MemberExpression") return;
 						if (childNode.object.type !== "MemberExpression") return;
 						if (childNode.object.object.type !== "Identifier") return;
@@ -390,8 +394,8 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 				 */
 				//#endregion
 				//#region
-				(walk as typeof estreeWalker.walk)(render.argument.body, {
-					enter(childNode) {
+				(walk as any)(render.argument.body, {
+					enter(childNode: ESTree.Node) {
 						if (childNode.type !== "CallExpression") return;
 						if (childNode.callee.type !== "Identifier") return;
 						if (childNode.callee.name !== "normalizeClass") return;
@@ -440,13 +444,13 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 			}
 			//#region
 			if (node.declarations[0].init.arguments[1].elements.length === 1) {
-				(walk as typeof estreeWalker.walk)(ast, {
-					enter(childNode) {
+				(walk as any)(ast, {
+					enter(childNode: ESTree.Node) {
 						if (childNode.type !== "Identifier") return;
 						if (childNode.name !== ident) return;
 						this.replace({
 							type: "Identifier",
-							name: node.declarations[0].id.name,
+							name,
 						});
 					},
 				});
@@ -482,7 +486,7 @@ export function unwindCssModuleClassName(ast: estree.Node): void {
 							type: "VariableDeclarator",
 							id: {
 								type: "Identifier",
-								name: node.declarations[0].id.name,
+								name,
 							},
 							init: {
 								type: "CallExpression",
@@ -550,7 +554,7 @@ export default function pluginUnwindCssModuleClassName(): Plugin {
 	return {
 		name: "UnwindCssModuleClassName",
 		renderChunk(code) {
-			const ast = this.parse(code) as unknown as estree.Node;
+			const ast = this.parse(code);
 			unwindCssModuleClassName(ast);
 			return { code: generate(ast) };
 		},
