@@ -3,88 +3,86 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { walk } from "../node_modules/estree-walker/src/index.js";
-import type { Plugin } from "vite";
-import type { ESTree } from "rolldown/utils";
-import { RolldownMagicString } from "rolldown";
+import { walk } from '../node_modules/estree-walker/src/index.js';
+import type { Plugin } from 'vite';
+import type { ESTree } from 'rolldown/utils';
+import { RolldownMagicString } from 'rolldown';
 
 function isFalsyIdentifier(
-	identifier: Extract<ESTree.Node, { type: "Identifier" }>,
+	identifier: Extract<ESTree.Node, { type: 'Identifier' }>,
 ): boolean {
-	return identifier.name === "undefined" || identifier.name === "NaN";
+	return identifier.name === 'undefined' || identifier.name === 'NaN';
 }
 
 function normalizeClassWalker(
 	tree: ESTree.Node,
 	stack: string | undefined,
 ): string | null {
-	if (tree.type === "Identifier") return isFalsyIdentifier(tree) ? "" : null;
-	if (tree.type === "Literal")
-		return typeof tree.value === "string" ? tree.value : "";
-	if (tree.type === "BinaryExpression") {
-		if (tree.operator !== "+") return null;
+	if (tree.type === 'Identifier') return isFalsyIdentifier(tree) ? '' : null;
+	if (tree.type === 'Literal')
+		return typeof tree.value === 'string' ? tree.value : '';
+	if (tree.type === 'BinaryExpression') {
+		if (tree.operator !== '+') return null;
 		const left = normalizeClassWalker(tree.left, stack);
 		const right = normalizeClassWalker(tree.right, stack);
 		if (left === null || right === null) return null;
 		return `${left}${right}`;
 	}
-	if (tree.type === "TemplateLiteral") {
+	if (tree.type === 'TemplateLiteral') {
 		if (
 			tree.expressions.some(
 				(x) =>
-					x.type !== "Literal" &&
-					(x.type !== "Identifier" || !isFalsyIdentifier(x)),
+					x.type !== 'Literal' &&
+					(x.type !== 'Identifier' || !isFalsyIdentifier(x)),
 			)
 		)
 			return null;
 		return tree.quasis.reduce((a, c, i) => {
 			const v =
 				i === tree.quasis.length - 1
-					? ""
-					: (
-							tree.expressions[i] as Partial<
-								Extract<ESTree.Node, { type: "Literal" }>
-							>
-						).value;
-			return a + c.value.raw + (typeof v === "string" ? v : "");
-		}, "");
+					? ''
+					: (tree.expressions[i] as Partial<Extract<ESTree.Node, { type: 'Literal' }>>).value;
+			return a + c.value.raw + (typeof v === 'string' ? v : '');
+		}, '');
 	}
-	if (tree.type === "ArrayExpression") {
+	if (tree.type === 'ArrayExpression') {
 		const values = tree.elements.map((treeNode) => {
-			if (treeNode === null) return "";
-			if (treeNode.type === "SpreadElement")
+			if (treeNode === null) return '';
+			if (treeNode.type === 'SpreadElement') {
 				return normalizeClassWalker(treeNode.argument, stack);
+			}
 			return normalizeClassWalker(treeNode, stack);
 		});
 		if (values.some((x) => x === null)) return null;
-		return values.join(" ");
+		return values.join(' ');
 	}
-	if (tree.type === "ObjectExpression") {
+	if (tree.type === 'ObjectExpression') {
 		const values = tree.properties.map((treeNode) => {
-			if (treeNode.type === "SpreadElement")
+			if (treeNode.type === 'SpreadElement') {
 				return normalizeClassWalker(treeNode.argument, stack);
+			}
 			let x = treeNode.value;
 			let inveted = false;
-			while (x.type === "UnaryExpression" && x.operator === "!") {
+			while (x.type === 'UnaryExpression' && x.operator === '!') {
 				x = x.argument;
 				inveted = !inveted;
 			}
-			if (x.type === "Literal") {
+			if (x.type === 'Literal') {
 				if (inveted === !x.value) {
-					return treeNode.key.type === "Identifier"
+					return treeNode.key.type === 'Identifier'
 						? treeNode.computed
 							? null
 							: treeNode.key.name
-						: treeNode.key.type === "Literal"
+						: treeNode.key.type === 'Literal'
 							? treeNode.key.value
-							: "";
+							: '';
 				} else {
-					return "";
+					return '';
 				}
 			}
-			if (x.type === "Identifier") {
+			if (x.type === 'Identifier') {
 				if (inveted !== isFalsyIdentifier(x)) {
-					return "";
+					return '';
 				} else {
 					return null;
 				}
@@ -92,14 +90,14 @@ function normalizeClassWalker(
 			return null;
 		});
 		if (values.some((x) => x === null)) return null;
-		return values.join(" ");
+		return values.join(' ');
 	}
 	if (
-		tree.type !== "CallExpression" &&
-		tree.type !== "ChainExpression" &&
-		tree.type !== "ConditionalExpression" &&
-		tree.type !== "LogicalExpression" &&
-		tree.type !== "MemberExpression"
+		tree.type !== 'CallExpression' &&
+		tree.type !== 'ChainExpression' &&
+		tree.type !== 'ConditionalExpression' &&
+		tree.type !== 'LogicalExpression' &&
+		tree.type !== 'MemberExpression'
 	) {
 		console.error(
 			stack
@@ -115,7 +113,7 @@ export function normalizeClass(
 	stack?: string,
 ): string | null {
 	const walked = normalizeClassWalker(tree, stack);
-	return walked && walked.replace(/^\s+|\s+(?=\s)|\s+$/g, "");
+	return walked && walked.replace(/^\s+|\s+(?=\s)|\s+$/g, '');
 }
 
 export function unwindCssModuleClassName(
@@ -125,61 +123,55 @@ export function unwindCssModuleClassName(
 	(walk as any)(ast, {
 		enter(node: ESTree.Node, parent: ESTree.Node | null): void {
 			//#region
-			if (parent?.type !== "Program") return;
-			if (node.type !== "VariableDeclaration") return;
+			if (parent?.type !== 'Program') return;
+			if (node.type !== 'VariableDeclaration') return;
 			if (node.declarations.length !== 1) return;
-			if (node.declarations[0].id.type !== "Identifier") return;
+			if (node.declarations[0].id.type !== 'Identifier') return;
 			const name = node.declarations[0].id.name;
-			if (node.declarations[0].init?.type !== "CallExpression") return;
-			if (node.declarations[0].init.callee.type !== "Identifier") return;
-			if (node.declarations[0].init.callee.name !== "_export_sfc") return;
+			if (node.declarations[0].init?.type !== 'CallExpression') return;
+			if (node.declarations[0].init.callee.type !== 'Identifier') return;
+			if (node.declarations[0].init.callee.name !== '_export_sfc') return;
 			if (node.declarations[0].init.arguments.length !== 2) return;
-			if (node.declarations[0].init.arguments[0].type !== "Identifier") return;
+			if (node.declarations[0].init.arguments[0].type !== 'Identifier') return;
 			const ident = node.declarations[0].init.arguments[0].name;
-			if (!ident.startsWith("_sfc_main")) return;
-			if (node.declarations[0].init.arguments[1].type !== "ArrayExpression")
+			if (!ident.startsWith('_sfc_main')) return;
+			if (node.declarations[0].init.arguments[1].type !== 'ArrayExpression')
 				return;
 			if (node.declarations[0].init.arguments[1].elements.length === 0) return;
 			const __cssModulesIndex =
 				node.declarations[0].init.arguments[1].elements.findIndex((x) => {
-					if (x?.type !== "ArrayExpression") return false;
+					if (x?.type !== 'ArrayExpression') return false;
 					if (x.elements.length !== 2) return false;
-					if (x.elements[0]?.type !== "Literal") return false;
-					if (x.elements[0].value !== "__cssModules") return false;
-					if (x.elements[1]?.type !== "Identifier") return false;
+					if (x.elements[0]?.type !== 'Literal') return false;
+					if (x.elements[0].value !== '__cssModules') return false;
+					if (x.elements[1]?.type !== 'Identifier') return false;
 					return true;
 				});
 			if (!~__cssModulesIndex) return;
 			/* This region assumeed that the entered node looks like the following code.
 			 *
 			 * ```ts
-			 * const SomeComponent = _export_sfc(_sfc_main, [["foo", bar], ["__cssModules", cssModules]]);
+			 * const SomeComponent = _export_sfc(_sfc_main, [['foo', bar], ['__cssModules', cssModules]]);
 			 * ```
 			 */
 			//#endregion
 			//#region
 			const cssModuleForestName = (
-				(
-					node.declarations[0].init.arguments[1].elements[
-						__cssModulesIndex
-					] as ESTree.ArrayExpression
-				).elements[1] as Extract<ESTree.Node, { type: "Identifier" }>
+				(node.declarations[0].init.arguments[1].elements[__cssModulesIndex] as ESTree.ArrayExpression).elements[1] as Extract<ESTree.Node, { type: 'Identifier' }>
 			).name;
 			const cssModuleForestNode = parent.body.find((x) => {
-				if (x.type !== "VariableDeclaration") return false;
+				if (x.type !== 'VariableDeclaration') return false;
 				if (x.declarations.length !== 1) return false;
-				if (x.declarations[0].id.type !== "Identifier") return false;
+				if (x.declarations[0].id.type !== 'Identifier') return false;
 				if (x.declarations[0].id.name !== cssModuleForestName) return false;
-				if (x.declarations[0].init?.type !== "ObjectExpression") return false;
+				if (x.declarations[0].init?.type !== 'ObjectExpression') return false;
 				return true;
 			}) as unknown as ESTree.VariableDeclaration;
 			const moduleForest = new Map(
-				(
-					cssModuleForestNode.declarations[0].init as ESTree.ObjectExpression
-				).properties.flatMap((property) => {
-					if (property.type !== "Property") return [];
-					if (property.key.type !== "Literal") return [];
-					if (property.value.type !== "Identifier") return [];
+				(cssModuleForestNode.declarations[0].init as ESTree.ObjectExpression).properties.flatMap((property) => {
+					if (property.type !== 'Property') return [];
+					if (property.key.type !== 'Literal') return [];
+					if (property.value.type !== 'Identifier') return [];
 					return [
 						[property.key.value as string, property.value.name as string],
 					];
@@ -189,44 +181,44 @@ export function unwindCssModuleClassName(
 			 *
 			 * ```ts
 			 * const cssModules = {
-			 *   "$style": style0,
+			 *   '$style': style0,
 			 * };
 			 * ```
 			 */
 			//#endregion
 			//#region
 			const sfcMain = parent.body.find((x) => {
-				if (x.type !== "VariableDeclaration") return false;
+				if (x.type !== 'VariableDeclaration') return false;
 				if (x.declarations.length !== 1) return false;
-				if (x.declarations[0].id.type !== "Identifier") return false;
+				if (x.declarations[0].id.type !== 'Identifier') return false;
 				if (x.declarations[0].id.name !== ident) return false;
 				return true;
 			}) as unknown as ESTree.VariableDeclaration;
-			if (sfcMain.declarations[0].init?.type !== "CallExpression") return;
-			if (sfcMain.declarations[0].init.callee.type !== "Identifier") return;
-			if (sfcMain.declarations[0].init.callee.name !== "defineComponent")
+			if (sfcMain.declarations[0].init?.type !== 'CallExpression') return;
+			if (sfcMain.declarations[0].init.callee.type !== 'Identifier') return;
+			if (sfcMain.declarations[0].init.callee.name !== 'defineComponent')
 				return;
 			if (sfcMain.declarations[0].init.arguments.length !== 1) return;
-			if (sfcMain.declarations[0].init.arguments[0].type !== "ObjectExpression")
+			if (sfcMain.declarations[0].init.arguments[0].type !== 'ObjectExpression')
 				return;
 			const setup = sfcMain.declarations[0].init.arguments[0].properties.find(
 				(x) => {
-					if (x.type !== "Property") return false;
-					if (x.key.type !== "Identifier") return false;
-					if (x.key.name !== "setup") return false;
+					if (x.type !== 'Property') return false;
+					if (x.key.type !== 'Identifier') return false;
+					if (x.key.name !== 'setup') return false;
 					return true;
 				},
-			) as Extract<ESTree.Node, { type: "Property" }>;
-			if (setup.value.type !== "FunctionExpression") return;
+			) as Extract<ESTree.Node, { type: 'Property' }>;
+			if (setup.value.type !== 'FunctionExpression') return;
 			const render = setup.value.body!.body.find(
-				(x) => x.type === "ReturnStatement",
+				(x) => x.type === 'ReturnStatement',
 			)!;
-			if (render.argument?.type !== "ArrowFunctionExpression") return;
+			if (render.argument?.type !== 'ArrowFunctionExpression') return;
 			if (render.argument.params.length !== 2) return;
 			const ctx = render.argument.params[0];
-			if (ctx.type !== "Identifier") return;
-			if (ctx.name !== "_ctx") return;
-			if (render.argument.body.type !== "BlockStatement") return;
+			if (ctx.type !== 'Identifier') return;
+			if (ctx.name !== '_ctx') return;
+			if (render.argument.body.type !== 'BlockStatement') return;
 			/* This region assumed that `sfcMain` looks like the following code.
 			 *
 			 * ```ts
@@ -244,37 +236,37 @@ export function unwindCssModuleClassName(
 			for (const [key, value] of moduleForest) {
 				//#region
 				const cssModuleTreeNode = parent.body.find((x) => {
-					if (x.type !== "VariableDeclaration") return false;
+					if (x.type !== 'VariableDeclaration') return false;
 					if (x.declarations.length !== 1) return false;
-					if (x.declarations[0].id.type !== "Identifier") return false;
+					if (x.declarations[0].id.type !== 'Identifier') return false;
 					if (x.declarations[0].id.name !== value) return false;
 					return true;
 				}) as unknown as ESTree.VariableDeclaration;
-				if (cssModuleTreeNode.declarations[0].init?.type !== "ObjectExpression")
+				if (cssModuleTreeNode.declarations[0].init?.type !== 'ObjectExpression')
 					return;
 				const moduleTree = new Map(
 					cssModuleTreeNode.declarations[0].init.properties.flatMap(
 						(property) => {
-							if (property.type !== "Property") return [];
+							if (property.type !== 'Property') return [];
 							const actualKey =
-								property.key.type === "Identifier"
+								property.key.type === 'Identifier'
 									? property.key.name
-									: property.key.type === "Literal"
+									: property.key.type === 'Literal'
 										? property.key.value
 										: null;
-							if (typeof actualKey !== "string") return [];
-							if (property.value.type === "Literal")
+							if (typeof actualKey !== 'string') return [];
+							if (property.value.type === 'Literal')
 								return [[actualKey, property.value.value as string]];
-							if (property.value.type !== "Identifier") return [];
+							if (property.value.type !== 'Identifier') return [];
 							const labelledValue = property.value.name;
 							const actualValue = parent.body.find((x) => {
-								if (x.type !== "VariableDeclaration") return false;
+								if (x.type !== 'VariableDeclaration') return false;
 								if (x.declarations.length !== 1) return false;
-								if (x.declarations[0].id.type !== "Identifier") return false;
+								if (x.declarations[0].id.type !== 'Identifier') return false;
 								if (x.declarations[0].id.name !== labelledValue) return false;
 								return true;
 							}) as unknown as ESTree.VariableDeclaration;
-							if (actualValue.declarations[0].init?.type !== "Literal")
+							if (actualValue.declarations[0].init?.type !== 'Literal')
 								return [];
 							return [
 								[actualKey, actualValue.declarations[0].init.value as string],
@@ -285,8 +277,8 @@ export function unwindCssModuleClassName(
 				/* This region collected VariableDeclaration nodes in the module that looks like the following code.
 				 *
 				 * ```ts
-				 * const foo = "bar";
-				 * const baz = "qux";
+				 * const foo = 'bar';
+				 * const baz = 'qux';
 				 * const style0 = {
 				 *   foo: foo,
 				 *   baz: baz,
@@ -297,17 +289,17 @@ export function unwindCssModuleClassName(
 				//#region
 				(walk as any)(render.argument.body, {
 					enter(childNode: ESTree.Node) {
-						if (childNode.type !== "MemberExpression") return;
-						if (childNode.object.type !== "MemberExpression") return;
-						if (childNode.object.object.type !== "Identifier") return;
+						if (childNode.type !== 'MemberExpression') return;
+						if (childNode.object.type !== 'MemberExpression') return;
+						if (childNode.object.object.type !== 'Identifier') return;
 						if (childNode.object.object.name !== ctx.name) return;
-						if (childNode.object.property.type !== "Identifier") return;
+						if (childNode.object.property.type !== 'Identifier') return;
 						if (childNode.object.property.name !== key) return;
-						if (childNode.property.type !== "Identifier") return;
+						if (childNode.property.type !== 'Identifier') return;
 						const actualValue = moduleTree.get(childNode.property.name);
 						if (actualValue === undefined) return;
 						this.replace({
-							type: "Literal",
+							type: 'Literal',
 							value: actualValue,
 						});
 					},
@@ -320,7 +312,7 @@ export function unwindCssModuleClassName(
 				 *     ...
 				 *     return (_ctx, _cache) => {
 				 *       ...
-				 *       return openBlock(), createElementBlock("div", {
+				 *       return openBlock(), createElementBlock('div', {
 				 *         class: normalizeClass(_ctx.$style.foo),
 				 *       }, null);
 				 *     };
@@ -336,8 +328,8 @@ export function unwindCssModuleClassName(
 				 *     ...
 				 *     return (_ctx, _cache) => {
 				 *       ...
-				 *       return openBlock(), createElementBlock("div", {
-				 *         class: normalizeClass("bar"),
+				 *       return openBlock(), createElementBlock('div', {
+				 *         class: normalizeClass('bar'),
 				 *       }, null);
 				 *     };
 				 *   },
@@ -347,17 +339,17 @@ export function unwindCssModuleClassName(
 				//#region
 				(walk as any)(render.argument.body, {
 					enter(childNode: ESTree.Node) {
-						if (childNode.type !== "MemberExpression") return;
-						if (childNode.object.type !== "MemberExpression") return;
-						if (childNode.object.object.type !== "Identifier") return;
+						if (childNode.type !== 'MemberExpression') return;
+						if (childNode.object.type !== 'MemberExpression') return;
+						if (childNode.object.object.type !== 'Identifier') return;
 						if (childNode.object.object.name !== ctx.name) return;
-						if (childNode.object.property.type !== "Identifier") return;
+						if (childNode.object.property.type !== 'Identifier') return;
 						if (childNode.object.property.name !== key) return;
-						if (childNode.property.type !== "Identifier") return;
+						if (childNode.property.type !== 'Identifier') return;
 						console.error(
 							`Undefined style detected: ${key}.${childNode.property.name} (in ${name})`,
 						);
-						magicString.overwrite(childNode.start, childNode.end, "undefined");
+						magicString.overwrite(childNode.start, childNode.end, 'undefined');
 					},
 				});
 				/* This region replaced the reference identifier of missing class names in the render function with `undefined`, as in the following code.
@@ -368,7 +360,7 @@ export function unwindCssModuleClassName(
 				 *     ...
 				 *     return (_ctx, _cache) => {
 				 *       ...
-				 *       return openBlock(), createElementBlock("div", {
+				 *       return openBlock(), createElementBlock('div', {
 				 *         class: normalizeClass(_ctx.$style.hoge),
 				 *       }, null);
 				 *     };
@@ -384,7 +376,7 @@ export function unwindCssModuleClassName(
 				 *     ...
 				 *     return (_ctx, _cache) => {
 				 *       ...
-				 *       return openBlock(), createElementBlock("div", {
+				 *       return openBlock(), createElementBlock('div', {
 				 *         class: normalizeClass(undefined),
 				 *       }, null);
 				 *     };
@@ -396,9 +388,9 @@ export function unwindCssModuleClassName(
 				//#region
 				(walk as any)(render.argument.body, {
 					enter(childNode: ESTree.Node) {
-						if (childNode.type !== "CallExpression") return;
-						if (childNode.callee.type !== "Identifier") return;
-						if (childNode.callee.name !== "normalizeClass") return;
+						if (childNode.type !== 'CallExpression') return;
+						if (childNode.callee.type !== 'Identifier') return;
+						if (childNode.callee.name !== 'normalizeClass') return;
 						if (childNode.arguments.length !== 1) return;
 						const normalized = normalizeClass(childNode.arguments[0], name);
 						if (normalized === null) return;
@@ -417,8 +409,8 @@ export function unwindCssModuleClassName(
 				 *     ...
 				 *     return (_ctx, _cache) => {
 				 *       ...
-				 *       return openBlock(), createElementBlock("div", {
-				 *         class: normalizeClass("bar"),
+				 *       return openBlock(), createElementBlock('div', {
+				 *         class: normalizeClass('bar'),
 				 *       }, null);
 				 *     };
 				 *   },
@@ -433,8 +425,8 @@ export function unwindCssModuleClassName(
 				 *     ...
 				 *     return (_ctx, _cache) => {
 				 *       ...
-				 *       return openBlock(), createElementBlock("div", {
-				 *         class: "bar",
+				 *       return openBlock(), createElementBlock('div', {
+				 *         class: 'bar',
 				 *       }, null);
 				 *     };
 				 *   },
@@ -447,7 +439,7 @@ export function unwindCssModuleClassName(
 			if (node.declarations[0].init.arguments[1].elements.length === 1) {
 				(walk as any)(ast, {
 					enter(childNode: ESTree.Node) {
-						if (childNode.type !== "Identifier") return;
+						if (childNode.type !== 'Identifier') return;
 						if (childNode.name !== ident) return;
 						magicString.overwrite(childNode.start, childNode.end, name);
 					},
@@ -492,13 +484,13 @@ export function unwindCssModuleClassName(
 			/* This region removed the `__cssModules` reference from the second argument of `_export_sfc`, as in the following code.
 			 *
 			 * ```ts
-			 * const SomeComponent = _export_sfc(_sfc_main, [["foo", bar], ["__cssModules", cssModules]]);
+			 * const SomeComponent = _export_sfc(_sfc_main, [['foo', bar], ['__cssModules', cssModules]]);
 			 * ```
 			 *
 			 * ↓
 			 *
 			 * ```ts
-			 * const SomeComponent = _export_sfc(_sfc_main, [["foo", bar]]);
+			 * const SomeComponent = _export_sfc(_sfc_main, [['foo', bar]]);
 			 * ```
 			 *
 			 * When the declaration becomes noop, it is removed as follows.
@@ -525,7 +517,7 @@ export function unwindCssModuleClassName(
 // eslint-disable-next-line import/no-default-export
 export default function pluginUnwindCssModuleClassName(): Plugin {
 	return {
-		name: "UnwindCssModuleClassName",
+		name: 'UnwindCssModuleClassName',
 		renderChunk(code, _chunk, _options, meta) {
 			const ast = this.parse(code);
 			const magicString = meta.magicString ?? new RolldownMagicString(code);
