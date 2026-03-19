@@ -38,9 +38,13 @@ minimumReleaseAge: 10080 # delay 7days to mitigate supply-chain attack
 minimumReleaseAgeExclude:
   - '@syuilo/aiscript'
   - '@vizejs/*'
-  - '@oxc-project/*'
+  - 'vite'
+  - 'lightningcss'
+  - 'lightningcss-*'
+  - 'rolldown'
   - '@rolldown/*'
-  - rolldown
-  - vite
+  - '@oxc-project/*'
+  - 'vitest'
+  - '@vitest/*'
   - 'tar' # 脆弱性対応 そのうち消す
   - 'fastify' # 脆弱性対応 そのうち消す

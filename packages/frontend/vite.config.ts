@@ -1,9 +1,9 @@
 import path from 'path';
-import pluginReplace from '@rollup/plugin-replace';
 // import pluginVue from '@vitejs/plugin-vue';
 import pluginVue from '@vizejs/vite-plugin';
 import pluginGlsl from 'vite-plugin-glsl';
 import pluginInspect from 'vite-plugin-inspect';
+import { replacePlugin } from 'rolldown/plugins';
 import type { UserConfig } from 'vite';
 import { defineConfig } from 'vite';
 import * as yaml from 'js-yaml';
@@ -13,13 +13,13 @@ import locales from 'i18n';
 import meta from '../../package.json';
 import packageInfo from './package.json' with { type: 'json' };
 import pluginUnwindCssModuleClassName from './lib/rollup-plugin-unwind-css-module-class-name.js';
-import pluginJson5 from './vite.json5.js';
+import pluginJson5 from './lib/vite-plugin-json5.js';
 import type { Options as SearchIndexOptions } from './lib/vite-plugin-create-search-index.js';
 import pluginCreateSearchIndex from './lib/vite-plugin-create-search-index.js';
 import pluginWatchLocales from './lib/vite-plugin-watch-locales.js';
 import { pluginRemoveUnrefI18n } from '../frontend-builder/rollup-plugin-remove-unref-i18n.js';
 
-const url = process.env.NODE_ENV === 'development' ? yaml.load(await fsp.readFile('../../.config/default.yml', 'utf-8')).url : null;
+const url = process.env.NODE_ENV === 'development' ? (yaml.load(await fsp.readFile('../../.config/default.yml', 'utf-8')) as any).url : null;
 const host = url ? (new URL(url)).hostname : undefined;
 
 const extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json', '.json5', '.svg', '.sass', '.scss', '.css', '.vue'];
@@ -124,11 +124,10 @@ export function getConfig(): UserConfig {
 			pluginInspect({ build: true }),
 			...process.env.NODE_ENV === 'production'
 				? [
-					pluginReplace({
+					replacePlugin({
+						'isChromatic()': JSON.stringify(false),
+					}, {
 						preventAssignment: true,
-						values: {
-							'isChromatic()': JSON.stringify(false),
-						},
 					}),
 				]
 				: [],
@@ -177,6 +176,9 @@ export function getConfig(): UserConfig {
 			],
 			manifest: 'manifest.json',
 			rolldownOptions: {
+				experimental: {
+					nativeMagicString: true,
+				},
 				input: {
 					i18n: './src/i18n.ts',
 					entry: './src/_boot_.ts',
@@ -192,7 +194,8 @@ export function getConfig(): UserConfig {
 							name: 'photoswipe',
 							test: /node_modules[\\/]photoswipe/,
 						}, {
-							name: 'i18n',
+							// dependencies of i18n.ts
+							name: 'config',
 							test: /@@[\\/]js[\\/]config\.js/,
 						}],
 					},
