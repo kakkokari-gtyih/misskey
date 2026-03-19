@@ -192,8 +192,7 @@ export function unwindCssModuleClassName(ast: ESTree.Node, magicString: Rolldown
 					if (x.declarations[0].id.name !== value) return false;
 					return true;
 				}) as unknown as ESTree.VariableDeclaration;
-				if (cssModuleTreeNode.declarations[0].init?.type !== 'ObjectExpression')
-					return;
+				if (cssModuleTreeNode.declarations[0].init?.type !== 'ObjectExpression') return;
 				const moduleTree = new Map(cssModuleTreeNode.declarations[0].init.properties.flatMap((property) => {
 					if (property.type !== 'Property') return [];
 					const actualKey = property.key.type === 'Identifier' ? property.key.name : property.key.type === 'Literal' ? property.key.value : null;
@@ -408,13 +407,13 @@ export function unwindCssModuleClassName(ast: ESTree.Node, magicString: Rolldown
 			/* This region removed the `__cssModules` reference from the second argument of `_export_sfc`, as in the following code.
 			 *
 			 * ```ts
-			 * const SomeComponent = _export_sfc(_sfc_main, [['foo', bar], ['__cssModules', cssModules]]);
+			 * const SomeComponent = _export_sfc(_sfc_main, [["foo", bar], ["__cssModules", cssModules]]);
 			 * ```
 			 *
 			 * ↓
 			 *
 			 * ```ts
-			 * const SomeComponent = _export_sfc(_sfc_main, [['foo', bar]]);
+			 * const SomeComponent = _export_sfc(_sfc_main, [["foo", bar]]);
 			 * ```
 			 *
 			 * When the declaration becomes noop, it is removed as follows.
