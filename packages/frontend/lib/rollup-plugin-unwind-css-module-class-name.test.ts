@@ -3,85 +3,64 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { describe, expect, it } from "vitest";
-import {
-	normalizeClass,
-	unwindCssModuleClassName,
-} from "./rollup-plugin-unwind-css-module-class-name.js";
-import { parseAst } from "rolldown/parseAst";
-import type { ESTree } from "rolldown/utils";
-import { RolldownMagicString } from "rolldown";
+import { describe, expect, it } from 'vitest';
+import { normalizeClass, unwindCssModuleClassName } from './rollup-plugin-unwind-css-module-class-name.js';
+import { parseAst } from 'rolldown/parseAst';
+import type { ESTree } from 'rolldown/utils';
+import { RolldownMagicString } from 'rolldown';
 
 function parseExpression(code: string): ESTree.Expression {
-	const program = parseAst(code, {
-		sourceType: "module",
-	});
+	const program = parseAst(code, { sourceType: 'module' });
 	const statement = program.body[0] as ESTree.ExpressionStatement;
 	return statement.expression;
 }
 
 describe(normalizeClass.name, () => {
-	it("should normalize string", () => {
-		expect(normalizeClass(parseExpression('"a b c"'))).toBe("a b c");
+	it('should normalize string', () => {
+		expect(normalizeClass(parseExpression('"a b c"'))).toBe('a b c');
 	});
-	it("should trim redundant spaces", () => {
-		expect(normalizeClass(parseExpression('" a b  c "'))).toBe("a b c");
+	it('should trim redundant spaces', () => {
+		expect(normalizeClass(parseExpression('" a b  c "'))).toBe('a b c');
 	});
-	it("should ignore undefined", () => {
-		expect(normalizeClass(parseExpression("undefined"))).toBe("");
+	it('should ignore undefined', () => {
+		expect(normalizeClass(parseExpression('undefined'))).toBe('');
 	});
-	it("should ignore non string literals", () => {
-		expect(normalizeClass(parseExpression("0"))).toBe("");
-		expect(normalizeClass(parseExpression("true"))).toBe("");
-		expect(normalizeClass(parseExpression("null"))).toBe("");
-		expect(normalizeClass(parseExpression("/I.D/"))).toBe("");
+	it('should ignore non string literals', () => {
+		expect(normalizeClass(parseExpression('0'))).toBe('');
+		expect(normalizeClass(parseExpression('true'))).toBe('');
+		expect(normalizeClass(parseExpression('null'))).toBe('');
+		expect(normalizeClass(parseExpression('/I.D/'))).toBe('');
 	});
-	it("should not normalize identifiers", () => {
-		expect(normalizeClass(parseExpression("EScape"))).toBeNull();
+	it('should not normalize identifiers', () => {
+		expect(normalizeClass(parseExpression('EScape'))).toBeNull();
 	});
-	it("should normalize recursively array", () => {
-		expect(normalizeClass(parseExpression('["from", ...["Utopia"]]'))).toBe(
-			"from Utopia",
-		);
+	it('should normalize recursively array', () => {
+		expect(normalizeClass(parseExpression('["from", ...["Utopia"]]'))).toBe('from Utopia');
 		expect(normalizeClass(parseExpression('["from", ...[Utopia]]'))).toBeNull();
 	});
-	it("should normalize recursively template literal", () => {
+	it('should normalize recursively template literal', () => {
 		expect(
 			normalizeClass(parseExpression('`name ${"shiho"} code ${33}`')),
-		).toBe("name shiho code");
+		).toBe('name shiho code');
 		expect(
 			normalizeClass(parseExpression("`name ${shiho.name} code ${33}`")),
 		).toBeNull();
 	});
-	it("should normalize recursively binary expression", () => {
-		expect(normalizeClass(parseExpression('"mirage" + "mirror"'))).toBe(
-			"miragemirror",
-		);
+	it('should normalize recursively binary expression', () => {
+		expect(normalizeClass(parseExpression('"mirage" + "mirror"'))).toBe('miragemirror');
 		expect(normalizeClass(parseExpression('"mirage" + mirror'))).toBeNull();
 	});
-	it("should normalize recursively object expression", () => {
-		expect(normalizeClass(parseExpression('({ a: true, b: "c" })'))).toBe(
-			"a b",
-		);
-		expect(normalizeClass(parseExpression('({ a: false, b: "c" })'))).toBe("b");
-		expect(normalizeClass(parseExpression("({ a: true, b: c })"))).toBeNull();
-		expect(
-			normalizeClass(
-				parseExpression('({ a: true, b: "c", ...({ d: true }) })'),
-			),
-		).toBe("a b d");
-		expect(
-			normalizeClass(parseExpression('({ a: true, [b]: "c" })')),
-		).toBeNull();
-		expect(
-			normalizeClass(
-				parseExpression("({ a: true, b: false, c: !false, d: !!0 })"),
-			),
-		).toBe("a c");
+	it('should normalize recursively object expression', () => {
+		expect(normalizeClass(parseExpression('({ a: true, b: "c" })'))).toBe('a b');
+		expect(normalizeClass(parseExpression('({ a: false, b: "c" })'))).toBe('b');
+		expect(normalizeClass(parseExpression('({ a: true, b: c })'))).toBeNull();
+		expect(normalizeClass(parseExpression('({ a: true, b: "c", ...({ d: true }) })'))).toBe('a b d');
+		expect(normalizeClass(parseExpression('({ a: true, [b]: "c" })'))).toBeNull();
+		expect(normalizeClass(parseExpression('({ a: true, b: false, c: !false, d: !!0 })'))).toBe('a c');
 	});
 });
 
-it("Composition API (standard)", () => {
+it('Composition API (standard)', () => {
 	const code = `
 import { c as api, d as store, i as i18n, aD as notePage, bN as ImgWithBlurhash, bY as getStaticImageUrl, _ as _export_sfc } from './app-!~{001}~.js';
 import { M as MkContainer } from './MkContainer-!~{03M}~.js';
@@ -196,7 +175,7 @@ const index_photos = /* @__PURE__ */ _export_sfc(_sfc_main, [["__cssModules", cs
 
 export { index_photos as default };
 `.slice(1);
-	const ast = parseAst(code, { sourceType: "module" });
+	const ast = parseAst(code, { sourceType: 'module' });
 	const magicString = new RolldownMagicString(code);
 	unwindCssModuleClassName(ast, magicString);
 	expect(magicString.toString()).toBe(
@@ -317,7 +296,7 @@ export { index_photos as default };
 	);
 });
 
-it("Composition API (with `useCssModule()`)", () => {
+it('Composition API (with `useCssModule()`)', () => {
 	const code = `
 import { a7 as getCurrentInstance, b as defineComponent, G as useCssModule, a1 as h, H as TransitionGroup } from './!~{002}~.js';
 import { d as store, aK as toast, b5 as MkAd, i as i18n, _ as _export_sfc } from './app-!~{001}~.js';
@@ -490,7 +469,7 @@ const MkDateSeparatedList = /* @__PURE__ */ _export_sfc(_sfc_main, [["__cssModul
 
 export { MkDateSeparatedList as M };
 `.slice(1);
-	const ast = parseAst(code, { sourceType: "module" });
+	const ast = parseAst(code, { sourceType: 'module' });
 	const magicString = new RolldownMagicString(code);
 	unwindCssModuleClassName(ast, magicString);
 	expect(magicString.toString()).toBe(
@@ -665,6 +644,5 @@ const cssModules = {
 const MkDateSeparatedList = /* @__PURE__ */ _export_sfc(_sfc_main, [["__cssModules", cssModules]]);
 
 export { MkDateSeparatedList as M };
-`.slice(1),
-	);
+`.slice(1));
 });
