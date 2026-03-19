@@ -39,12 +39,8 @@ describe(normalizeClass.name, () => {
 		expect(normalizeClass(parseExpression('["from", ...[Utopia]]'))).toBeNull();
 	});
 	it('should normalize recursively template literal', () => {
-		expect(
-			normalizeClass(parseExpression('`name ${"shiho"} code ${33}`')),
-		).toBe('name shiho code');
-		expect(
-			normalizeClass(parseExpression("`name ${shiho.name} code ${33}`")),
-		).toBeNull();
+		expect(normalizeClass(parseExpression('`name ${"shiho"} code ${33}`'))).toBe('name shiho code');
+		expect(normalizeClass(parseExpression("`name ${shiho.name} code ${33}`"))).toBeNull();
 	});
 	it('should normalize recursively binary expression', () => {
 		expect(normalizeClass(parseExpression('"mirage" + "mirror"'))).toBe('miragemirror');
