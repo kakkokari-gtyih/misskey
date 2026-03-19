@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { walk } from '../node_modules/estree-walker/src/index.js';
+import * as estreeWalker from 'estree-walker';
 import type { Plugin } from 'vite';
 import type { ESTree } from 'rolldown/utils';
 import { RolldownMagicString } from 'rolldown';
@@ -120,7 +120,7 @@ export function unwindCssModuleClassName(
 	ast: ESTree.Node,
 	magicString: RolldownMagicString,
 ): void {
-	(walk as any)(ast, {
+	(estreeWalker.walk as any)(ast, {
 		enter(node: ESTree.Node, parent: ESTree.Node | null): void {
 			//#region
 			if (parent?.type !== 'Program') return;
@@ -287,7 +287,7 @@ export function unwindCssModuleClassName(
 				 */
 				//#endregion
 				//#region
-				(walk as any)(render.argument.body, {
+				(estreeWalker.walk as any)(render.argument.body, {
 					enter(childNode: ESTree.Node) {
 						if (childNode.type !== 'MemberExpression') return;
 						if (childNode.object.type !== 'MemberExpression') return;
@@ -337,7 +337,7 @@ export function unwindCssModuleClassName(
 				 */
 				//#endregion
 				//#region
-				(walk as any)(render.argument.body, {
+				(estreeWalker.walk as any)(render.argument.body, {
 					enter(childNode: ESTree.Node) {
 						if (childNode.type !== 'MemberExpression') return;
 						if (childNode.object.type !== 'MemberExpression') return;
@@ -386,7 +386,7 @@ export function unwindCssModuleClassName(
 				 */
 				//#endregion
 				//#region
-				(walk as any)(render.argument.body, {
+				(estreeWalker.walk as any)(render.argument.body, {
 					enter(childNode: ESTree.Node) {
 						if (childNode.type !== 'CallExpression') return;
 						if (childNode.callee.type !== 'Identifier') return;
@@ -437,7 +437,7 @@ export function unwindCssModuleClassName(
 			}
 			//#region
 			if (node.declarations[0].init.arguments[1].elements.length === 1) {
-				(walk as any)(ast, {
+				(estreeWalker.walk as any)(ast, {
 					enter(childNode: ESTree.Node) {
 						if (childNode.type !== 'Identifier') return;
 						if (childNode.name !== ident) return;
