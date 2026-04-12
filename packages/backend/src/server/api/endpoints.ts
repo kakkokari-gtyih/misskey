@@ -24,6 +24,12 @@ interface IEndpointMetaBase {
 	readonly res?: Schema;
 
 	/**
+	 * JWTが持つデータ以上のユーザーデータを取得するか
+	 * 省略した場合は false として解釈されます。
+	 */
+	readonly requireFullUserData?: boolean;
+
+	/**
 	 * このエンドポイントにリクエストするのにユーザー情報が必須か否か
 	 * 省略した場合は false として解釈されます。
 	 */
@@ -107,22 +113,32 @@ interface IEndpointMetaBase {
 	readonly cacheSec?: number;
 }
 
-export type IEndpointMeta = (Omit<IEndpointMetaBase, 'requireCrential' | 'requireModerator' | 'requireAdmin'> & {
-	requireCredential?: false,
-	requireAdmin?: false,
-	requireModerator?: false,
-}) | (Omit<IEndpointMetaBase, 'secure'> & {
-	secure: true,
-}) | (Omit<IEndpointMetaBase, 'requireCredential' | 'kind'> & {
-	requireCredential: true,
-	kind: (typeof permissions)[number],
-}) | (Omit<IEndpointMetaBase, 'requireModerator' | 'kind'> & {
-	requireModerator: true,
-	kind: (typeof permissions)[number],
-}) | (Omit<IEndpointMetaBase, 'requireAdmin' | 'kind'> & {
-	requireAdmin: true,
-	kind: (typeof permissions)[number],
-});
+interface IEndpointMetaNoCredential extends IEndpointMetaBase {
+	readonly requireCredential?: false;
+	readonly requireAdmin?: false;
+	readonly requireModerator?: false;
+}
+
+interface IEndpointMetaSecure extends IEndpointMetaBase {
+	readonly secure: true;
+}
+
+interface IEndpointMetaWithPermission extends IEndpointMetaBase {
+	readonly requireCredential: true;
+	readonly kind: (typeof permissions)[number];
+}
+
+interface IEndpointMetaRequireModerator extends IEndpointMetaBase {
+	readonly requireModerator: true;
+	readonly kind: (typeof permissions)[number];
+}
+
+interface IEndpointMetaRequireAdmin extends IEndpointMetaBase {
+	readonly requireAdmin: true;
+	readonly kind: (typeof permissions)[number];
+}
+
+export type IEndpointMeta = IEndpointMetaNoCredential | IEndpointMetaSecure | IEndpointMetaWithPermission | IEndpointMetaRequireModerator | IEndpointMetaRequireAdmin;
 
 export interface IEndpoint {
 	name: string;

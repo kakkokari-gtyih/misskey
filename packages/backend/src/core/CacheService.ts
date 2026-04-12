@@ -18,6 +18,7 @@ import type { OnApplicationShutdown } from '@nestjs/common';
 export class CacheService implements OnApplicationShutdown {
 	public userByIdCache: MemoryKVCache<MiUser>;
 	public localUserByNativeTokenCache: MemoryKVCache<MiLocalUser | null>;
+	public localUserIdByNativeTokenCache: MemoryKVCache<MiLocalUser['id']>;
 	public localUserByIdCache: MemoryKVCache<MiLocalUser>;
 	public uriPersonCache: MemoryKVCache<MiUser | null>;
 	public userProfileCache: RedisKVCache<MiUserProfile>;
@@ -58,6 +59,7 @@ export class CacheService implements OnApplicationShutdown {
 
 		this.userByIdCache = new MemoryKVCache<MiUser>(1000 * 60 * 5); // 5m
 		this.localUserByNativeTokenCache = new MemoryKVCache<MiLocalUser | null>(1000 * 60 * 5); // 5m
+		this.localUserIdByNativeTokenCache = new MemoryKVCache<MiLocalUser['id']>(1000 * 60 * 5); // 5m
 		this.localUserByIdCache = new MemoryKVCache<MiLocalUser>(1000 * 60 * 5); // 5m
 		this.uriPersonCache = new MemoryKVCache<MiUser | null>(1000 * 60 * 5); // 5m
 
@@ -158,6 +160,8 @@ export class CacheService implements OnApplicationShutdown {
 					const user = await this.usersRepository.findOneByOrFail({ id: body.id }) as MiLocalUser;
 					this.localUserByNativeTokenCache.delete(body.oldToken);
 					this.localUserByNativeTokenCache.set(body.newToken, user);
+					this.localUserIdByNativeTokenCache.delete(body.oldToken);
+					this.localUserIdByNativeTokenCache.set(body.newToken, user.id);
 					break;
 				}
 				case 'follow': {
@@ -184,6 +188,7 @@ export class CacheService implements OnApplicationShutdown {
 		this.redisForSub.off('message', this.onMessage);
 		this.userByIdCache.dispose();
 		this.localUserByNativeTokenCache.dispose();
+		this.localUserIdByNativeTokenCache.dispose();
 		this.localUserByIdCache.dispose();
 		this.uriPersonCache.dispose();
 		this.userProfileCache.dispose();

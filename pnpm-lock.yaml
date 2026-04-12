@@ -255,6 +255,9 @@ importers:
       is-svg:
         specifier: 6.1.0
         version: 6.1.0
+      jose:
+        specifier: 6.2.2
+        version: 6.2.2
       json5:
         specifier: 2.2.3
         version: 2.2.3
@@ -7928,6 +7931,9 @@ packages:
   joi@18.0.2:
     resolution: {integrity: sha512-RuCOQMIt78LWnktPoeBL0GErkNaJPTBGcYuyaBvUOQSpcpcLfWrHPPihYdOGbV5pam9VTWbeoF7TsGiHugcjGA==}
     engines: {node: '>= 20'}
+
+  jose@6.2.2:
+    resolution: {integrity: sha512-d7kPDd34KO/YnzaDOlikGpOurfF0ByC2sEV4cANCtdqLlTfBlw2p14O/5d/zv40gJPbIQxfES3nSx1/oYNyuZQ==}
 
   js-beautify@1.15.4:
     resolution: {integrity: sha512-9/KXeZUKKJwqCXUdBxFJ3vPh467OCckSBmYDwSK/EtV090K+iMJ7zx2S3HLVDIWFQdqMIsZWbnaGiba18aWhaA==}
@@ -19334,6 +19340,8 @@ snapshots:
       '@hapi/tlds': 1.1.4
       '@hapi/topo': 6.0.2
       '@standard-schema/spec': 1.1.0
+
+  jose@6.2.2: {}
 
   js-beautify@1.15.4:
     dependencies:

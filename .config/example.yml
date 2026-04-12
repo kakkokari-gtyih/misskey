@@ -73,6 +73,15 @@
 #
 # setupPassword: example_password_please_change_this_or_you_will_get_hacked
 
+#   ┌──────────────────┐
+#───┘ Token Generation └─────────────────────────────────────────────────────
+
+# Specify a secret string for token generation.  This is used for
+# generating various tokens, such as session tokens and API tokens.
+# It is recommended to set this to a long random string.
+# This value is required to be set.
+tokenSecret: example_token_secret_please_change_this_or_you_will_get_hacked
+
 #   ┌─────┐
 #───┘ URL └─────────────────────────────────────────────────────
 

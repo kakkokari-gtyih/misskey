@@ -75,6 +75,7 @@ type Source = {
 	publishTarballInsteadOfProvideRepositoryUrl?: boolean;
 
 	setupPassword?: string;
+	tokenSecret: string;
 
 	proxy?: string;
 	proxySmtp?: string;
@@ -179,6 +180,7 @@ export type Config = {
 	version: string;
 	publishTarballInsteadOfProvideRepositoryUrl: boolean;
 	setupPassword: string | undefined;
+	tokenSecret: string;
 	host: string;
 	hostname: string;
 	scheme: string;
@@ -271,6 +273,7 @@ export function loadConfig(): Config {
 		version,
 		publishTarballInsteadOfProvideRepositoryUrl: !!config.publishTarballInsteadOfProvideRepositoryUrl,
 		setupPassword: config.setupPassword,
+		tokenSecret: config.tokenSecret,
 		url: url.origin,
 		port: config.port ?? parseInt(process.env.PORT ?? '', 10),
 		socket: config.socket,
