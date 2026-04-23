@@ -7,7 +7,6 @@ import { parseAst } from 'rolldown/parseAst';
 import * as estreeWalker from 'estree-walker';
 import type { ESTree as RolldownESTree } from 'rolldown/utils';
 import { assertNever, assertType } from '../utils.js';
-import type { AstNode } from 'rollup';
 import type * as estree from 'estree';
 import type { LocaleInliner, TextModification } from '../locale-inliner.js';
 import type { Logger } from '../logger.js';

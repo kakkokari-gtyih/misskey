@@ -642,3 +642,89 @@ const MkDateSeparatedList = /* @__PURE__ */ _export_sfc(_sfc_main, [["__cssModul
 export { MkDateSeparatedList as M };
 `.slice(1));
 });
+
+it('Composition API (inlined output)', () => {
+	const code = `
+import { a as normalizeClass, b as defineComponent, c as _export_sfc } from './runtime.js';
+
+const CurrentComponent = /* @__PURE__ */ _export_sfc(defineComponent({
+  __name: "CurrentComponent",
+  setup() {
+    return (e, n) => h("div", {
+      class: normalizeClass([e.$style.root, "extra"])
+    }, null, 2);
+  }
+}), [["__cssModules", {
+  "$style": {
+    root: "x1234"
+  }
+}]]);
+
+export { CurrentComponent as default };
+`.slice(1);
+	const ast = parseAst(code, { sourceType: 'module' });
+	const magicString = new RolldownMagicString(code);
+	unwindCssModuleClassName(ast, magicString);
+	const output = magicString.toString();
+	expect(output).toContain('class: "x1234 extra"');
+	expect(output).toContain('defineComponent({');
+	expect(output).toContain('}), []);');
+	expect(output).not.toContain('$style');
+});
+
+it('should keep cssModules when unresolved references remain', () => {
+  const code = `
+import { a as normalizeClass, b as defineComponent, c as _export_sfc } from './runtime.js';
+
+const CurrentComponent = /* @__PURE__ */ _export_sfc(defineComponent({
+  __name: "CurrentComponent",
+  setup() {
+    return (e, n) => h("div", {
+      class: normalizeClass([e.$style.root, e.$style[side]])
+    }, null, 2);
+  }
+}), [["__cssModules", {
+  "$style": {
+    root: "x1234"
+  }
+}]]);
+
+export { CurrentComponent as default };
+`.slice(1);
+  const ast = parseAst(code, { sourceType: 'module' });
+  const magicString = new RolldownMagicString(code);
+  unwindCssModuleClassName(ast, magicString);
+  const output = magicString.toString();
+  expect(output).toContain('e.$style[side]');
+  expect(output).toContain('__cssModules');
+  expect(output).not.toContain('}), []);');
+});
+
+it('should inline cssModules references used inside class expressions', () => {
+	const code = `
+import { a as classHelper, b as defineComponent, c as _export_sfc } from './runtime.js';
+
+const CurrentComponent = /* @__PURE__ */ _export_sfc(defineComponent({
+  __name: "CurrentComponent",
+  setup() {
+    return (e, n) => h("div", {
+      class: classHelper([e.$style.root, { [e.$style.main]: isActive }])
+    }, null, 2);
+  }
+}), [["__cssModules", {
+  "$style": {
+    root: "x1234",
+    main: "x5678"
+  }
+}]]);
+
+export { CurrentComponent as default };
+`.slice(1);
+	const ast = parseAst(code, { sourceType: 'module' });
+	const magicString = new RolldownMagicString(code);
+	unwindCssModuleClassName(ast, magicString);
+	const output = magicString.toString();
+	expect(output).toContain('class: classHelper(["x1234", { ["x5678"]: isActive }])');
+	expect(output).toContain('}), []);');
+	expect(output).not.toContain('$style');
+});
