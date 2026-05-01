@@ -25,11 +25,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 					<div v-if="$i.twoFactorEnabled" class="_gaps_s">
 						<div>{{ i18n.ts._2fa.alreadyRegistered }}</div>
-						<template v-if="$i.securityKeysList!.length > 0">
+						<div class="_buttons">
 							<MkButton @click="renewTOTP">{{ i18n.ts._2fa.renewTOTP }}</MkButton>
-							<MkInfo>{{ i18n.ts._2fa.whyTOTPOnlyRenew }}</MkInfo>
-						</template>
-						<MkButton v-else danger @click="unregisterTOTP">{{ i18n.ts.unregister }}</MkButton>
+							<MkButton danger @click="unregisterTOTP">{{ i18n.ts.unregister }}</MkButton>
+						</div>
 					</div>
 
 					<div v-else-if="!$i.twoFactorEnabled" class="_gaps_s">
