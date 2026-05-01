@@ -184,6 +184,10 @@ export class ApiCallService implements OnApplicationShutdown {
 				user = await this.usersRepository.findOneBy({ id: user.id }) as MiLocalUser ?? null;
 			}
 
+			if (endpoint.meta.requireCredential && user == null) {
+				throw new AuthenticationError('User info not found');
+			}
+
 			this.call(endpoint, user, aRes.accessToken, body, null, request).then((res) => {
 				if (request.method === 'GET' && endpoint.meta.cacheSec && !token && !user) {
 					reply.header('Cache-Control', `public, max-age=${endpoint.meta.cacheSec}`);
