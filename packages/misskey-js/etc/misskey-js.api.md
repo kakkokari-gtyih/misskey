@@ -1484,6 +1484,8 @@ declare namespace entities {
         SigninFlowInitRequest,
         SigninFlowContinueRequest,
         SigninFlowRequest,
+        SigninFlowInitResponse,
+        SigninFlowContinueResponse,
         SigninFlowResponse,
         PartialRolePolicyOverride,
         EmptyRequest,
@@ -3499,14 +3501,29 @@ type Signin = components['schemas']['Signin'];
 type SigninFlowContinueRequest = SigninFlowContinueRequestUsername | SigninFlowContinueRequestPassword | SigninFlowContinueRequestPasskey | SigninFlowContinueRequestTotp;
 
 // @public (undocumented)
+type SigninFlowContinueResponse = {
+    next: 'password' | 'totp';
+} | {
+    next: 'passkey';
+    passkeyOptions: PublicKeyCredentialRequestOptionsJSON_2;
+} | {
+    id: string;
+    accessToken: string;
+    refreshToken: string;
+};
+
+// @public (undocumented)
 type SigninFlowInitRequest = {};
+
+// @public (undocumented)
+type SigninFlowInitResponse = {
+    sessionId: string;
+    passkeyOptions: PublicKeyCredentialRequestOptionsJSON_2;
+};
 
 // @public (undocumented)
 type SigninFlowRequest = SigninFlowInitRequest | SigninFlowContinueRequest;
 
-// Warning: (ae-forgotten-export) The symbol "SigninFlowInitResponse" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "SigninFlowContinueResponse" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse;
 

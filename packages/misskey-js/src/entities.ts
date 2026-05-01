@@ -320,12 +320,12 @@ export type SigninFlowContinueRequest = SigninFlowContinueRequestUsername | Sign
 
 export type SigninFlowRequest = SigninFlowInitRequest | SigninFlowContinueRequest;
 
-type SigninFlowInitResponse = {
+export type SigninFlowInitResponse = {
 	sessionId: string;
 	passkeyOptions: PublicKeyCredentialRequestOptionsJSON;
 };
 
-type SigninFlowContinueResponse = {
+export type SigninFlowContinueResponse = {
 	next: 'password' | 'totp';
 } | {
 	next: 'passkey';
