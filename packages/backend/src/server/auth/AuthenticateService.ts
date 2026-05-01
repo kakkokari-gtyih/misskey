@@ -95,7 +95,7 @@ export class AuthenticateService {
 		}
 
 		const jwt = new SignJWT({
-			id: user.id,
+			userId: user.id,
 			sessionId,
 			sudo: sudoMode,
 			isSuspended: user.isSuspended,
@@ -170,7 +170,7 @@ export class AuthenticateService {
 
 			// マスターのトークン（JTI）がローテートされていないか確認する
 			const userId = await this.getUserIdByNativeToken(payload.jti);
-			if (userId !== payload.id) {
+			if (userId !== payload.userId) {
 				return null;
 			}
 

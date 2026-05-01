@@ -252,6 +252,39 @@ export class SigninApiService {
 
 		if ('username' in request.body) {
 			individualResult = await this.handleSigninUsername(signinData, request.body);
+
+			if (!individualResult.success) {
+				return error(individualResult.error?.code ?? 500, {
+					id: individualResult.error?.id ?? '4e30e80c-e338-45a0-8c8f-44455efa3b76',
+				});
+			}
+
+			if (!isSigninDataWithUser(signinData)) {
+				return error(500, {
+					id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
+				});
+			}
+
+			const nextStep = computeNextSigninStep(signinData);
+
+			if (nextStep === null) {
+				const user = await this.usersRepository.findOneByOrFail({ id: signinData.id }) as MiLocalUser;
+				return this.signinService.signin(request, reply, user);
+			}
+
+			this.redisClient.setex(`signin:${sessionId}`, 90, JSON.stringify(signinData));
+
+			if (nextStep === 'passkey') {
+				const passkeyOptions = await this.webAuthnService.initiateAuthentication(signinData.id);
+				return {
+					next: 'passkey',
+					passkeyOptions,
+				} satisfies SigninFlowContinueResponse;
+			}
+
+			return {
+				next: nextStep,
+			} satisfies SigninFlowContinueResponse;
 		}
 
 		// これ以降のステップでユーザー名が確定していないことはありえない
