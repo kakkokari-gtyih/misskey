@@ -290,7 +290,7 @@ export type SignupPendingResponse = {
 };
 
 //#region Signin API Types -- Backend（src/server/auth/SigninApiService.ts）と常に同期させること
-type SigninFlowInitRequest = {};
+export type SigninFlowInitRequest = {};
 
 interface SigninFlowContinueRequestBase {
 	sessionId: string;
@@ -316,7 +316,7 @@ interface SigninFlowContinueRequestTotp extends SigninFlowContinueRequestBase {
 	totp: string;
 }
 
-type SigninFlowContinueRequest = SigninFlowContinueRequestUsername | SigninFlowContinueRequestPassword | SigninFlowContinueRequestPasskey | SigninFlowContinueRequestTotp;
+export type SigninFlowContinueRequest = SigninFlowContinueRequestUsername | SigninFlowContinueRequestPassword | SigninFlowContinueRequestPasskey | SigninFlowContinueRequestTotp;
 
 export type SigninFlowRequest = SigninFlowInitRequest | SigninFlowContinueRequest;
 
