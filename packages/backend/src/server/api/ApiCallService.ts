@@ -32,6 +32,12 @@ const accessDenied = {
 	id: '56f35758-7dd5-468b-8439-5d6fb8ec9b8e',
 };
 
+const sudoTokenRequired = {
+	message: 'Sudo token is required.',
+	code: 'SUDO_TOKEN_REQUIRED',
+	id: '4ed5bed2-c06f-4885-917b-f6e48a475d0c',
+};
+
 @Injectable()
 export class ApiCallService implements OnApplicationShutdown {
 	private logger: Logger;
@@ -184,11 +190,7 @@ export class ApiCallService implements OnApplicationShutdown {
 				user = (await this.cacheService.localUserByIdCache.fetchMaybe(user.id, () => this.usersRepository.findOneBy({ id: user!.id }).then(x => x ?? undefined) as Promise<MiLocalUser | undefined>)) ?? null;
 			}
 
-			if (endpoint.meta.requireCredential && user == null) {
-				throw new AuthenticationError('User info not found');
-			}
-
-			this.call(endpoint, user, aRes.accessToken, body, null, request).then((res) => {
+			this.call(endpoint, user, aRes.accessToken, aRes.sudo, body, null, request).then((res) => {
 				if (request.method === 'GET' && endpoint.meta.cacheSec && !token && !user) {
 					reply.header('Cache-Control', `public, max-age=${endpoint.meta.cacheSec}`);
 				}
@@ -251,11 +253,7 @@ export class ApiCallService implements OnApplicationShutdown {
 				user = (await this.cacheService.localUserByIdCache.fetchMaybe(user.id, () => this.usersRepository.findOneBy({ id: user!.id }).then(x => x ?? undefined) as Promise<MiLocalUser | undefined>)) ?? null;
 			}
 
-			if (endpoint.meta.requireCredential && user == null) {
-				throw new AuthenticationError('User info not found');
-			}
-
-			this.call(endpoint, user, aRes.accessToken, fields, {
+			this.call(endpoint, user, aRes.accessToken, aRes.sudo, fields, {
 				name: multipartData.filename,
 				path: path,
 			}, request).then((res) => {
@@ -322,6 +320,7 @@ export class ApiCallService implements OnApplicationShutdown {
 		ep: IEndpoint & { exec: any },
 		user: MiLocalUser | MiJwtUser | null | undefined,
 		token: MiAccessToken | null | undefined,
+		isSudoToken: boolean,
 		data: any,
 		file: {
 			name: string;
@@ -333,6 +332,10 @@ export class ApiCallService implements OnApplicationShutdown {
 
 		if (ep.meta.secure && !isSecure) {
 			throw new ApiError(accessDenied);
+		}
+
+		if (ep.meta.requireSudo && (!isSecure || !isSudoToken)) {
+			throw new ApiError(sudoTokenRequired);
 		}
 
 		if (ep.meta.limit) {

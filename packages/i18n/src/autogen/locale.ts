@@ -5249,14 +5249,6 @@ export interface Locale extends ILocale {
      */
     "thereAreNChanges": ParameterizedString<"n">;
     /**
-     * パスキーでログイン
-     */
-    "signinWithPasskey": string;
-    /**
-     * 登録されていないパスキーです。
-     */
-    "unknownWebAuthnKey": string;
-    /**
      * パスキーの検証に失敗しました。
      */
     "passkeyVerificationFailed": string;

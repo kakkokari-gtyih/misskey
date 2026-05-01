@@ -97,24 +97,13 @@ async function change() {
 		return;
 	}
 
-	const auth = await os.authenticateDialog();
-	if (auth.canceled) return;
-
 	os.apiWithDialog('i/change-password', {
-		currentPassword: auth.result.password,
-		token: auth.result.token,
 		newPassword,
 	});
 }
 
 async function regenerateToken() {
-	const auth = await os.authenticateDialog();
-	if (auth.canceled) return;
-
-	misskeyApi('i/regenerate-token', {
-		password: auth.result.password,
-		token: auth.result.token,
-	});
+	os.apiWithDialog('i/regenerate-token', {});
 }
 
 const headerActions = computed(() => []);

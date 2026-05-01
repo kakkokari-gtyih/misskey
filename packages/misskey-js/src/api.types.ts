@@ -3,7 +3,6 @@ import { UserDetailed } from './autogen/models.js';
 import {
 	AdminRolesCreateRequest,
 	AdminRolesCreateResponse,
-	I2faPasskeyRegisterRequest,
 	I2faPasskeyDoneResponse,
 	EmptyRequest,
 	EmptyResponse,
@@ -74,7 +73,7 @@ export type Endpoints = Overwrite<
 			};
 		},
 		'i/2fa/passkey/register': {
-			req: I2faPasskeyRegisterRequest;
+			req: EmptyRequest;
 			res: I2faPasskeyRegisterResponse;
 		},
 		'i/2fa/passkey/done': {

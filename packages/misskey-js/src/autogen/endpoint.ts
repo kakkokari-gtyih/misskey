@@ -400,22 +400,18 @@ import type {
 	I2faPasskeyDoneRequest,
 	I2faPasskeyDoneResponse,
 	I2faPasskeyPasswordLessRequest,
-	I2faPasskeyRegisterRequest,
 	I2faPasskeyRegisterResponse,
 	I2faPasskeyRemoveRequest,
 	I2faPasskeyUpdateRequest,
 	I2faTotpDoneRequest,
 	I2faTotpDoneResponse,
-	I2faTotpRegisterRequest,
 	I2faTotpRegisterResponse,
-	I2faTotpRemoveRequest,
 	IAppsRequest,
 	IAppsResponse,
 	IAuthorizedAppsRequest,
 	IAuthorizedAppsResponse,
 	IChangePasswordRequest,
 	IClaimAchievementRequest,
-	IDeleteAccountRequest,
 	IExportFollowingRequest,
 	IFavoritesRequest,
 	IFavoritesResponse,
@@ -441,7 +437,6 @@ import type {
 	IPinRequest,
 	IPinResponse,
 	IReadAnnouncementRequest,
-	IRegenerateTokenRequest,
 	IRegistryGetRequest,
 	IRegistryGetResponse,
 	IRegistryGetAllRequest,
@@ -920,17 +915,17 @@ export type Endpoints = {
 	'i': { req: EmptyRequest; res: IResponse };
 	'i/2fa/passkey/done': { req: I2faPasskeyDoneRequest; res: I2faPasskeyDoneResponse };
 	'i/2fa/passkey/password-less': { req: I2faPasskeyPasswordLessRequest; res: EmptyResponse };
-	'i/2fa/passkey/register': { req: I2faPasskeyRegisterRequest; res: I2faPasskeyRegisterResponse };
+	'i/2fa/passkey/register': { req: EmptyRequest; res: I2faPasskeyRegisterResponse };
 	'i/2fa/passkey/remove': { req: I2faPasskeyRemoveRequest; res: EmptyResponse };
 	'i/2fa/passkey/update': { req: I2faPasskeyUpdateRequest; res: EmptyResponse };
 	'i/2fa/totp/done': { req: I2faTotpDoneRequest; res: I2faTotpDoneResponse };
-	'i/2fa/totp/register': { req: I2faTotpRegisterRequest; res: I2faTotpRegisterResponse };
-	'i/2fa/totp/remove': { req: I2faTotpRemoveRequest; res: EmptyResponse };
+	'i/2fa/totp/register': { req: EmptyRequest; res: I2faTotpRegisterResponse };
+	'i/2fa/totp/remove': { req: EmptyRequest; res: EmptyResponse };
 	'i/apps': { req: IAppsRequest; res: IAppsResponse };
 	'i/authorized-apps': { req: IAuthorizedAppsRequest; res: IAuthorizedAppsResponse };
 	'i/change-password': { req: IChangePasswordRequest; res: EmptyResponse };
 	'i/claim-achievement': { req: IClaimAchievementRequest; res: EmptyResponse };
-	'i/delete-account': { req: IDeleteAccountRequest; res: EmptyResponse };
+	'i/delete-account': { req: EmptyRequest; res: EmptyResponse };
 	'i/export-antennas': { req: EmptyRequest; res: EmptyResponse };
 	'i/export-blocking': { req: EmptyRequest; res: EmptyResponse };
 	'i/export-clips': { req: EmptyRequest; res: EmptyResponse };
@@ -954,7 +949,7 @@ export type Endpoints = {
 	'i/pages': { req: IPagesRequest; res: IPagesResponse };
 	'i/pin': { req: IPinRequest; res: IPinResponse };
 	'i/read-announcement': { req: IReadAnnouncementRequest; res: EmptyResponse };
-	'i/regenerate-token': { req: IRegenerateTokenRequest; res: EmptyResponse };
+	'i/regenerate-token': { req: EmptyRequest; res: EmptyResponse };
 	'i/registry/get': { req: IRegistryGetRequest; res: IRegistryGetResponse };
 	'i/registry/get-all': { req: IRegistryGetAllRequest; res: IRegistryGetAllResponse };
 	'i/registry/get-detail': { req: IRegistryGetDetailRequest; res: IRegistryGetDetailResponse };

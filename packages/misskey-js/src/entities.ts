@@ -297,6 +297,10 @@ export type SignupPendingResponse = {
 //#region Signin API Types -- Backend（src/server/auth/SigninApiService.ts）と常に同期させること
 export type SigninFlowInitRequest = {};
 
+type SigninFlowUpgradeInitRequest = {
+	i: string; // アクセストークン
+};
+
 interface SigninFlowContinueRequestBase {
 	sessionId: string;
 }
@@ -318,23 +322,32 @@ export interface SigninFlowContinueRequestPasskey extends SigninFlowContinueRequ
 }
 
 export interface SigninFlowContinueRequestTotp extends SigninFlowContinueRequestBase {
-	totp: string;
+	token: string;
 }
 
 export type SigninFlowContinueRequest = SigninFlowContinueRequestUsername | SigninFlowContinueRequestPassword | SigninFlowContinueRequestPasskey | SigninFlowContinueRequestTotp;
 
-export type SigninFlowRequest = SigninFlowInitRequest | SigninFlowContinueRequest;
+export type SigninFlowRequest = SigninFlowInitRequest | SigninFlowUpgradeInitRequest | SigninFlowUpgradeInitRequest | SigninFlowContinueRequest;
 
 export type SigninFlowInitResponse = {
 	sessionId: string;
 	passkeyOptions: PublicKeyCredentialRequestOptionsJSON;
 };
 
+export type SigninFlowUpgradeInitResponse = {
+	sessionId: string;
+} & SigninFlowContinueResponse;
+
 export type SigninFlowContinueResponse = {
 	next: 'password' | 'totp';
 } | {
-	next: 'passkey';
+	next: 'passkey' | 'totpOrPasskey';
 	passkeyOptions: PublicKeyCredentialRequestOptionsJSON;
+};
+
+export type SigninFlowUpgradeSuccessResponse = {
+	id: string;
+	accessToken: string;
 };
 
 export type SigninFlowSuccessResponse = {
@@ -343,14 +356,12 @@ export type SigninFlowSuccessResponse = {
 	refreshToken: string;
 };
 
-export type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse | SigninFlowSuccessResponse;
+export type SigninFlowResponse = SigninFlowInitResponse | SigninFlowUpgradeInitResponse | SigninFlowContinueResponse | SigninFlowUpgradeSuccessResponse | SigninFlowSuccessResponse;
 //#endregion
 
 export type I2faPasskeyRegisterResponse = PublicKeyCredentialCreationOptionsJSON;
 
 export type I2faPasskeyDoneRequest = {
-	password: string;
-	token?: string | null;
 	name: string;
 	credential: RegistrationResponseJSON;
 };

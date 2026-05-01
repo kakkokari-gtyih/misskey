@@ -48,7 +48,8 @@ export class SigninService {
 			refreshToken: nativeRefreshToken,
 		});
 
-		const jwt = await this.authenticateService.generateNativeTokens(user, signinRecord);
+		// サインイン初回はsudo
+		const jwt = await this.authenticateService.generateNativeTokens(user, signinRecord, true);
 
 		setImmediate(async () => {
 			this.notificationService.createNotification(user.id, 'login', {});

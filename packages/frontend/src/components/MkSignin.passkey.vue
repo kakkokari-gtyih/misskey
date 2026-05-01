@@ -15,7 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<MkButton large primary rounded :disabled="queryingKey" style="margin: 0 auto;" @click="queryKey">{{ i18n.ts.retry }}</MkButton>
 
-		<MkButton transparent rounded :disabled="queryingKey" style="margin: 0 auto;" @click="emit('useTotp')">{{ i18n.ts.useTotp }}</MkButton>
+		<MkButton v-if="totpAvailable" transparent rounded :disabled="queryingKey" style="margin: 0 auto;" @click="emit('useTotp')">{{ i18n.ts.useTotp }}</MkButton>
 	</div>
 </div>
 </template>
@@ -31,6 +31,7 @@ import MkButton from '@/components/MkButton.vue';
 import type { PublicKeyCredentialRequestOptionsJSON, AuthenticationResponseJSON } from '@simplewebauthn/browser';
 
 const props = defineProps<{
+	totpAvailable: boolean;
 	credentialRequest: PublicKeyCredentialRequestOptionsJSON;
 }>();
 

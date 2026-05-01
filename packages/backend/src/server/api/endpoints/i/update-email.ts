@@ -5,7 +5,6 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import ms from 'ms';
-import bcrypt from 'bcryptjs';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { MiMeta, UserProfilesRepository } from '@/models/_.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
@@ -14,11 +13,11 @@ import type { Config } from '@/config.js';
 import { DI } from '@/di-symbols.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { L_CHARS, secureRndstr } from '@/misc/secure-rndstr.js';
-import { TotpService } from '@/core/TotpService.js';
 import { ApiError } from '../../error.js';
 
 export const meta = {
 	requireCredential: true,
+	requireSudo: true,
 
 	secure: true,
 
@@ -56,11 +55,9 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		password: { type: 'string' },
 		email: { type: 'string', nullable: true },
-		token: { type: 'string', nullable: true },
 	},
-	required: ['password'],
+	required: [],
 } as const;
 
 @Injectable()
@@ -77,30 +74,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private userEntityService: UserEntityService,
 		private emailService: EmailService,
-		private totpService: TotpService,
 		private globalEventService: GlobalEventService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			const token = ps.token;
-			const profile = await this.userProfilesRepository.findOneByOrFail({ userId: me.id });
-
-			if (profile.twoFactorEnabled) {
-				if (token == null) {
-					throw new Error('authentication failed');
-				}
-
-				try {
-					await this.totpService.twoFactorAuthenticate(profile, token);
-				} catch (_) {
-					throw new Error('authentication failed');
-				}
-			}
-
-			const passwordMatched = await bcrypt.compare(ps.password, profile.password!);
-			if (!passwordMatched) {
-				throw new ApiError(meta.errors.incorrectPassword);
-			}
-
 			if (ps.email != null) {
 				const res = await this.emailService.validateEmailForAccount(ps.email);
 				if (!res.available) {

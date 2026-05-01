@@ -25,6 +25,7 @@ type JwtAccessTokenPayload = {
 	isSuspended: boolean;
 	movedToUri: string | null;
 	sudo: boolean;
+	token: string;
 };
 
 type JwtRefreshTokenPayload = {
@@ -180,6 +181,7 @@ export class AuthenticateService {
 				sudo: !!payload.sudo,
 				isSuspended: !!payload.isSuspended,
 				movedToUri: payload.movedToUri,
+				token: payload.jti,
 			};
 		} catch (e) {
 			return null;

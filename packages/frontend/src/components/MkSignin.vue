@@ -50,6 +50,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			key="passkey"
 
 			:credentialRequest="credentialRequest!"
+			:totpAvailable="totpAvailable"
 
 			@done="onPasskeyDone"
 			@useTotp="onUseTotp"
@@ -71,7 +72,8 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { showSuspendedDialog } from '@/utility/show-suspended-dialog.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
-import { login } from '@/accounts.js';
+import { login, updateCurrentAccount, updateCurrentAccountPartial } from '@/accounts.js';
+import { $i } from '@/i.js';
 import { authUrl } from '@@/js/config.js';
 
 import XInput from '@/components/MkSignin.input.vue';
@@ -81,22 +83,25 @@ import XPasskey from '@/components/MkSignin.passkey.vue';
 
 const emit = defineEmits<{
 	(ev: 'login', v: Misskey.entities.SigninFlowSuccessResponse): void;
+	(ev: 'upgradeDone', v: Misskey.entities.SigninFlowUpgradeSuccessResponse): void;
 }>();
 
 const props = withDefaults(defineProps<{
 	autoSet?: boolean;
-	message?: string,
-	openOnRemote?: OpenOnRemoteOptions,
+	upgradeToken?: boolean;
+	message?: string;
+	openOnRemote?: OpenOnRemoteOptions;
 	initialUsername?: string;
 }>(), {
 	autoSet: false,
+	upgradeToken: false,
 	message: '',
 	openOnRemote: undefined,
 	initialUsername: undefined,
 });
 
 const page = ref<'input' | 'password' | 'totp' | 'passkey'>('input');
-const waiting = ref(false);
+const waiting = ref(props.upgradeToken);
 
 const inputPageEl = useTemplateRef('inputPageEl');
 
@@ -106,6 +111,7 @@ const userInfo = ref<null | Misskey.entities.UserDetailed>(null);
 const password = ref('');
 
 const credentialRequest = ref<PublicKeyCredentialRequestOptionsJSON | null>(null);
+const totpAvailable = ref(false);
 function onUseTotp(): void {
 	page.value = 'totp';
 }
@@ -169,7 +175,7 @@ async function onPasskeyDone(credential: AuthenticationResponseJSON) {
 	});
 }
 
-async function tryLogin(req: Omit<Misskey.entities.SigninFlowContinueRequest, 'sessionId'>): Promise<Misskey.entities.SigninFlowResponse> {
+async function tryLogin(req: Omit<Misskey.entities.SigninFlowContinueRequest, 'sessionId'>) {
 	if (signinSession.value == null) {
 		throw new Error('Signin session is not initialized');
 	}
@@ -179,61 +185,86 @@ async function tryLogin(req: Omit<Misskey.entities.SigninFlowContinueRequest, 's
 		...req,
 	} as Misskey.entities.SigninFlowContinueRequest;
 
-	return await window.fetch(`${authUrl}/signin`, {
+	const res = await window.fetch(`${authUrl}/signin`, {
 		credentials: 'omit',
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		body: JSON.stringify(_req),
-	}).then(async (res) => {
-		const json = await res.json() as Misskey.entities.SigninFlowResponse;
-		if (res.ok) {
-			return json;
-		} else {
-			onSigninApiError(json);
-			return Promise.reject(json);
-		}
-	}).catch((err) => {
-		onSigninApiError(err);
-		return Promise.reject(err);
-	}).then(async (res) => {
-		if ('id' in res) {
-			emit('login', res);
-			await onLoginSucceeded(res);
-		} else if ('next' in res) {
-			switch (res.next) {
-				case 'password': {
-					page.value = 'password';
-					break;
-				}
-				case 'totp': {
-					page.value = 'totp';
-					break;
-				}
-				case 'passkey': {
-					if (browserSupportsWebAuthn()) {
-						credentialRequest.value = res.passkeyOptions;
-						page.value = 'passkey';
-					} else {
-						page.value = 'totp';
-					}
-					break;
-				}
-			}
+	}).catch(() => null);
 
-			inputPageEl.value?.resetCaptcha();
-			nextTick(() => {
-				waiting.value = false;
-			});
+	const json = await res?.json().catch(() => null) as Misskey.entities.SigninFlowResponse | null;
+
+	if (res == null || !res.ok || json == null) {
+		onSigninApiError(json);
+		waiting.value = false;
+		return;
+	}
+
+	if ('id' in json) {
+		if (!('refreshToken' in json)) {
+			emit('upgradeDone', json);
+			await onUpgradeDone(json);
+		} else {
+			emit('login', json);
+			await onLoginSucceeded(json);
 		}
-		return res;
-	});
+	} else if ('next' in json) {
+		switch (json.next) {
+			case 'password': {
+				page.value = 'password';
+				break;
+			}
+			case 'totp': {
+				page.value = 'totp';
+				break;
+			}
+			case 'passkey': {
+				if (browserSupportsWebAuthn()) {
+					credentialRequest.value = json.passkeyOptions;
+					totpAvailable.value = false;
+					page.value = 'passkey';
+				} else {
+					os.alert({
+						type: 'error',
+						title: i18n.ts.loginFailed,
+						text: i18n.ts._2fa.securityKeyNotSupported,
+					});
+				}
+				break;
+			}
+			case 'totpOrPasskey': {
+				if (browserSupportsWebAuthn()) {
+					credentialRequest.value = json.passkeyOptions;
+					totpAvailable.value = true;
+					page.value = 'passkey';
+				} else {
+					page.value = 'totp';
+				}
+				break;
+			}
+		}
+
+		inputPageEl.value?.resetCaptcha();
+		nextTick(() => {
+			waiting.value = false;
+		});
+	}
 }
 
 async function onLoginSucceeded(res: Misskey.entities.SigninFlowSuccessResponse): Promise<void> {
 	if (props.autoSet) {
 		await login(res);
+	}
+}
+
+async function onUpgradeDone(res: Misskey.entities.SigninFlowUpgradeSuccessResponse): Promise<void> {
+	if (props.autoSet) {
+		updateCurrentAccountPartial({}, {
+			accessToken: res.accessToken,
+			refreshToken: $i!.token.refreshToken,
+		});
 	}
 }
 
@@ -274,14 +305,6 @@ function onSigninApiError(err?: any): void {
 				type: 'error',
 				title: i18n.ts.loginFailed,
 				text: i18n.ts.incorrectTotp,
-			});
-			break;
-		}
-		case '36b96a7d-b547-412d-aeed-2d611cdc8cdc': {
-			os.alert({
-				type: 'error',
-				title: i18n.ts.loginFailed,
-				text: i18n.ts.unknownWebAuthnKey,
 			});
 			break;
 		}
@@ -346,10 +369,53 @@ onMounted(async () => {
 		headers: {
 			'Content-Type': 'application/json',
 		},
-		body: '{}',
+		body: props.upgradeToken ? JSON.stringify({
+			i: $i!.token.accessToken,
+		}) : '{}',
 	}).then((res) => res.json() as Promise<Misskey.entities.SigninFlowInitResponse>).catch(() => null);
 
 	if (ssRes != null) {
+		if (props.upgradeToken && 'next' in ssRes) {
+			// トークンアップグレードフロー
+			switch (ssRes.next) {
+				case 'password': {
+					page.value = 'password';
+					break;
+				}
+				case 'totp': {
+					page.value = 'totp';
+					break;
+				}
+				case 'passkey': {
+					if (browserSupportsWebAuthn()) {
+						credentialRequest.value = ssRes.passkeyOptions;
+						totpAvailable.value = false;
+						page.value = 'passkey';
+					} else {
+						os.alert({
+							type: 'error',
+							title: i18n.ts.loginFailed,
+							text: i18n.ts._2fa.securityKeyNotSupported,
+						});
+					}
+					break;
+				}
+				case 'totpOrPasskey': {
+					if (browserSupportsWebAuthn()) {
+						credentialRequest.value = ssRes.passkeyOptions;
+						totpAvailable.value = true;
+						page.value = 'passkey';
+					} else {
+						page.value = 'totp';
+					}
+					break;
+				}
+			}
+
+			waiting.value = false;
+			return;
+		}
+
 		signinSession.value = ssRes;
 
 		// オートフィルのパスキーログインセッション
@@ -360,7 +426,7 @@ onMounted(async () => {
 			}).then(async (res) => {
 				console.log('Got passkey credential from browser autofill', res);
 				waiting.value = true;
-				const ssPasskeyPwLessRes = await window.fetch(`${authUrl}/signin`, {
+				const ssPasskeyPwLessRes: Misskey.entities.SigninFlowResponse = await window.fetch(`${authUrl}/signin`, {
 					credentials: 'omit',
 					method: 'POST',
 					headers: {
@@ -371,7 +437,7 @@ onMounted(async () => {
 						passkeyCredential: res,
 					} satisfies Misskey.entities.SigninFlowContinueRequest),
 				}).then(async (res) => {
-					const json = await res.json() as Misskey.entities.SigninFlowResponse;
+					const json = await res.json();
 					if (res.ok) {
 						return json;
 					} else {
@@ -383,7 +449,7 @@ onMounted(async () => {
 					return null;
 				});
 
-				if (ssPasskeyPwLessRes != null && 'id' in ssPasskeyPwLessRes) {
+				if (ssPasskeyPwLessRes != null && 'refreshToken' in ssPasskeyPwLessRes) {
 					emit('login', ssPasskeyPwLessRes!);
 					await onLoginSucceeded(ssPasskeyPwLessRes!);
 				} else {
@@ -403,12 +469,14 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .transition_enterActive,
 .transition_leaveActive {
-	transition: opacity 0.3s cubic-bezier(0,0,.35,1), transform 0.3s cubic-bezier(0,0,.35,1);
+	transition: opacity 0.3s cubic-bezier(0, 0, .35, 1), transform 0.3s cubic-bezier(0, 0, .35, 1);
 }
+
 .transition_enterFrom {
 	opacity: 0;
 	transform: translateX(50px);
 }
+
 .transition_leaveTo {
 	opacity: 0;
 	transform: translateX(-50px);

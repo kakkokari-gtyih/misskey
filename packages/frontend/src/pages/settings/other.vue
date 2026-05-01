@@ -204,9 +204,6 @@ async function deleteAccount() {
 		if (canceled) return;
 	}
 
-	const auth = await os.authenticateDialog();
-	if (auth.canceled) return;
-
 	await os.apiWithDialog('i/delete-account', {
 		password: auth.result.password,
 		token: auth.result.token,

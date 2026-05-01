@@ -106,13 +106,7 @@ withDefaults(defineProps<{
 const usePasswordLessLogin = computed(() => $i.usePasswordLessLogin ?? false);
 
 async function registerTOTP(): Promise<void> {
-	const auth = await os.authenticateDialog();
-	if (auth.canceled) return;
-
-	const twoFactorData = await os.apiWithDialog('i/2fa/totp/register', {
-		password: auth.result.password,
-		token: auth.result.token,
-	});
+	const twoFactorData = await os.apiWithDialog('i/2fa/totp/register', {});
 
 	const { dispose } = await os.popupAsyncWithDialog(import('./2fa.qrdialog.vue').then(x => x.default), {
 		twoFactorData,
@@ -122,13 +116,7 @@ async function registerTOTP(): Promise<void> {
 }
 
 async function unregisterTOTP(): Promise<void> {
-	const auth = await os.authenticateDialog();
-	if (auth.canceled) return;
-
-	os.apiWithDialog('i/2fa/totp/remove', {
-		password: auth.result.password,
-		token: auth.result.token,
-	}).then(res => {
+	os.apiWithDialog('i/2fa/totp/remove', {}).then(res => {
 		updateCurrentAccountPartial({
 			twoFactorEnabled: false,
 		});
@@ -161,12 +149,7 @@ async function unregisterKey(key: NonNullable<Misskey.entities.MeDetailedOnly['s
 	});
 	if (confirm.canceled) return;
 
-	const auth = await os.authenticateDialog();
-	if (auth.canceled) return;
-
 	await os.apiWithDialog('i/2fa/passkey/remove', {
-		password: auth.result.password,
-		token: auth.result.token,
 		credentialId: key.id,
 	});
 	os.success();
@@ -189,13 +172,7 @@ async function renameKey(key: NonNullable<Misskey.entities.MeDetailedOnly['secur
 }
 
 async function addSecurityKey() {
-	const auth = await os.authenticateDialog();
-	if (auth.canceled) return;
-
-	const registrationOptions = await os.apiWithDialog('i/2fa/passkey/register', {
-		password: auth.result.password,
-		token: auth.result.token,
-	});
+	const registrationOptions = await os.apiWithDialog('i/2fa/passkey/register', {});
 
 	const name = await os.inputText({
 		title: i18n.ts._2fa.registerSecurityKey,
@@ -215,12 +192,7 @@ async function addSecurityKey() {
 	);
 	if (!credential) return;
 
-	const auth2 = await os.authenticateDialog();
-	if (auth2.canceled) return;
-
 	await os.apiWithDialog('i/2fa/passkey/done', {
-		password: auth.result.password,
-		token: auth.result.token,
 		name: name.result,
 		credential: credential,
 	});

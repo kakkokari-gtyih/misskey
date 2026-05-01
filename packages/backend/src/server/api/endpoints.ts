@@ -30,6 +30,12 @@ interface IEndpointMetaBase {
 	readonly requireFullUserData?: boolean;
 
 	/**
+	 * このエンドポイントの実行にはsudoトークンが必要か否か（必然的に外部アクセストークンは利用不可となる）
+	 * 省略した場合は false として解釈されます。
+	 */
+	readonly requireSudo?: boolean;
+
+	/**
 	 * このエンドポイントにリクエストするのにユーザー情報が必須か否か
 	 * 省略した場合は false として解釈されます。
 	 */

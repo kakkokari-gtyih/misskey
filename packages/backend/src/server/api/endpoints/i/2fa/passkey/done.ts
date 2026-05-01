@@ -3,28 +3,21 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import bcrypt from 'bcryptjs';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { DI } from '@/di-symbols.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
-import type { UserProfilesRepository, UserSecurityKeysRepository } from '@/models/_.js';
+import type { UserSecurityKeysRepository } from '@/models/_.js';
 import { WebAuthnService } from '@/core/WebAuthnService.js';
-import { ApiError } from '@/server/api/error.js';
-import { TotpService } from '@/core/TotpService.js';
 
 export const meta = {
 	requireCredential: true,
+	requireSudo: true,
 
 	secure: true,
 
 	errors: {
-		incorrectPassword: {
-			message: 'Incorrect password.',
-			code: 'INCORRECT_PASSWORD',
-			id: '0d7ec6d2-e652-443e-a7bf-9ee9a0cd77b0',
-		},
 	},
 
 	res: {
@@ -41,50 +34,24 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		password: { type: 'string' },
-		token: { type: 'string', nullable: true },
 		name: { type: 'string', minLength: 1, maxLength: 30 },
 		credential: { type: 'object' },
 	},
-	required: ['password', 'name', 'credential'],
+	required: ['name', 'credential'],
 } as const;
 
 // eslint-disable-next-line import/no-default-export
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> {
 	constructor(
-		@Inject(DI.userProfilesRepository)
-		private userProfilesRepository: UserProfilesRepository,
-
 		@Inject(DI.userSecurityKeysRepository)
 		private userSecurityKeysRepository: UserSecurityKeysRepository,
 
 		private webAuthnService: WebAuthnService,
-		private totpService: TotpService,
 		private userEntityService: UserEntityService,
 		private globalEventService: GlobalEventService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			const token = ps.token;
-			const profile = await this.userProfilesRepository.findOneByOrFail({ userId: me.id });
-
-			if (profile.twoFactorEnabled) {
-				if (token == null) {
-					throw new Error('authentication failed');
-				}
-
-				try {
-					await this.totpService.twoFactorAuthenticate(profile, token);
-				} catch (_) {
-					throw new Error('authentication failed');
-				}
-			}
-
-			const passwordMatched = await bcrypt.compare(ps.password, profile.password ?? '');
-			if (!passwordMatched) {
-				throw new ApiError(meta.errors.incorrectPassword);
-			}
-
 			const keyInfo = await this.webAuthnService.verifyRegistration(me.id, ps.credential);
 			const keyId = keyInfo.credentialID;
 

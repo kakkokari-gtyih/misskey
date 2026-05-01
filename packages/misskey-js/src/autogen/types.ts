@@ -24161,8 +24161,6 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
-                    password: string;
-                    token?: string | null;
                     name: string;
                     credential: Record<string, never>;
                 };
@@ -24291,14 +24289,6 @@ export interface operations {
         };
     };
     i___2fa___passkey___register: {
-        requestBody: {
-            content: {
-                'application/json': {
-                    password: string;
-                    token?: string | null;
-                };
-            };
-        };
         responses: {
             /** @description OK (with results) */
             200: {
@@ -24360,8 +24350,6 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
-                    password: string;
-                    token?: string | null;
                     credentialId: string;
                 };
             };
@@ -24551,14 +24539,6 @@ export interface operations {
         };
     };
     i___2fa___totp___register: {
-        requestBody: {
-            content: {
-                'application/json': {
-                    password: string;
-                    token?: string | null;
-                };
-            };
-        };
         responses: {
             /** @description OK (with results) */
             200: {
@@ -24623,14 +24603,6 @@ export interface operations {
         };
     };
     i___2fa___totp___remove: {
-        requestBody: {
-            content: {
-                'application/json': {
-                    password: string;
-                    token?: string | null;
-                };
-            };
-        };
         responses: {
             /** @description OK (without any results) */
             204: {
@@ -24846,9 +24818,7 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
-                    currentPassword: string;
                     newPassword: string;
-                    token?: string | null;
                 };
             };
         };
@@ -24970,14 +24940,6 @@ export interface operations {
         };
     };
     'i___delete-account': {
-        requestBody: {
-            content: {
-                'application/json': {
-                    password: string;
-                    token?: string | null;
-                };
-            };
-        };
         responses: {
             /** @description OK (without any results) */
             204: {
@@ -26657,13 +26619,6 @@ export interface operations {
         };
     };
     'i___regenerate-token': {
-        requestBody: {
-            content: {
-                'application/json': {
-                    password: string;
-                };
-            };
-        };
         responses: {
             /** @description OK (without any results) */
             204: {
@@ -27740,9 +27695,7 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
-                    password: string;
                     email?: string | null;
-                    token?: string | null;
                 };
             };
         };

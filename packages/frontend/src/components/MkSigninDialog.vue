@@ -16,7 +16,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button :class="$style.closeButton" class="_button" @click="onClose"><i class="ti ti-x"></i></button>
 		</div>
 		<div :class="$style.content">
-			<MkSignin :autoSet="autoSet" :message="message" :openOnRemote="openOnRemote" :initialUsername="initialUsername" @login="onLogin"/>
+			<MkSignin
+				:autoSet="autoSet"
+				:upgradeToken="upgradeToken"
+				:message="message"
+				:openOnRemote="openOnRemote"
+				:initialUsername="initialUsername"
+				@login="onLogin"
+				@upgradeDone="onUpgradeDone"
+			/>
 		</div>
 	</div>
 </MkModal>
@@ -32,11 +40,13 @@ import { i18n } from '@/i18n.js';
 
 withDefaults(defineProps<{
 	autoSet?: boolean;
+	upgradeToken?: boolean;
 	message?: string,
 	openOnRemote?: OpenOnRemoteOptions,
 	initialUsername?: string;
 }>(), {
 	autoSet: false,
+	upgradeToken: false,
 	message: '',
 	openOnRemote: undefined,
 	initialUsername: undefined,
@@ -44,6 +54,7 @@ withDefaults(defineProps<{
 
 const emit = defineEmits<{
 	(ev: 'done', v: Misskey.entities.SigninFlowSuccessResponse): void;
+	(ev: 'upgraded', v: Misskey.entities.SigninFlowUpgradeSuccessResponse): void;
 	(ev: 'closed'): void;
 	(ev: 'cancelled'): void;
 }>();
@@ -57,6 +68,11 @@ function onClose() {
 
 function onLogin(res: Misskey.entities.SigninFlowSuccessResponse) {
 	emit('done', res);
+	if (modal.value) modal.value.close();
+}
+
+function onUpgradeDone(res: Misskey.entities.SigninFlowUpgradeSuccessResponse) {
+	emit('upgraded', res);
 	if (modal.value) modal.value.close();
 }
 </script>

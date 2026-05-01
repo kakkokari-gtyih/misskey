@@ -1449,7 +1449,7 @@ export type Endpoints = Overwrite<Endpoints_2, {
         };
     };
     'i/2fa/passkey/register': {
-        req: I2faPasskeyRegisterRequest;
+        req: EmptyRequest;
         res: I2faPasskeyRegisterResponse_2;
     };
     'i/2fa/passkey/done': {
@@ -1499,7 +1499,9 @@ declare namespace entities {
         SigninFlowContinueRequest,
         SigninFlowRequest,
         SigninFlowInitResponse,
+        SigninFlowUpgradeInitResponse,
         SigninFlowContinueResponse,
+        SigninFlowUpgradeSuccessResponse,
         SigninFlowSuccessResponse,
         SigninFlowResponse,
         I2faPasskeyRegisterResponse_2 as I2faPasskeyRegisterResponse,
@@ -1905,21 +1907,17 @@ declare namespace entities {
         IResponse,
         I2faPasskeyDoneResponse,
         I2faPasskeyPasswordLessRequest,
-        I2faPasskeyRegisterRequest,
         I2faPasskeyRemoveRequest,
         I2faPasskeyUpdateRequest,
         I2faTotpDoneRequest,
         I2faTotpDoneResponse,
-        I2faTotpRegisterRequest,
         I2faTotpRegisterResponse,
-        I2faTotpRemoveRequest,
         IAppsRequest,
         IAppsResponse,
         IAuthorizedAppsRequest,
         IAuthorizedAppsResponse,
         IChangePasswordRequest,
         IClaimAchievementRequest,
-        IDeleteAccountRequest,
         IExportFollowingRequest,
         IFavoritesRequest,
         IFavoritesResponse,
@@ -1945,7 +1943,6 @@ declare namespace entities {
         IPinRequest,
         IPinResponse,
         IReadAnnouncementRequest,
-        IRegenerateTokenRequest,
         IRegistryGetRequest,
         IRegistryGetResponse,
         IRegistryGetAllRequest,
@@ -2502,8 +2499,6 @@ type HashtagsUsersResponse = operations['hashtags___users']['responses']['200'][
 
 // @public (undocumented)
 type I2faPasskeyDoneRequest_2 = {
-    password: string;
-    token?: string | null;
     name: string;
     credential: RegistrationResponseJSON;
 };
@@ -2513,9 +2508,6 @@ type I2faPasskeyDoneResponse = operations['i___2fa___passkey___done']['responses
 
 // @public (undocumented)
 type I2faPasskeyPasswordLessRequest = operations['i___2fa___passkey___password-less']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type I2faPasskeyRegisterRequest = operations['i___2fa___passkey___register']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
 type I2faPasskeyRegisterResponse_2 = PublicKeyCredentialCreationOptionsJSON_2;
@@ -2533,13 +2525,7 @@ type I2faTotpDoneRequest = operations['i___2fa___totp___done']['requestBody']['c
 type I2faTotpDoneResponse = operations['i___2fa___totp___done']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
-type I2faTotpRegisterRequest = operations['i___2fa___totp___register']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
 type I2faTotpRegisterResponse = operations['i___2fa___totp___register']['responses']['200']['content']['application/json'];
-
-// @public (undocumented)
-type I2faTotpRemoveRequest = operations['i___2fa___totp___remove']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
 type IAppsRequest = operations['i___apps']['requestBody']['content']['application/json'];
@@ -2579,9 +2565,6 @@ type IClaimAchievementRequest = operations['i___claim-achievement']['requestBody
 
 // @public (undocumented)
 type ID = string;
-
-// @public (undocumented)
-type IDeleteAccountRequest = operations['i___delete-account']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
 type IExportFollowingRequest = operations['i___export-following']['requestBody']['content']['application/json'];
@@ -2675,9 +2658,6 @@ type IPinResponse = operations['i___pin']['responses']['200']['content']['applic
 
 // @public (undocumented)
 type IReadAnnouncementRequest = operations['i___read-announcement']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type IRegenerateTokenRequest = operations['i___regenerate-token']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
 type IRegistryGetAllRequest = operations['i___registry___get-all']['requestBody']['content']['application/json'];
@@ -3530,7 +3510,7 @@ interface SigninFlowContinueRequestPassword extends SigninFlowContinueRequestBas
 // @public (undocumented)
 interface SigninFlowContinueRequestTotp extends SigninFlowContinueRequestBase {
     // (undocumented)
-    totp: string;
+    token: string;
 }
 
 // Warning: (ae-forgotten-export) The symbol "SigninFlowContinueRequestBase" needs to be exported by the entry point index.d.ts
@@ -3550,7 +3530,7 @@ interface SigninFlowContinueRequestUsername extends SigninFlowContinueRequestBas
 type SigninFlowContinueResponse = {
     next: 'password' | 'totp';
 } | {
-    next: 'passkey';
+    next: 'passkey' | 'totpOrPasskey';
     passkeyOptions: PublicKeyCredentialRequestOptionsJSON_2;
 };
 
@@ -3563,17 +3543,30 @@ type SigninFlowInitResponse = {
     passkeyOptions: PublicKeyCredentialRequestOptionsJSON_2;
 };
 
+// Warning: (ae-forgotten-export) The symbol "SigninFlowUpgradeInitRequest" needs to be exported by the entry point index.d.ts
+//
 // @public (undocumented)
-type SigninFlowRequest = SigninFlowInitRequest | SigninFlowContinueRequest;
+type SigninFlowRequest = SigninFlowInitRequest | SigninFlowUpgradeInitRequest | SigninFlowUpgradeInitRequest | SigninFlowContinueRequest;
 
 // @public (undocumented)
-type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse | SigninFlowSuccessResponse;
+type SigninFlowResponse = SigninFlowInitResponse | SigninFlowUpgradeInitResponse | SigninFlowContinueResponse | SigninFlowUpgradeSuccessResponse | SigninFlowSuccessResponse;
 
 // @public (undocumented)
 type SigninFlowSuccessResponse = {
     id: string;
     accessToken: string;
     refreshToken: string;
+};
+
+// @public (undocumented)
+type SigninFlowUpgradeInitResponse = {
+    sessionId: string;
+} & SigninFlowContinueResponse;
+
+// @public (undocumented)
+type SigninFlowUpgradeSuccessResponse = {
+    id: string;
+    accessToken: string;
 };
 
 // @public (undocumented)

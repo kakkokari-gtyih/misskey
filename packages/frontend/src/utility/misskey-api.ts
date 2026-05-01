@@ -4,11 +4,10 @@
  */
 
 import * as Misskey from 'misskey-js';
-import { ref } from 'vue';
 import { apiUrl } from '@@/js/config.js';
 import { $i } from '@/i.js';
 import { pendingApiRequestsCount } from '@/utility/api-request-count.js';
-import { refreshCurrentAccountToken } from '@/accounts.js';
+import { refreshCurrentAccountToken, upgradeCurrentAccount } from '@/accounts.js';
 
 // Implements Misskey.api.ApiClient.request
 export async function misskeyApi<
@@ -49,11 +48,15 @@ export async function misskeyApi<
 
 		const body = res.status === 204 ? null : await res.json();
 
-		// Token expired
-		if (token === undefined && $i != null && refreshTokenIfNeeded && body?.error?.id === 'b0a7f5f8-dc2f-4171-b91f-de88ad238e14') {
-			await refreshCurrentAccountToken();
-			// Retry once with new token
-			return misskeyApi(endpoint, data, $i?.token.accessToken ?? null, signal, false);
+		if (token === undefined && $i != null) {
+			if (refreshTokenIfNeeded && body?.error?.id === 'b0a7f5f8-dc2f-4171-b91f-de88ad238e14') {
+				// Token expired
+				await refreshCurrentAccountToken();
+				return misskeyApi(endpoint, data, token, signal, false);
+			} else if (body?.error?.id === '4ed5bed2-c06f-4885-917b-f6e48a475d0c') {
+				// Sudo token required
+				await upgradeCurrentAccount();
+			}
 		}
 
 		if (res.status === 200) {

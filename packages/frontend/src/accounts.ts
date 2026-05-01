@@ -137,9 +137,9 @@ function fetchAccount(token: Tokens, id?: string, forceShowDialog?: boolean, try
 	});
 }
 
-export function updateCurrentAccount(accountData: Misskey.entities.MeDetailed) {
+export function updateCurrentAccount(accountData: Misskey.entities.MeDetailed, newToken?: Tokens) {
 	if (!$i) return;
-	const token = $i.token;
+	const token = newToken ?? $i.token;
 	for (const key of Object.keys($i)) {
 		delete $i[key as keyof typeof $i];
 	}
@@ -149,9 +149,13 @@ export function updateCurrentAccount(accountData: Misskey.entities.MeDetailed) {
 	store.set('accountInfos', { ...store.s.accountInfos, [host + '/' + $i.id]: $i });
 	$i.token = token;
 	miLocalStorage.setItem('account', JSON.stringify($i));
+
+	if (newToken) {
+		store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + $i.id]: token });
+	}
 }
 
-export function updateCurrentAccountPartial(accountData: Partial<Misskey.entities.MeDetailed>) {
+export function updateCurrentAccountPartial(accountData: Partial<Misskey.entities.MeDetailed>, token?: Tokens) {
 	if (!$i) return;
 	for (const [key, value] of Object.entries(accountData)) {
 		($i[key as keyof typeof accountData] as any) = value;
@@ -160,6 +164,11 @@ export function updateCurrentAccountPartial(accountData: Partial<Misskey.entitie
 	store.set('accountInfos', { ...store.s.accountInfos, [host + '/' + $i.id]: $i });
 
 	miLocalStorage.setItem('account', JSON.stringify($i));
+
+	if (token) {
+		$i.token = token;
+		store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + $i.id]: token });
+	}
 }
 
 export async function refreshCurrentAccount() {
@@ -195,11 +204,13 @@ let isMyTokenRefreshing = false;
 
 export async function refreshCurrentAccountToken(): Promise<Tokens | null> {
 	if (!$i || isMyTokenRefreshing) return null;
+	isMyTokenRefreshing = true;
 
 	const res = await refreshTokens($i.token);
 
 	if (res) {
 		store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + $i.id]: res });
+		isMyTokenRefreshing = false;
 	} else {
 		// トークンのリフレッシュに失敗した場合はサインアウトする
 		signout();
@@ -404,6 +415,31 @@ export async function getAccountMenu(opts: {
 
 	return menuItems;
 }
+
+export function upgradeCurrentAccount() {
+	return new Promise((resolve) => {
+		if (!$i) {
+			resolve(false);
+			return;
+		}
+
+		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkSigninDialog.vue')), {
+			autoSet: true,
+			upgradeToken: true,
+		}, {
+			upgraded: () => {
+				resolve(true);
+			},
+			cancelled: () => {
+				resolve(false);
+			},
+			closed: () => {
+				dispose();
+			},
+		});
+	});
+}
+
 
 export function getAccountWithSigninDialog(): Promise<Misskey.entities.SigninFlowSuccessResponse | null> {
 	return new Promise((resolve) => {

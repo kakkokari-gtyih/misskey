@@ -83,12 +83,7 @@ function onChangeReceiveAnnouncementEmail(v: boolean) {
 }
 
 async function saveEmailAddress() {
-	const auth = await os.authenticateDialog();
-	if (auth.canceled) return;
-
 	os.apiWithDialog('i/update-email', {
-		password: auth.result.password,
-		token: auth.result.token,
 		email: emailAddress.value,
 	});
 }

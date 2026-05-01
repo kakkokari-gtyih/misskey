@@ -19,6 +19,7 @@ import type { MiLocalUser } from '@/models/User.js';
 import type Logger from '@/logger.js';
 
 import { LoggerService } from '@/core/LoggerService.js';
+import { AuthenticateService } from '@/server/auth/AuthenticateService.js';
 import { RateLimiterService } from '@/server/api/RateLimiterService.js';
 import { WebAuthnService } from '@/core/WebAuthnService.js';
 import { IdService } from '@/core/IdService.js';
@@ -32,6 +33,7 @@ import { FastifyReplyError } from '@/misc/fastify-reply-error.js';
 
 
 interface SigninDataBase {
+	upgradeSessionId: string | null; // アップグレードのサインインフローである場合、そのセッションID。そうでない場合はnull
 	result: {
 		password: boolean;
 		totp: boolean;
@@ -66,6 +68,10 @@ interface SigninIndvidualResult {
 //#region API Types -- Misskey.js（src/entities.ts）と常に同期させること
 type SigninFlowInitRequest = {};
 
+type SigninFlowUpgradeInitRequest = {
+	i: string; // アクセストークン
+};
+
 interface SigninFlowContinueRequestBase {
 	sessionId: string;
 }
@@ -87,23 +93,32 @@ interface SigninFlowContinueRequestPasskey extends SigninFlowContinueRequestBase
 }
 
 interface SigninFlowContinueRequestTotp extends SigninFlowContinueRequestBase {
-	totp: string;
+	token: string;
 }
 
 type SigninFlowContinueRequest = SigninFlowContinueRequestUsername | SigninFlowContinueRequestPassword | SigninFlowContinueRequestPasskey | SigninFlowContinueRequestTotp;
 
-type SigninFlowRequest = SigninFlowInitRequest | SigninFlowContinueRequest;
+type SigninFlowRequest = SigninFlowInitRequest | SigninFlowUpgradeInitRequest | SigninFlowUpgradeInitRequest | SigninFlowContinueRequest;
 
 type SigninFlowInitResponse = {
 	sessionId: string;
 	passkeyOptions: PublicKeyCredentialRequestOptionsJSON;
 };
 
+type SigninFlowUpgradeInitResponse = {
+	sessionId: string;
+} & SigninFlowContinueResponse;
+
 type SigninFlowContinueResponse = {
 	next: 'password' | 'totp';
 } | {
-	next: 'passkey';
+	next: 'passkey' | 'totpOrPasskey';
 	passkeyOptions: PublicKeyCredentialRequestOptionsJSON;
+};
+
+type SigninFlowUpgradeSuccessResponse = {
+	id: string;
+	accessToken: string;
 };
 
 type SigninFlowSuccessResponse = {
@@ -112,7 +127,7 @@ type SigninFlowSuccessResponse = {
 	refreshToken: string;
 };
 
-type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse | SigninFlowSuccessResponse;
+type SigninFlowResponse = SigninFlowInitResponse | SigninFlowUpgradeInitResponse | SigninFlowContinueResponse | SigninFlowUpgradeSuccessResponse | SigninFlowSuccessResponse;
 //#endregion
 
 function error(reply: FastifyReply, status: number, error: { id: string }) {
@@ -124,7 +139,7 @@ function isSigninDataWithUser(data: SigninData): data is SigninDataWithUser {
 	return data.id !== null && data.config !== null;
 }
 
-function computeNextSigninStep(signinData: SigninDataWithUser): 'password' | 'totp' | 'passkey' | null {
+function computeNextSigninStep(signinData: SigninDataWithUser): 'password' | 'totpOrPasskey' | 'totp' | 'passkey' | null {
 	// パスワードレスログインが有効なら、通常のパスワード経路より先にその成立可否を判定する。
 	// この経路ではパスキー単独でログイン完了になる。
 	if (signinData.config.passkeyPasswordless && signinData.result.passkey) {
@@ -147,9 +162,9 @@ function computeNextSigninStep(signinData: SigninDataWithUser): 'password' | 'to
 	}
 
 	// どちらも未達なら、パスキーを優先して案内する。
-	// フロント側は WebAuthn 非対応時に TOTP 画面へフォールバックできる。
+	// TOTPも使えるなら、そちらで認証することもできる。
 	if (signinData.config.passkey) {
-		return 'passkey';
+		return signinData.config.totp ? 'totpOrPasskey' : 'passkey';
 	}
 
 	if (signinData.config.totp) {
@@ -187,6 +202,7 @@ export class SigninApiService {
 		private redisClient: Redis.Redis,
 
 		private loggerService: LoggerService,
+		private authenticateService: AuthenticateService,
 		private rateLimiterService: RateLimiterService,
 		private webAuthnService: WebAuthnService,
 		private idService: IdService,
@@ -222,36 +238,108 @@ export class SigninApiService {
 			}
 		}
 
-		if (!('sessionId' in request.body)) {
-			return this.handleSigninInit(request as FastifyRequest<{ Body: SigninFlowInitRequest }>, reply);
-		} else {
+		if ('sessionId' in request.body) {
 			return this.handleSigninContinue(request as FastifyRequest<{ Body: SigninFlowContinueRequest }>, reply);
+		} else if (Object.keys(request.body).length === 0 || ('i' in request.body && typeof request.body.i === 'string')) {
+			return this.handleSigninInit(request as FastifyRequest<{ Body: SigninFlowInitRequest | SigninFlowUpgradeInitRequest }>, reply);
 		}
+
+		reply.code(400);
+		return {
+			error: {
+				id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
+			},
+		};
 	}
 
 	@bindThis
-	private async handleSigninInit(_request: FastifyRequest<{ Body: SigninFlowInitRequest }>, reply: FastifyReply) {
+	private async handleSigninInit(request: FastifyRequest<{ Body: SigninFlowInitRequest | SigninFlowUpgradeInitRequest }>, reply: FastifyReply) {
 		const sessionId = secureRndstr(32);
-		const passkeyOptions = await this.webAuthnService.initiateAnonymousAuthentication(sessionId);
 
-		const signinData: SigninData = {
-			id: null,
-			config: null,
-			result: {
-				password: false,
-				totp: false,
-				passkey: false,
-			},
-		};
+		if ('i' in request.body && typeof request.body.i === 'string') {
+			// アップグレードの場合
+			const accessToken = request.body.i;
+			const jwtUser = await this.authenticateService.verifyNativeAccessToken(accessToken).catch(() => null);
+			if (jwtUser == null) {
+				return error(reply, 401, {
+					id: 'd9c8b1c7-5a3e-4c9b-9a1d-2f0c8e5f6a7b',
+				});
+			}
 
-		// セッションIDとサインインの状態をRedisに保存
-		// 有効期限90秒、サインインオプションを一つ通過するごとにこの秒数はリセットされるので短めでも大丈夫
-		this.redisClient.setex(`signin:${sessionId}`, 90, JSON.stringify(signinData));
+			const user = await this.usersRepository.findOneBy({ token: jwtUser.token, host: IsNull() });
+			if (user == null) {
+				return error(reply, 404, {
+					id: 'd9c8b1c7-5a3e-4c9b-9a1d-2f0c8e5f6a7b',
+				});
+			}
 
-		return {
-			sessionId,
-			passkeyOptions,
-		} satisfies SigninFlowInitResponse;
+			const userProfile = await this.userProfilesRepository.findOneByOrFail({ userId: user.id });
+			const securityKeysAvailable = await this.userSecurityKeysRepository.countBy({ userId: user.id }).then(result => result >= 1);
+
+			const signinData: SigninData = {
+				id: user.id,
+				upgradeSessionId: jwtUser.sessionId,
+				config: {
+					totp: userProfile.twoFactorEnabled,
+					passkey: securityKeysAvailable,
+					passkeyPasswordless: securityKeysAvailable && userProfile.usePasswordLessLogin,
+				},
+				result: {
+					password: false,
+					totp: false,
+					passkey: false,
+				},
+			};
+
+			// セッションIDとサインインの状態をRedisに保存
+			// 有効期限90秒、サインインオプションを一つ通過するごとにこの秒数はリセットされるので短めでも大丈夫
+			this.redisClient.setex(`signin:${sessionId}`, 90, JSON.stringify(signinData));
+
+			const nextStep = computeNextSigninStep(signinData);
+
+			if (nextStep === 'passkey' || nextStep === 'totpOrPasskey') {
+				const passkeyOptions = await this.webAuthnService.initiateAuthentication(signinData.id);
+
+				return {
+					sessionId,
+					next: nextStep,
+					passkeyOptions,
+				} satisfies SigninFlowUpgradeInitResponse;
+			} else if (nextStep !== null) {
+				return {
+					sessionId,
+					next: nextStep,
+				} satisfies SigninFlowUpgradeInitResponse;
+			} else {
+				// ここに来ることはないはず
+				return error(reply, 500, {
+					id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
+				});
+			}
+		} else {
+			// 新規サインインの場合
+			const signinData: SigninData = {
+				id: null,
+				upgradeSessionId: null,
+				config: null,
+				result: {
+					password: false,
+					totp: false,
+					passkey: false,
+				},
+			};
+
+			// セッションIDとサインインの状態をRedisに保存
+			// 有効期限90秒、サインインオプションを一つ通過するごとにこの秒数はリセットされるので短めでも大丈夫
+			this.redisClient.setex(`signin:${sessionId}`, 90, JSON.stringify(signinData));
+
+			const passkeyOptions = await this.webAuthnService.initiateAnonymousAuthentication(sessionId);
+
+			return {
+				sessionId,
+				passkeyOptions,
+			} satisfies SigninFlowInitResponse;
+		}
 	}
 
 	@bindThis
@@ -273,6 +361,13 @@ export class SigninApiService {
 
 		const signinData: SigninData = JSON.parse(signinDataStr);
 
+		// username/captchaResponse, password, passkeyCredential, totp tokenのいずれかがリクエストに含まれているはず。重複している場合は不正
+		if (['username', 'password', 'passkeyCredential', 'token'].filter(key => key in request.body).length !== 1) {
+			return error(400, {
+				id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
+			});
+		}
+
 		let individualResult: SigninIndvidualResult | null = null;
 
 		if ('username' in request.body) {
@@ -284,6 +379,7 @@ export class SigninApiService {
 				});
 			}
 
+			// これ以降のステップでユーザー名が確定していないことはありえない
 			if (!isSigninDataWithUser(signinData)) {
 				return error(500, {
 					id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
@@ -311,11 +407,13 @@ export class SigninApiService {
 		}
 
 		if (individualResult == null) {
-			if ('password' in request.body) {
+			const expectedNextStep = computeNextSigninStep(signinData);
+
+			if (expectedNextStep === 'password' && 'password' in request.body) {
 				individualResult = await this.handleSigninPassword(signinData, request.body);
-			} else if ('passkeyCredential' in request.body) {
+			} else if (['passkey', 'totpOrPasskey'].includes(expectedNextStep as string) && 'passkeyCredential' in request.body) {
 				individualResult = await this.handleSigninPasskey(signinData, request.body);
-			} else if ('totp' in request.body) {
+			} else if (['totp', 'totpOrPasskey'].includes(expectedNextStep as string) && 'token' in request.body) {
 				individualResult = await this.handleSigninTotp(signinData, request.body);
 			} else {
 				return error(500, {
@@ -340,16 +438,29 @@ export class SigninApiService {
 			const nextStep = computeNextSigninStep(signinData);
 
 			if (nextStep === null) {
+				// サインイン・アップグレード成功
+				await this.redisClient.del(`signin:${sessionId}`);
+
 				const user = await this.usersRepository.findOneByOrFail({ id: signinData.id }) as MiLocalUser;
-				return this.signinService.signin(request, reply, user);
+
+				// アップグレードの場合はsudoトークンを返すだけ
+				if (signinData.upgradeSessionId != null) {
+					const accessToken = await this.authenticateService.generateNativeAccessToken(user, signinData.upgradeSessionId, true);
+					return {
+						id: user.id,
+						accessToken,
+					} satisfies SigninFlowUpgradeSuccessResponse;
+				} else {
+					return this.signinService.signin(request, reply, user);
+				}
 			} else {
 				// Redisに保存するサインインの状態を更新
 				this.redisClient.setex(`signin:${sessionId}`, 90, JSON.stringify(signinData));
 
-				if (nextStep === 'passkey') {
+				if (nextStep === 'passkey' || nextStep === 'totpOrPasskey') {
 					const passkeyOptions = await this.webAuthnService.initiateAuthentication(signinData.id);
 					return {
-						next: 'passkey',
+						next: nextStep,
 						passkeyOptions,
 					} satisfies SigninFlowContinueResponse;
 				} else {
@@ -505,7 +616,7 @@ export class SigninApiService {
 			return {
 				success: false,
 				error: {
-					id: '932c904e-9460-45b7-9ce6-7ed33be7eb2c',
+					id: '93b86c4b-72f9-40eb-9815-798928603d1e',
 					code: 403,
 				},
 			};
@@ -555,7 +666,7 @@ export class SigninApiService {
 			return {
 				success: false,
 				error: {
-					id: '932c904e-9460-45b7-9ce6-7ed33be7eb2c',
+					id: '93b86c4b-72f9-40eb-9815-798928603d1e',
 					code: 403,
 				},
 			};
@@ -567,11 +678,11 @@ export class SigninApiService {
 	 */
 	@bindThis
 	private async handleSigninTotp(signinData: SigninDataWithUser, request: SigninFlowContinueRequestTotp): Promise<SigninIndvidualResult> {
-		const { totp } = request;
+		const { token } = request;
 
 		try {
 			const profile = await this.userProfilesRepository.findOneByOrFail({ userId: signinData.id });
-			await this.totpService.twoFactorAuthenticate(profile, totp);
+			await this.totpService.twoFactorAuthenticate(profile, token);
 			signinData.result.totp = true;
 			return {
 				success: true,
@@ -580,7 +691,7 @@ export class SigninApiService {
 			return {
 				success: false,
 				error: {
-					id: '932c904e-9460-45b7-9ce6-7ed33be7eb2c',
+					id: 'cdf1235b-ac71-46d4-a3a6-84ccce48df6f',
 					code: 403,
 				},
 			};

@@ -456,21 +456,6 @@ export function inputDatetime(props: {
 	});
 }
 
-export function authenticateDialog(): Promise<{
-	canceled: true; result: undefined;
-} | {
-	canceled: false; result: { password: string; token: string | null; };
-}> {
-	return new Promise(resolve => {
-		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkPasswordDialog.vue')), {}, {
-			done: result => {
-				resolve(result ? { canceled: false, result } : { canceled: true, result: undefined });
-			},
-			closed: () => dispose(),
-		});
-	});
-}
-
 export function select<C extends OptionValue, D extends C | null = null>(props: {
 	title?: string;
 	text?: string;
