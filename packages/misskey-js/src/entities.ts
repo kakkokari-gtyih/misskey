@@ -10,7 +10,7 @@ import {
 	User,
 	UserDetailedNotMe,
 } from './autogen/models.js';
-import type { AuthenticationResponseJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/types';
+import type { AuthenticationResponseJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 
 export * from './autogen/entities.js';
 export * from './autogen/models.js';
@@ -289,44 +289,55 @@ export type SignupPendingResponse = {
 	i: string,
 };
 
-export type SigninFlowRequest = {
+//#region Signin API Types -- Backend（src/server/auth/SigninApiService.ts）と常に同期させること
+type SigninFlowInitRequest = {};
+
+interface SigninFlowContinueRequestBase {
+	sessionId: string;
+}
+
+interface SigninFlowContinueRequestUsername extends SigninFlowContinueRequestBase {
 	username: string;
-	password?: string;
-	token?: string;
-	credential?: AuthenticationResponseJSON;
-	'hcaptcha-response'?: string | null;
-	'g-recaptcha-response'?: string | null;
-	'turnstile-response'?: string | null;
-	'm-captcha-response'?: string | null;
-	'testcaptcha-response'?: string | null;
+	captchaResponse?: {
+		type: CaptchaType;
+		response: string;
+	};
+}
+
+interface SigninFlowContinueRequestPassword extends SigninFlowContinueRequestBase {
+	password: string;
+}
+
+interface SigninFlowContinueRequestPasskey extends SigninFlowContinueRequestBase {
+	passkeyCredential: AuthenticationResponseJSON;
+}
+
+interface SigninFlowContinueRequestTotp extends SigninFlowContinueRequestBase {
+	totp: string;
+}
+
+type SigninFlowContinueRequest = SigninFlowContinueRequestUsername | SigninFlowContinueRequestPassword | SigninFlowContinueRequestPasskey | SigninFlowContinueRequestTotp;
+
+export type SigninFlowRequest = SigninFlowInitRequest | SigninFlowContinueRequest;
+
+type SigninFlowInitResponse = {
+	sessionId: string;
+	passkeyOptions: PublicKeyCredentialRequestOptionsJSON;
 };
 
-export type SigninFlowResponse = {
-	finished: true;
-	id: User['id'];
-	i: string;
+type SigninFlowContinueResponse = {
+	next: 'password' | 'totp';
 } | {
-	finished: false;
-	next: 'captcha' | 'password' | 'totp';
-} | {
-	finished: false;
 	next: 'passkey';
-	authRequest: PublicKeyCredentialRequestOptionsJSON;
+	passkeyOptions: PublicKeyCredentialRequestOptionsJSON;
+} | {
+	id: string;
+	accessToken: string;
+	refreshToken: string;
 };
 
-export type SigninWithPasskeyRequest = {
-	credential?: AuthenticationResponseJSON;
-	context?: string;
-};
-
-export type SigninWithPasskeyInitResponse = {
-	option: PublicKeyCredentialRequestOptionsJSON;
-	context: string;
-};
-
-export type SigninWithPasskeyResponse = {
-	signinResponse: SigninFlowResponse & { finished: true };
-};
+export type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse;
+//#endregion
 
 type Values<T extends Record<PropertyKey, unknown>> = T[keyof T];
 

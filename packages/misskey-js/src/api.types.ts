@@ -9,15 +9,6 @@ import {
 } from './autogen/entities.js';
 import {
 	PartialRolePolicyOverride,
-	SigninFlowRequest,
-	SigninFlowResponse,
-	SigninWithPasskeyInitResponse,
-	SigninWithPasskeyRequest,
-	SigninWithPasskeyResponse,
-	SignupPendingRequest,
-	SignupPendingResponse,
-	SignupRequest,
-	SignupResponse,
 } from './entities.js';
 
 type Overwrite<T, U extends { [Key in keyof T]?: unknown }> = Omit<
@@ -77,37 +68,6 @@ export type Endpoints = Overwrite<
 					$default: UserDetailed;
 				};
 			};
-		},
-		// api.jsonには載せないものなのでここで定義
-		'signup': {
-			req: SignupRequest;
-			res: SignupResponse;
-		},
-		// api.jsonには載せないものなのでここで定義
-		'signup-pending': {
-			req: SignupPendingRequest;
-			res: SignupPendingResponse;
-		},
-		// api.jsonには載せないものなのでここで定義
-		'signin-flow': {
-			req: SigninFlowRequest;
-			res: SigninFlowResponse;
-		},
-		'signin-with-passkey': {
-			req: SigninWithPasskeyRequest;
-			res: {
-				$switch: {
-					$cases: [
-						[
-							{
-								context: string;
-							},
-							SigninWithPasskeyResponse,
-						],
-					];
-					$default: SigninWithPasskeyInitResponse;
-				},
-			},
 		},
 		'admin/roles/create': {
 			req: Overwrite<AdminRolesCreateRequest, { policies: PartialRolePolicyOverride }>;

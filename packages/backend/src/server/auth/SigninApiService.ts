@@ -7,7 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { IsNull } from 'typeorm';
 import * as Redis from 'ioredis';
 import bcrypt from 'bcryptjs';
-import type { AuthenticationResponseJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/types';
+import type { AuthenticationResponseJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { bindThis } from '@/decorators.js';
@@ -63,12 +63,13 @@ interface SigninIndvidualResult {
 	};
 };
 
-//#region API Types
+//#region API Types -- Misskey.js（src/entities.ts）と常に同期させること
 type SigninFlowInitRequest = {};
 
 interface SigninFlowContinueRequestBase {
 	sessionId: string;
 }
+
 interface SigninFlowContinueRequestUsername extends SigninFlowContinueRequestBase {
 	username: string;
 	captchaResponse?: {
@@ -76,15 +77,19 @@ interface SigninFlowContinueRequestUsername extends SigninFlowContinueRequestBas
 		response: string;
 	};
 }
+
 interface SigninFlowContinueRequestPassword extends SigninFlowContinueRequestBase {
 	password: string;
 }
+
 interface SigninFlowContinueRequestPasskey extends SigninFlowContinueRequestBase {
 	passkeyCredential: AuthenticationResponseJSON;
 }
+
 interface SigninFlowContinueRequestTotp extends SigninFlowContinueRequestBase {
 	totp: string;
 }
+
 type SigninFlowContinueRequest = SigninFlowContinueRequestUsername | SigninFlowContinueRequestPassword | SigninFlowContinueRequestPasskey | SigninFlowContinueRequestTotp;
 
 type SigninFlowRequest = SigninFlowInitRequest | SigninFlowContinueRequest;
@@ -100,7 +105,9 @@ type SigninFlowContinueResponse = {
 	next: 'passkey';
 	passkeyOptions: PublicKeyCredentialRequestOptionsJSON;
 } | {
-	next: null;
+	id: string;
+	accessToken: string;
+	refreshToken: string;
 };
 
 type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse;

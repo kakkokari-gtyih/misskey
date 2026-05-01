@@ -4,10 +4,10 @@
 
 ```ts
 
-import type { AuthenticationResponseJSON } from '@simplewebauthn/types';
+import type { AuthenticationResponseJSON } from '@simplewebauthn/browser';
 import { EventEmitter } from 'eventemitter3';
 import { Options } from 'reconnecting-websocket';
-import type { PublicKeyCredentialRequestOptionsJSON as PublicKeyCredentialRequestOptionsJSON_2 } from '@simplewebauthn/types';
+import type { PublicKeyCredentialRequestOptionsJSON as PublicKeyCredentialRequestOptionsJSON_2 } from '@simplewebauthn/browser';
 import _ReconnectingWebSocket from 'reconnecting-websocket';
 
 // Warning: (ae-forgotten-export) The symbol "components" needs to be exported by the entry point index.d.ts
@@ -614,6 +614,9 @@ type BubbleGameRankingResponse = operations['bubble-game___ranking']['responses'
 
 // @public (undocumented)
 type BubbleGameRegisterRequest = operations['bubble-game___register']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type CaptchaType = 'hcaptcha' | 'recaptcha-v2' | 'turnstile' | 'm-captcha' | 'testcaptcha';
 
 // @public (undocumented)
 type Channel = components['schemas']['Channel'];
@@ -1443,34 +1446,6 @@ export type Endpoints = Overwrite<Endpoints_2, {
             };
         };
     };
-    'signup': {
-        req: SignupRequest;
-        res: SignupResponse;
-    };
-    'signup-pending': {
-        req: SignupPendingRequest;
-        res: SignupPendingResponse;
-    };
-    'signin-flow': {
-        req: SigninFlowRequest;
-        res: SigninFlowResponse;
-    };
-    'signin-with-passkey': {
-        req: SigninWithPasskeyRequest;
-        res: {
-            $switch: {
-                $cases: [
-                [
-                    {
-                    context: string;
-                },
-                SigninWithPasskeyResponse
-                ]
-                ];
-                $default: SigninWithPasskeyInitResponse;
-            };
-        };
-    };
     'admin/roles/create': {
         req: Overwrite<AdminRolesCreateRequest, {
             policies: PartialRolePolicyOverride;
@@ -1501,15 +1476,13 @@ declare namespace entities {
         EmojiUpdated,
         EmojiDeleted,
         AnnouncementCreated,
+        CaptchaType,
         SignupRequest,
         SignupResponse,
         SignupPendingRequest,
         SignupPendingResponse,
         SigninFlowRequest,
         SigninFlowResponse,
-        SigninWithPasskeyRequest,
-        SigninWithPasskeyInitResponse,
-        SigninWithPasskeyResponse,
         PartialRolePolicyOverride,
         EmptyRequest,
         EmptyResponse,
@@ -3515,51 +3488,17 @@ type ServerStatsLog = ServerStats[];
 // @public (undocumented)
 type Signin = components['schemas']['Signin'];
 
+// Warning: (ae-forgotten-export) The symbol "SigninFlowInitRequest" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "SigninFlowContinueRequest" needs to be exported by the entry point index.d.ts
+//
 // @public (undocumented)
-type SigninFlowRequest = {
-    username: string;
-    password?: string;
-    token?: string;
-    credential?: AuthenticationResponseJSON;
-    'hcaptcha-response'?: string | null;
-    'g-recaptcha-response'?: string | null;
-    'turnstile-response'?: string | null;
-    'm-captcha-response'?: string | null;
-    'testcaptcha-response'?: string | null;
-};
+type SigninFlowRequest = SigninFlowInitRequest | SigninFlowContinueRequest;
 
+// Warning: (ae-forgotten-export) The symbol "SigninFlowInitResponse" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "SigninFlowContinueResponse" needs to be exported by the entry point index.d.ts
+//
 // @public (undocumented)
-type SigninFlowResponse = {
-    finished: true;
-    id: User['id'];
-    i: string;
-} | {
-    finished: false;
-    next: 'captcha' | 'password' | 'totp';
-} | {
-    finished: false;
-    next: 'passkey';
-    authRequest: PublicKeyCredentialRequestOptionsJSON_2;
-};
-
-// @public (undocumented)
-type SigninWithPasskeyInitResponse = {
-    option: PublicKeyCredentialRequestOptionsJSON_2;
-    context: string;
-};
-
-// @public (undocumented)
-type SigninWithPasskeyRequest = {
-    credential?: AuthenticationResponseJSON;
-    context?: string;
-};
-
-// @public (undocumented)
-type SigninWithPasskeyResponse = {
-    signinResponse: SigninFlowResponse & {
-        finished: true;
-    };
-};
+type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse;
 
 // @public (undocumented)
 type SignupPendingRequest = {
@@ -3579,16 +3518,18 @@ type SignupRequest = {
     host?: string;
     invitationCode?: string;
     emailAddress?: string;
-    'hcaptcha-response'?: string | null;
-    'g-recaptcha-response'?: string | null;
-    'turnstile-response'?: string | null;
-    'm-captcha-response'?: string | null;
-    'testcaptcha-response'?: string | null;
+    captchaResponse?: {
+        type: CaptchaType;
+        response: string;
+    };
 };
 
 // @public (undocumented)
 type SignupResponse = MeDetailed & {
-    token: string;
+    token: {
+        accessToken: string;
+        refreshToken: string;
+    };
 };
 
 // @public (undocumented)
