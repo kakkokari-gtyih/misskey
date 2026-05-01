@@ -142,7 +142,7 @@ export class ServerService implements OnApplicationShutdown {
 			});
 		}
 
-		fastify.register(this.authServerService.createServer);
+		fastify.register(this.authServerService.createServer, { prefix: '/auth' });
 		fastify.register(this.apiServerService.createServer, { prefix: '/api' });
 		fastify.register(this.openApiServerService.createServer);
 		fastify.register(this.fileServerService.createServer);
