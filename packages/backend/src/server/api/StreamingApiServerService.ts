@@ -9,7 +9,7 @@ import * as Redis from 'ioredis';
 import * as WebSocket from 'ws';
 import { DI } from '@/di-symbols.js';
 import type { MiAccessToken } from '@/models/_.js';
-import type { MiJwt } from '@/server/auth/AuthenticateService.js';
+import type { MiJwtUser } from '@/server/auth/AuthenticateService.js';
 import { bindThis } from '@/decorators.js';
 import { MiLocalUser } from '@/models/User.js';
 import { UserService } from '@/core/UserService.js';
@@ -49,7 +49,7 @@ export class StreamingApiServerService {
 
 			const q = new URL(request.url, `http://${request.headers.host}`).searchParams;
 
-			let user: MiJwt | null = null;
+			let user: MiJwtUser | null = null;
 			let app: MiAccessToken | null = null;
 
 			// https://datatracker.ietf.org/doc/html/rfc6750.html#section-2.1

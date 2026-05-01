@@ -14,6 +14,7 @@ import { bindThis } from '@/decorators.js';
 import { EmailService } from '@/core/EmailService.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import { AuthenticateService } from '@/server/auth/AuthenticateService.js';
+import { secureRndstr } from '@/misc/secure-rndstr.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
 @Injectable()
@@ -36,18 +37,23 @@ export class SigninService {
 
 	@bindThis
 	public async signin(request: FastifyRequest, reply: FastifyReply, user: MiLocalUser) {
+		const nativeRefreshToken = secureRndstr(64);
+
+		const signinRecord = await this.signinsRepository.insertOne({
+			id: this.idService.gen(),
+			userId: user.id,
+			ip: request.ip,
+			headers: request.headers as any,
+			success: true,
+			refreshToken: nativeRefreshToken,
+		});
+
+		const jwt = await this.authenticateService.generateNativeTokens(user, signinRecord);
+
 		setImmediate(async () => {
 			this.notificationService.createNotification(user.id, 'login', {});
 
-			const record = await this.signinsRepository.insertOne({
-				id: this.idService.gen(),
-				userId: user.id,
-				ip: request.ip,
-				headers: request.headers as any,
-				success: true,
-			});
-
-			this.globalEventService.publishMainStream(user.id, 'signin', await this.signinEntityService.pack(record));
+			this.globalEventService.publishMainStream(user.id, 'signin', await this.signinEntityService.pack(signinRecord));
 
 			const profile = await this.userProfilesRepository.findOneByOrFail({ userId: user.id });
 			if (profile.email && profile.emailVerified) {
@@ -57,14 +63,12 @@ export class SigninService {
 			}
 		});
 
-		const token = await this.authenticateService.generateNativeTokens(user);
-
 		reply.code(200);
 
 		return {
 			id: user.id,
-			accessToken: token.accessToken,
-			refreshToken: token.refreshToken,
+			accessToken: jwt.accessToken,
+			refreshToken: jwt.refreshToken,
 		};
 	}
 }

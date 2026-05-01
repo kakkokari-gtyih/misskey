@@ -8,7 +8,7 @@ import _Ajv from 'ajv';
 import type { Schema, SchemaType } from '@/misc/json-schema.js';
 import type { MiLocalUser } from '@/models/User.js';
 import type { MiAccessToken } from '@/models/AccessToken.js';
-import type { MiJwt } from '@/server/auth/AuthenticateService.js';
+import type { MiJwtUser } from '@/server/auth/AuthenticateService.js';
 import { ApiError } from './error.js';
 import type { IEndpointMeta } from './endpoints.js';
 
@@ -28,12 +28,12 @@ type File = {
 };
 
 // TODO: paramsの型をT['params']のスキーマ定義から推論する
-type Executor<T extends IEndpointMeta, Ps extends Schema, Me = T['requireFullUserData'] extends true ? MiLocalUser : MiJwt> =
+type Executor<T extends IEndpointMeta, Ps extends Schema, Me = T['requireFullUserData'] extends true ? MiLocalUser : MiJwtUser> =
 	(params: SchemaType<Ps>, user: T['requireCredential'] extends true ? Me : Me | null, token: MiAccessToken | null, file?: File, cleanup?: () => any, ip?: string | null, headers?: Record<string, string> | null) =>
 		Promise<T['res'] extends undefined ? Response : SchemaType<NonNullable<T['res']>>>;
 
 export abstract class Endpoint<T extends IEndpointMeta, Ps extends Schema> {
-	public exec: (params: any, user: MiLocalUser | MiJwt | null, token: MiAccessToken | null, file?: File, ip?: string | null, headers?: Record<string, string> | null) => Promise<any>;
+	public exec: (params: any, user: MiLocalUser | MiJwtUser | null, token: MiAccessToken | null, file?: File, ip?: string | null, headers?: Record<string, string> | null) => Promise<any>;
 
 	constructor(meta: T, paramDef: Ps, cb: Executor<T, Ps>) {
 		const validate = ajv.compile(paramDef);

@@ -36,10 +36,22 @@ export class AuthServerService {
 	}
 
 	@bindThis
-	private refreshTokenRequestHandler(request: FastifyRequest<{ Body: { refreshToken: string } }>, reply: FastifyReply) {
-		const accessToken = this.autenticateService.regenerateNativeAccessToken(request.body.refreshToken);
-		return {
+	private async refreshTokenRequestHandler(request: FastifyRequest<{ Body: { i: string; refreshToken: string } }>, reply: FastifyReply) {
+		const jwt = await this.autenticateService.refreshNativeAccessToken(request.body.i, request.body.refreshToken);
 
+		if (!jwt) {
+			reply.status(401).send({
+				error: {
+					id: 'e7a92104-8133-433c-a2e6-17e7ff6d7628',
+					message: 'Invalid token',
+				},
+			});
+			return;
+		}
+
+		return {
+			accessToken: jwt?.accessToken ?? null,
+			refreshToken: jwt?.refreshToken ?? null,
 		};
 	}
 }

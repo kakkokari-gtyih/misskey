@@ -28,5 +28,12 @@ export class SigninEntityService {
 			success: src.success,
 		};
 	}
+
+	@bindThis
+	public async packMany(
+		src: MiSignin[],
+	) {
+		return await Promise.all(src.map(record => this.pack(record)));
+	}
 }
 

@@ -32,4 +32,12 @@ export class MiSignin {
 
 	@Column('boolean')
 	public success: boolean;
+
+	/** そのまま使われず、JWTでラップされる */
+	@Index({ unique: true, where: '"refreshToken" IS NOT NULL' })
+	@Column('varchar', {
+		length: 128,
+		nullable: true,
+	})
+	public refreshToken: string | null;
 }

@@ -245,12 +245,7 @@ export class SignupApiService {
 					});
 				}
 
-				const token = await this.authenticateService.generateNativeTokens(account);
-
-				return {
-					...res,
-					token,
-				};
+				return this.signinService.signin(request, reply, account as MiLocalUser);
 			} catch (err) {
 				throw new FastifyReplyError(400, typeof err === 'string' ? err : (err as Error).toString());
 			}

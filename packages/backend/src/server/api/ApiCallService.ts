@@ -21,7 +21,7 @@ import { ApiError } from './error.js';
 import { CacheService } from '@/core/CacheService.js';
 import { RateLimiterService } from './RateLimiterService.js';
 import { ApiLoggerService } from './ApiLoggerService.js';
-import { AuthenticateService, AuthenticationError, MiJwt } from '@/server/auth/AuthenticateService.js';
+import { AuthenticateService, AuthenticationError, MiJwtUser } from '@/server/auth/AuthenticateService.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { OnApplicationShutdown } from '@nestjs/common';
 import type { IEndpointMeta, IEndpoint } from './endpoints.js';
@@ -179,7 +179,7 @@ export class ApiCallService implements OnApplicationShutdown {
 			return;
 		}
 		this.authenticateService.authenticate(token).then(async (aRes) => {
-			let user: MiJwt | MiLocalUser | null = aRes.user;
+			let user: MiJwtUser | MiLocalUser | null = aRes.user;
 			if (endpoint.meta.requireFullUserData && user) {
 				user = await this.usersRepository.findOneBy({ id: user.id }) as MiLocalUser ?? null;
 			}
@@ -242,7 +242,7 @@ export class ApiCallService implements OnApplicationShutdown {
 			return;
 		}
 		this.authenticateService.authenticate(token).then(async (aRes) => {
-			let user: MiJwt | MiLocalUser | null = aRes.user;
+			let user: MiJwtUser | MiLocalUser | null = aRes.user;
 			if (endpoint.meta.requireFullUserData && user) {
 				user = (await this.cacheService.localUserByIdCache.fetchMaybe(user.id, () => this.usersRepository.findOneBy({ id: user!.id }).then(x => x ?? undefined) as Promise<MiLocalUser | undefined>)) ?? null;
 			}
@@ -287,7 +287,7 @@ export class ApiCallService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	private logIp(request: FastifyRequest, user: MiJwt | MiLocalUser) {
+	private logIp(request: FastifyRequest, user: MiJwtUser | MiLocalUser) {
 		if (!this.meta.enableIpLogging) return;
 		const ip = request.ip;
 		const ips = this.userIpHistories.get(user.id);
@@ -312,7 +312,7 @@ export class ApiCallService implements OnApplicationShutdown {
 	@bindThis
 	private async call(
 		ep: IEndpoint & { exec: any },
-		user: MiLocalUser | MiJwt | null | undefined,
+		user: MiLocalUser | MiJwtUser | null | undefined,
 		token: MiAccessToken | null | undefined,
 		data: any,
 		file: {
