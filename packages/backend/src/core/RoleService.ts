@@ -547,7 +547,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async assign(userId: MiUser['id'], roleId: MiRole['id'], expiresAt: Date | null = null, moderator?: MiUser): Promise<void> {
+	public async assign(userId: MiUser['id'], roleId: MiRole['id'], expiresAt: Date | null = null, moderator?: { id: MiUser['id'] }): Promise<void> {
 		const now = Date.now();
 
 		const role = await this.rolesRepository.findOneByOrFail({ id: roleId });
@@ -602,7 +602,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async unassign(userId: MiUser['id'], roleId: MiRole['id'], moderator?: MiUser): Promise<void> {
+	public async unassign(userId: MiUser['id'], roleId: MiRole['id'], moderator?: { id: MiUser['id'] }): Promise<void> {
 		const now = new Date();
 
 		const existing = await this.roleAssignmentsRepository.findOneBy({ roleId, userId });
@@ -654,7 +654,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async create(values: Partial<MiRole>, moderator?: MiUser): Promise<MiRole> {
+	public async create(values: Partial<MiRole>, moderator?: { id: MiUser['id'] }): Promise<MiRole> {
 		const date = new Date();
 		const created = await this.rolesRepository.insertOne({
 			id: this.idService.gen(date.getTime()),
@@ -690,7 +690,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async update(role: MiRole, params: Partial<MiRole>, moderator?: MiUser): Promise<void> {
+	public async update(role: MiRole, params: Partial<MiRole>, moderator?: { id: MiUser['id'] }): Promise<void> {
 		const date = new Date();
 		await this.rolesRepository.update(role.id, {
 			updatedAt: date,
@@ -710,7 +710,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async delete(role: MiRole, moderator?: MiUser): Promise<void> {
+	public async delete(role: MiRole, moderator?: { id: MiUser['id'] }): Promise<void> {
 		await this.rolesRepository.delete({ id: role.id });
 		this.globalEventService.publishInternalEvent('roleDeleted', role);
 

@@ -175,7 +175,7 @@ export class SearchService {
 	@bindThis
 	public async searchNote(
 		q: string,
-		me: MiUser | null,
+		me: { id: MiUser['id'] } | null,
 		opts: SearchOpts,
 		pagination: SearchPagination,
 	): Promise<MiNote[]> {
@@ -199,7 +199,7 @@ export class SearchService {
 	@bindThis
 	private async searchNoteByLike(
 		q: string,
-		me: MiUser | null,
+		me: { id: MiUser['id'] } | null,
 		opts: SearchOpts,
 		pagination: SearchPagination,
 	): Promise<MiNote[]> {
@@ -241,7 +241,7 @@ export class SearchService {
 	@bindThis
 	private async searchNoteByMeilisearch(
 		q: string,
-		me: MiUser | null,
+		me: { id: MiUser['id'] } | null,
 		opts: SearchOpts,
 		pagination: SearchPagination,
 	): Promise<MiNote[]> {

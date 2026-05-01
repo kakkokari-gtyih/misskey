@@ -57,7 +57,7 @@ export class PageService {
 
 	@bindThis
 	public async create(
-		me: MiUser,
+		me: { id: MiUser['id'] },
 		body: PageBody,
 	): Promise<MiPage> {
 		await this.pagesRepository.findBy({
@@ -96,7 +96,7 @@ export class PageService {
 
 	@bindThis
 	public async update(
-		me: MiUser,
+		me: { id: MiUser['id'] },
 		pageId: MiPage['id'],
 		body: Partial<PageBody>,
 	): Promise<void> {
@@ -161,7 +161,7 @@ export class PageService {
 	}
 
 	@bindThis
-	public async delete(me: MiUser, pageId: MiPage['id']): Promise<void> {
+	public async delete(me: { id: MiUser['id'] }, pageId: MiPage['id']): Promise<void> {
 		await this.db.transaction(async (transaction) => {
 			const page = await transaction.findOne(MiPage, {
 				where: {

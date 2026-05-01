@@ -213,12 +213,12 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async matchSpecificUserCancel(user: MiUser, targetUserId: MiUser['id']) {
+	public async matchSpecificUserCancel(user: { id: MiUser['id'] }, targetUserId: MiUser['id']) {
 		await this.redisClient.zrem(`reversi:matchSpecific:${targetUserId}`, user.id);
 	}
 
 	@bindThis
-	public async matchAnyUserCancel(user: MiUser) {
+	public async matchAnyUserCancel(user: { id: MiUser['id'] }) {
 		await this.redisClient.zrem('reversi:matchAny', user.id, user.id + ':noIrregularRules');
 	}
 
@@ -231,7 +231,7 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async gameReady(gameId: MiReversiGame['id'], user: MiUser, ready: boolean) {
+	public async gameReady(gameId: MiReversiGame['id'], user: { id: MiUser['id'] }, ready: boolean) {
 		const game = await this.get(gameId);
 		if (game == null) throw new Error('game not found');
 		if (game.isStarted) return;
@@ -390,7 +390,7 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async getInvitations(user: MiUser): Promise<MiUser['id'][]> {
+	public async getInvitations(user: { id: MiUser['id'] }): Promise<MiUser['id'][]> {
 		const invitations = await this.redisClient.zrange(
 			`reversi:matchSpecific:${user.id}`,
 			Date.now() - INVITATION_TIMEOUT_MS,
@@ -517,7 +517,7 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async surrender(gameId: MiReversiGame['id'], user: MiUser) {
+	public async surrender(gameId: MiReversiGame['id'], user: { id: MiUser['id'] }) {
 		const game = await this.get(gameId);
 		if (game == null) throw new Error('game not found');
 		if (game.isEnded) return;

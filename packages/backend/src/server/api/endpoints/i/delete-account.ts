@@ -13,6 +13,7 @@ import { TotpService } from '@/core/TotpService.js';
 
 export const meta = {
 	requireCredential: true,
+	requireFullUserData: true,
 
 	secure: true,
 } as const;

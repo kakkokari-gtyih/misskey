@@ -37,7 +37,7 @@ export class UserSuspendService {
 	}
 
 	@bindThis
-	public async suspend(user: MiUser, moderator: MiUser): Promise<void> {
+	public async suspend(user: MiUser, moderator: { id: MiUser['id'] }): Promise<void> {
 		await this.usersRepository.update(user.id, {
 			isSuspended: true,
 		});
@@ -55,7 +55,7 @@ export class UserSuspendService {
 	}
 
 	@bindThis
-	public async unsuspend(user: MiUser, moderator: MiUser): Promise<void> {
+	public async unsuspend(user: MiUser, moderator: { id: MiUser['id'] }): Promise<void> {
 		await this.usersRepository.update(user.id, {
 			isSuspended: false,
 		});

@@ -13,6 +13,9 @@ import type { JsonObject, JsonValue } from '@/misc/json-value.js';
 import Channel, { type ChannelRequest } from '../channel.js';
 import { reversiUpdateKeys } from 'misskey-js';
 import { REQUEST } from '@nestjs/core';
+import { DI } from '@/di-symbols.js';
+import type { MiLocalUser } from '@/models/User.js';
+import type { UsersRepository } from '@/models/_.js';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class ReversiGameChannel extends Channel {
@@ -20,10 +23,14 @@ export class ReversiGameChannel extends Channel {
 	public static shouldShare = false;
 	public static requireCredential = false as const;
 	private gameId: MiReversiGame['id'] | null = null;
+	private userFull: MiLocalUser | null = null;
 
 	constructor(
 		@Inject(REQUEST)
 		request: ChannelRequest,
+
+		@Inject(DI.usersRepository)
+		private usersRepository: UsersRepository,
 
 		private reversiService: ReversiService,
 		private reversiGameEntityService: ReversiGameEntityService,
@@ -33,10 +40,21 @@ export class ReversiGameChannel extends Channel {
 
 	@bindThis
 	public async init(params: JsonObject) {
-		if (typeof params.gameId !== 'string') return;
+		if (typeof params.gameId !== 'string' || this.user == null) {
+			return false;
+		}
+
+		// JWTの情報だけでは足りないのでユーザー情報を完全に取得する
+		this.userFull = await this.usersRepository.findOneBy({ id: this.user.id }) as MiLocalUser | null;
+		if (this.userFull == null) {
+			return false;
+		}
+
 		this.gameId = params.gameId;
 
 		this.subscriber.on(`reversiGameStream:${this.gameId}`, this.send);
+
+		return true;
 	}
 
 	@bindThis
@@ -70,7 +88,7 @@ export class ReversiGameChannel extends Channel {
 	private async updateSettings<K extends typeof reversiUpdateKeys[number]>(key: K, value: MiReversiGame[K]) {
 		if (this.user == null) return;
 
-		this.reversiService.updateSettings(this.gameId!, this.user, key, value);
+		this.reversiService.updateSettings(this.gameId!, this.userFull!, key, value);
 	}
 
 	@bindThis
@@ -84,14 +102,14 @@ export class ReversiGameChannel extends Channel {
 	private async cancelGame() {
 		if (this.user == null) return;
 
-		this.reversiService.cancelGame(this.gameId!, this.user);
+		this.reversiService.cancelGame(this.gameId!, this.userFull!);
 	}
 
 	@bindThis
 	private async putStone(pos: number, id: string) {
 		if (this.user == null) return;
 
-		this.reversiService.putStoneToGame(this.gameId!, this.user, pos, id);
+		this.reversiService.putStoneToGame(this.gameId!, this.userFull!, pos, id);
 	}
 
 	@bindThis

@@ -77,7 +77,7 @@ export class UserSearchService {
 			limit?: number,
 			detail?: boolean,
 		},
-		me?: MiUser | null,
+		me?: { id: MiUser['id'] } | null,
 	): Promise<Packed<'User'>[]> {
 		const queries = me ? this.buildSearchUserQueries(me, params) : this.buildSearchUserNoLoginQueries(params);
 
@@ -112,7 +112,7 @@ export class UserSearchService {
 	 */
 	@bindThis
 	private buildSearchUserQueries(
-		me: MiUser,
+		me: { id: MiUser['id'] },
 		params: {
 			username?: string | null,
 			host?: string | null,

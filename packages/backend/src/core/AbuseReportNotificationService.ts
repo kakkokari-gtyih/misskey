@@ -274,7 +274,7 @@ export class AbuseReportNotificationService implements OnApplicationShutdown {
 			userId: MiAbuseReportNotificationRecipient['userId'];
 			systemWebhookId: MiAbuseReportNotificationRecipient['systemWebhookId'];
 		},
-		updater: MiUser,
+		updater: { id: MiUser['id'] },
 	): Promise<MiAbuseReportNotificationRecipient> {
 		const id = this.idService.gen();
 		await this.abuseReportNotificationRecipientRepository.insert({
@@ -306,7 +306,7 @@ export class AbuseReportNotificationService implements OnApplicationShutdown {
 			userId: MiAbuseReportNotificationRecipient['userId'];
 			systemWebhookId: MiAbuseReportNotificationRecipient['systemWebhookId'];
 		},
-		updater: MiUser,
+		updater: { id: MiUser['id'] },
 	): Promise<MiAbuseReportNotificationRecipient> {
 		const beforeEntity = await this.abuseReportNotificationRecipientRepository.findOneByOrFail({ id: params.id });
 
@@ -337,7 +337,7 @@ export class AbuseReportNotificationService implements OnApplicationShutdown {
 	@bindThis
 	public async deleteRecipient(
 		id: MiAbuseReportNotificationRecipient['id'],
-		updater: MiUser,
+		updater: { id: MiUser['id'] },
 	) {
 		const entity = await this.abuseReportNotificationRecipientRepository.findBy({ id });
 

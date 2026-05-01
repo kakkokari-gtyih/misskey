@@ -102,7 +102,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 		isSensitive: boolean;
 		localOnly: boolean;
 		roleIdsThatCanBeUsedThisEmojiAsReaction: MiRole['id'][];
-	}, moderator?: MiUser): Promise<MiEmoji> {
+	}, moderator?: { id: MiUser['id'] }): Promise<MiEmoji> {
 		const emoji = await this.emojisRepository.insertOne({
 			id: this.idService.gen(),
 			updatedAt: new Date(),
@@ -150,7 +150,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 		isSensitive?: boolean;
 		localOnly?: boolean;
 		roleIdsThatCanBeUsedThisEmojiAsReaction?: MiRole['id'][];
-	}, moderator?: MiUser): Promise<
+	}, moderator?: { id: MiUser['id'] }): Promise<
 		null
 		| 'NO_SUCH_EMOJI'
 		| 'SAME_NAME_EMOJI_EXISTS'
@@ -300,7 +300,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async delete(id: MiEmoji['id'], moderator?: MiUser) {
+	public async delete(id: MiEmoji['id'], moderator?: { id: MiUser['id'] }) {
 		const emoji = await this.emojisRepository.findOneByOrFail({ id: id });
 
 		await this.emojisRepository.delete(emoji.id);
@@ -320,7 +320,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async deleteBulk(ids: MiEmoji['id'][], moderator?: MiUser) {
+	public async deleteBulk(ids: MiEmoji['id'][], moderator?: { id: MiUser['id'] }) {
 		const emojis = await this.emojisRepository.findBy({
 			id: In(ids),
 		});

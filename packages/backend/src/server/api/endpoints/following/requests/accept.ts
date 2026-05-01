@@ -13,6 +13,7 @@ export const meta = {
 	tags: ['following', 'account'],
 
 	requireCredential: true,
+	requireFullUserData: true,
 
 	kind: 'write:following',
 

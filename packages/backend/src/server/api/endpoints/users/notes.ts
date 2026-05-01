@@ -165,7 +165,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		withChannelNotes: boolean,
 		withFiles: boolean,
 		withRenotes: boolean,
-	}, me: MiLocalUser | null) {
+	}, me: { id: MiLocalUser['id'] } | null) {
 		const mutingChannelIds = me
 			? await this.channelMutingService
 				.list({ requestUserId: me.id }, { idOnly: true })

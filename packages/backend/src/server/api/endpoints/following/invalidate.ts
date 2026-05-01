@@ -22,6 +22,7 @@ export const meta = {
 	},
 
 	requireCredential: true,
+	requireFullUserData: true,
 
 	kind: 'write:following',
 

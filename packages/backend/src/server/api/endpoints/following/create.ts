@@ -23,6 +23,7 @@ export const meta = {
 	},
 
 	requireCredential: true,
+	requireFullUserData: true,
 
 	prohibitMoved: true,
 

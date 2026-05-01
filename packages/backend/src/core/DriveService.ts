@@ -681,7 +681,7 @@ export class DriveService {
 	}
 
 	@bindThis
-	public async updateFile(file: MiDriveFile, values: Partial<MiDriveFile>, updater: MiUser) {
+	public async updateFile(file: MiDriveFile, values: Partial<MiDriveFile>, updater: { id: MiUser['id']; host: MiUser['host'] }) {
 		const alwaysMarkNsfw = (await this.roleService.getUserPolicies(file.userId)).alwaysMarkNsfw;
 
 		if (values.name != null && !this.driveFileEntityService.validateFileName(values.name)) {
@@ -752,7 +752,7 @@ export class DriveService {
 	}
 
 	@bindThis
-	public async deleteFile(file: MiDriveFile, isExpired = false, deleter?: MiUser) {
+	public async deleteFile(file: MiDriveFile, isExpired = false, deleter?: { id: MiUser['id']; host: MiUser['host'] }) {
 		if (file.storedInternal) {
 			this.internalStorageService.del(file.accessKey!);
 
@@ -779,7 +779,7 @@ export class DriveService {
 	}
 
 	@bindThis
-	public async deleteFileSync(file: MiDriveFile, isExpired = false, deleter?: MiUser) {
+	public async deleteFileSync(file: MiDriveFile, isExpired = false, deleter?: { id: MiUser['id']; host: MiUser['host'] }) {
 		if (file.storedInternal) {
 			this.internalStorageService.del(file.accessKey!);
 
@@ -810,7 +810,7 @@ export class DriveService {
 	}
 
 	@bindThis
-	private async deletePostProcess(file: MiDriveFile, isExpired = false, deleter?: MiUser) {
+	private async deletePostProcess(file: MiDriveFile, isExpired = false, deleter?: { id: MiUser['id']; host: MiUser['host'] }) {
 		// リモートファイル期限切れ削除後は直リンクにする
 		if (isExpired && file.userHost !== null && file.uri != null) {
 			await this.driveFilesRepository.update(file.id, {

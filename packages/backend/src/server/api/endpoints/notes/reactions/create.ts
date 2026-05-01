@@ -13,6 +13,7 @@ export const meta = {
 	tags: ['reactions', 'notes'],
 
 	requireCredential: true,
+	requireFullUserData: true,
 
 	prohibitMoved: true,
 

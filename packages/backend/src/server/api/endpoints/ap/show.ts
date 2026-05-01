@@ -26,6 +26,7 @@ export const meta = {
 	tags: ['federation'],
 
 	requireCredential: true,
+	requireFullUserData: true,
 	kind: 'read:account',
 
 	limit: {

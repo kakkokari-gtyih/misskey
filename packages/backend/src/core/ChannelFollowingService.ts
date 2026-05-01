@@ -93,7 +93,7 @@ export class ChannelFollowingService implements OnModuleInit {
 
 	@bindThis
 	public async follow(
-		requestUser: MiLocalUser,
+		requestUser: { id: MiLocalUser['id'] },
 		targetChannel: MiChannel,
 	): Promise<void> {
 		await this.channelFollowingsRepository.insert({
@@ -110,7 +110,7 @@ export class ChannelFollowingService implements OnModuleInit {
 
 	@bindThis
 	public async unfollow(
-		requestUser: MiLocalUser,
+		requestUser: { id: MiLocalUser['id'] },
 		targetChannel: MiChannel,
 	): Promise<void> {
 		await this.channelFollowingsRepository.delete({

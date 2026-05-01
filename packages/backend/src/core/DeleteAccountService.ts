@@ -40,7 +40,7 @@ export class DeleteAccountService {
 	public async deleteAccount(user: {
 		id: string;
 		host: string | null;
-	}, moderator?: MiUser): Promise<void> {
+	}, moderator?: { id: MiUser['id'] }): Promise<void> {
 		if (this.meta.rootUserId === user.id) throw new Error('cannot delete a root account');
 
 		const _user = await this.usersRepository.findOneByOrFail({ id: user.id });

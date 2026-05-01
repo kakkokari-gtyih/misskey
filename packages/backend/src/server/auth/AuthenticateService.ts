@@ -34,6 +34,7 @@ type JwtRefreshTokenPayload = {
 
 export type MiJwtUser = {
 	id: MiLocalUser['id'];
+	host: null;
 	isSuspended: boolean;
 	movedToUri: string | null;
 };
@@ -271,6 +272,7 @@ export class AuthenticateService {
 			return {
 				user: {
 					id: jwt.userId,
+					host: null,
 					isSuspended: jwt.isSuspended,
 					movedToUri: jwt.movedToUri,
 				},
@@ -287,6 +289,7 @@ export class AuthenticateService {
 				return {
 					user: {
 						id: accessToken.userId,
+						host: null,
 						isSuspended: accessToken.user?.isSuspended ?? false,
 						movedToUri: accessToken.user?.movedToUri ?? null,
 					},
@@ -300,6 +303,7 @@ export class AuthenticateService {
 				return {
 					user: {
 						id: accessToken.userId,
+						host: null,
 						isSuspended: accessToken.user?.isSuspended ?? false,
 						movedToUri: accessToken.user?.movedToUri ?? null,
 					},

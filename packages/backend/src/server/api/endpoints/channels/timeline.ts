@@ -114,7 +114,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		sinceId: string | null,
 		limit: number,
 		channelId: string
-	}, me: MiLocalUser | null) {
+	}, me: { id: MiLocalUser['id'] } | null) {
 		//#region fallback to database
 		const query = this.queryService.makePaginationQuery(this.notesRepository.createQueryBuilder('note'), ps.sinceId, ps.untilId)
 			.andWhere('note.channelId = :channelId', { channelId: ps.channelId })

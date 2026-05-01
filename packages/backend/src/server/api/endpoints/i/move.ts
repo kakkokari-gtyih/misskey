@@ -27,6 +27,7 @@ export const meta = {
 
 	secure: true,
 	requireCredential: true,
+	requireFullUserData: true,
 	prohibitMoved: true,
 	limit: {
 		duration: ms('1day'),

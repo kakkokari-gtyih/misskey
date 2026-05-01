@@ -16,6 +16,7 @@ export const meta = {
 	tags: ['notes', 'drafts'],
 
 	requireCredential: true,
+	requireFullUserData: true,
 
 	prohibitMoved: true,
 

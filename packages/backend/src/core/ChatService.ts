@@ -556,7 +556,7 @@ export class ChatService {
 	}
 
 	@bindThis
-	public async createRoom(owner: MiUser, params: Partial<{
+	public async createRoom(owner: { id: MiUser['id'] }, params: Partial<{
 		name: string;
 		description: string;
 	}>) {
@@ -587,7 +587,7 @@ export class ChatService {
 	}
 
 	@bindThis
-	public async deleteRoom(room: MiChatRoom, deleter?: MiUser) {
+	public async deleteRoom(room: MiChatRoom, deleter?: { id: MiUser['id'] }) {
 		const memberships = (await this.chatRoomMembershipsRepository.findBy({ roomId: room.id })).map(m => ({
 			userId: m.userId,
 		})).concat({ // ownerはmembershipレコードを作らないため

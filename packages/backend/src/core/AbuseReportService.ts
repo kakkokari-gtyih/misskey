@@ -88,7 +88,7 @@ export class AbuseReportService {
 			reportId: string;
 			resolvedAs: MiAbuseUserReport['resolvedAs'];
 		}[],
-		moderator: MiUser,
+		moderator: { id: MiUser['id'] },
 	) {
 		const paramsMap = new Map(params.map(it => [it.reportId, it]));
 		const reports = await this.abuseUserReportsRepository.findBy({
@@ -120,7 +120,7 @@ export class AbuseReportService {
 	@bindThis
 	public async forward(
 		reportId: MiAbuseUserReport['id'],
-		moderator: MiUser,
+		moderator: { id: MiUser['id'] },
 	) {
 		const report = await this.abuseUserReportsRepository.findOneByOrFail({ id: reportId });
 
@@ -156,7 +156,7 @@ export class AbuseReportService {
 		params: {
 			moderationNote?: MiAbuseUserReport['moderationNote'];
 		},
-		moderator: MiUser,
+		moderator: { id: MiUser['id'] },
 	) {
 		const report = await this.abuseUserReportsRepository.findOneByOrFail({ id: reportId });
 

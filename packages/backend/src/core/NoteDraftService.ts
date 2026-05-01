@@ -47,7 +47,7 @@ export class NoteDraftService {
 	}
 
 	@bindThis
-	public async get(me: MiLocalUser, draftId: MiNoteDraft['id']): Promise<MiNoteDraft | null> {
+	public async get(me: { id: MiLocalUser['id'] }, draftId: MiNoteDraft['id']): Promise<MiNoteDraft | null> {
 		const draft = await this.noteDraftsRepository.findOneBy({
 			id: draftId,
 			userId: me.id,
@@ -138,7 +138,7 @@ export class NoteDraftService {
 	}
 
 	@bindThis
-	public async delete(me: MiLocalUser, draftId: MiNoteDraft['id']): Promise<void> {
+	public async delete(me: { id: MiLocalUser['id'] }, draftId: MiNoteDraft['id']): Promise<void> {
 		const draft = await this.noteDraftsRepository.findOneBy({
 			id: draftId,
 			userId: me.id,
@@ -154,7 +154,7 @@ export class NoteDraftService {
 	}
 
 	@bindThis
-	public async getDraft(me: MiLocalUser, draftId: MiNoteDraft['id']): Promise<MiNoteDraft> {
+	public async getDraft(me: { id: MiLocalUser['id'] }, draftId: MiNoteDraft['id']): Promise<MiNoteDraft> {
 		const draft = await this.noteDraftsRepository.findOneBy({
 			id: draftId,
 			userId: me.id,

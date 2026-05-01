@@ -54,7 +54,7 @@ export class AvatarDecorationService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async create(options: Partial<MiAvatarDecoration>, moderator?: MiUser): Promise<MiAvatarDecoration> {
+	public async create(options: Partial<MiAvatarDecoration>, moderator?: { id: MiUser['id'] }): Promise<MiAvatarDecoration> {
 		const created = await this.avatarDecorationsRepository.insertOne({
 			id: this.idService.gen(),
 			...options,
@@ -73,7 +73,7 @@ export class AvatarDecorationService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async update(id: MiAvatarDecoration['id'], params: Partial<MiAvatarDecoration>, moderator?: MiUser): Promise<void> {
+	public async update(id: MiAvatarDecoration['id'], params: Partial<MiAvatarDecoration>, moderator?: { id: MiUser['id'] }): Promise<void> {
 		const avatarDecoration = await this.avatarDecorationsRepository.findOneByOrFail({ id });
 
 		const date = new Date();
@@ -95,7 +95,7 @@ export class AvatarDecorationService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async delete(id: MiAvatarDecoration['id'], moderator?: MiUser): Promise<void> {
+	public async delete(id: MiAvatarDecoration['id'], moderator?: { id: MiUser['id'] }): Promise<void> {
 		const avatarDecoration = await this.avatarDecorationsRepository.findOneByOrFail({ id });
 
 		await this.avatarDecorationsRepository.delete({ id: avatarDecoration.id });

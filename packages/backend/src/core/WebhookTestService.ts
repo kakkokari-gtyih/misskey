@@ -165,7 +165,7 @@ export class WebhookTestService {
 			type: T,
 			override?: Partial<Omit<MiWebhook, 'id'>>,
 		},
-		sender: MiUser | null,
+		sender: { id: MiUser['id'] } | null,
 	) {
 		const webhooks = await this.userWebhookService.fetchWebhooks({ ids: [params.webhookId] })
 			.then(it => it.filter(it => it.userId === sender?.id));

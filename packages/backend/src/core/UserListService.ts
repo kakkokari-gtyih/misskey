@@ -91,7 +91,7 @@ export class UserListService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async addMember(target: MiUser, list: MiUserList, me: MiUser, options: { withReplies?: boolean } = {}) {
+	public async addMember(target: MiUser, list: MiUserList, me: { id: MiUser['id'] }, options: { withReplies?: boolean } = {}) {
 		const currentCount = await this.userListMembershipsRepository.countBy({
 			userListId: list.id,
 		});

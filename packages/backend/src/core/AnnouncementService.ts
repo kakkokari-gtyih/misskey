@@ -42,7 +42,7 @@ export class AnnouncementService {
 	}
 
 	@bindThis
-	public async getUnreadAnnouncements(user: MiUser): Promise<MiAnnouncement[]> {
+	public async getUnreadAnnouncements(user: { id: MiUser['id'] }): Promise<MiAnnouncement[]> {
 		const readsQuery = this.announcementReadsRepository.createQueryBuilder('read')
 			.select('read.announcementId')
 			.where('read.userId = :userId', { userId: user.id });
@@ -66,7 +66,7 @@ export class AnnouncementService {
 	}
 
 	@bindThis
-	public async create(values: Partial<MiAnnouncement>, moderator?: MiUser): Promise<{ raw: MiAnnouncement; packed: Packed<'Announcement'> }> {
+	public async create(values: Partial<MiAnnouncement>, moderator?: { id: MiUser['id'] }): Promise<{ raw: MiAnnouncement; packed: Packed<'Announcement'> }> {
 		const announcement = await this.announcementsRepository.insertOne({
 			id: this.idService.gen(),
 			updatedAt: null,
@@ -118,7 +118,7 @@ export class AnnouncementService {
 	}
 
 	@bindThis
-	public async update(announcement: MiAnnouncement, values: Partial<MiAnnouncement>, moderator?: MiUser): Promise<void> {
+	public async update(announcement: MiAnnouncement, values: Partial<MiAnnouncement>, moderator?: { id: MiUser['id'] }): Promise<void> {
 		await this.announcementsRepository.update(announcement.id, {
 			updatedAt: new Date(),
 			title: values.title,
@@ -157,7 +157,7 @@ export class AnnouncementService {
 	}
 
 	@bindThis
-	public async delete(announcement: MiAnnouncement, moderator?: MiUser): Promise<void> {
+	public async delete(announcement: MiAnnouncement, moderator?: { id: MiUser['id'] }): Promise<void> {
 		await this.announcementsRepository.delete(announcement.id);
 
 		if (moderator) {
@@ -180,7 +180,7 @@ export class AnnouncementService {
 	}
 
 	@bindThis
-	public async getAnnouncement(announcementId: MiAnnouncement['id'], me: MiUser | null): Promise<Packed<'Announcement'>> {
+	public async getAnnouncement(announcementId: MiAnnouncement['id'], me: { id: MiUser['id'] } | null): Promise<Packed<'Announcement'>> {
 		const announcement = await this.announcementsRepository.findOneByOrFail({ id: announcementId });
 		if (me) {
 			if (announcement.userId && announcement.userId !== me.id) {
@@ -198,7 +198,7 @@ export class AnnouncementService {
 	}
 
 	@bindThis
-	public async read(user: MiUser, announcementId: MiAnnouncement['id']): Promise<void> {
+	public async read(user: { id: MiUser['id'] }, announcementId: MiAnnouncement['id']): Promise<void> {
 		try {
 			await this.announcementReadsRepository.insert({
 				id: this.idService.gen(),

@@ -115,7 +115,7 @@ export class SystemWebhookService implements OnApplicationShutdown {
 			url: MiSystemWebhook['url'];
 			secret: MiSystemWebhook['secret'];
 		},
-		updater: MiUser,
+		updater: { id: MiUser['id'] },
 	): Promise<MiSystemWebhook> {
 		const id = this.idService.gen();
 		await this.systemWebhooksRepository.insert({
@@ -147,7 +147,7 @@ export class SystemWebhookService implements OnApplicationShutdown {
 			url: MiSystemWebhook['url'];
 			secret: MiSystemWebhook['secret'];
 		},
-		updater: MiUser,
+		updater: { id: MiUser['id'] },
 	): Promise<MiSystemWebhook> {
 		const beforeEntity = await this.systemWebhooksRepository.findOneByOrFail({ id: params.id });
 		await this.systemWebhooksRepository.update(beforeEntity.id, {
@@ -175,7 +175,7 @@ export class SystemWebhookService implements OnApplicationShutdown {
 	 * SystemWebhook を削除する.
 	 */
 	@bindThis
-	public async deleteSystemWebhook(id: MiSystemWebhook['id'], updater: MiUser) {
+	public async deleteSystemWebhook(id: MiSystemWebhook['id'], updater: { id: MiUser['id'] }) {
 		const webhook = await this.systemWebhooksRepository.findOneByOrFail({ id });
 		await this.systemWebhooksRepository.delete(id);
 

@@ -195,7 +195,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		includeLocalRenotes: boolean,
 		withFiles: boolean,
 		withReplies: boolean,
-	}, me: MiLocalUser) {
+	}, me: { id: MiLocalUser['id'] }) {
 		const followees = await this.userFollowingService.getFollowees(me.id);
 
 		const mutingChannelIds = await this.channelMutingService
