@@ -204,10 +204,7 @@ async function deleteAccount() {
 		if (canceled) return;
 	}
 
-	await os.apiWithDialog('i/delete-account', {
-		password: auth.result.password,
-		token: auth.result.token,
-	});
+	await os.apiWithDialog('i/delete-account', {});
 
 	await os.alert({
 		title: i18n.ts._accountDelete.started,
