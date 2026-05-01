@@ -55,7 +55,7 @@ export class AuthenticateService {
 		const jwt = new SignJWT({ id: user.id })
 			.setProtectedHeader({ alg: 'HS256' })
 			.setIssuedAt()
-			.setExpirationTime('1h')
+			.setExpirationTime('15m')
 			.setJti(user.token!)
 			.setSubject(ACCESS_TOKEN_SUBJECT)
 			.sign(this.privateKey);
@@ -75,6 +75,15 @@ export class AuthenticateService {
 		return jwt;
 	}
 
+	public async generateNativeTokens(user: UserForTokenGeneration): Promise<{ accessToken: string; refreshToken: string }> {
+		const [accessToken, refreshToken] = await Promise.all([
+			this.generateNativeAccessToken(user),
+			this.generateNativeRefreshToken(user),
+		]);
+
+		return { accessToken, refreshToken };
+	}
+
 	public async verifyNativeAccessToken(accessToken: string): Promise<MiJwt | null> {
 		try {
 			const { payload } = await jwtVerify(accessToken, this.privateKey, {
@@ -83,7 +92,13 @@ export class AuthenticateService {
 				requiredClaims: ['jti'],
 			});
 
-			if (typeof payload.id !== 'string') {
+			if (typeof payload.id !== 'string' || typeof payload.jti !== 'string') {
+				return null;
+			}
+
+			// マスターのトークン（JTI）がローテートされていないか確認する
+			const userId = await this.getUserIdByNativeToken(payload.jti);
+			if (userId !== payload.id) {
 				return null;
 			}
 

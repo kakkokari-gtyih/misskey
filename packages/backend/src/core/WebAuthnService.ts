@@ -168,8 +168,8 @@ export class WebAuthnService {
 	 * @returns authenticationOptions
 	 */
 	@bindThis
-	public async initiateSignInWithPasskeyAuthentication(context: string): Promise<PublicKeyCredentialRequestOptionsJSON> {
-		const relyingParty = await this.getRelyingParty();
+	public async initiateAnonymousAuthentication(context: string): Promise<PublicKeyCredentialRequestOptionsJSON> {
+		const relyingParty = this.getRelyingParty();
 
 		const authenticationOptions = await generateAuthenticationOptions({
 			rpID: relyingParty.rpId,
@@ -187,7 +187,7 @@ export class WebAuthnService {
 	 * @returns If the challenge is successful, return the user ID. Otherwise, return null.
 	 */
 	@bindThis
-	public async verifySignInWithPasskeyAuthentication(context: string, response: AuthenticationResponseJSON): Promise<MiUser['id'] | null> {
+	public async verifyAnonymousAuthentication(context: string, response: AuthenticationResponseJSON): Promise<MiUser['id'] | null> {
 		const challenge = await this.redisClient.getdel(`webauthn:challenge:${context}`);
 
 		if (!challenge) {

@@ -65,7 +65,7 @@ import { UserListService } from './UserListService.js';
 import { UserMutingService } from './UserMutingService.js';
 import { UserRenoteMutingService } from './UserRenoteMutingService.js';
 import { UserSuspendService } from './UserSuspendService.js';
-import { UserAuthService } from './UserAuthService.js';
+import { TotpService } from './TotpService.js';
 import { VideoProcessingService } from './VideoProcessingService.js';
 import { UserWebhookService } from './UserWebhookService.js';
 import { UtilityService } from './UtilityService.js';
@@ -210,7 +210,7 @@ const $UserMutingService: Provider = { provide: 'UserMutingService', useExisting
 const $UserRenoteMutingService: Provider = { provide: 'UserRenoteMutingService', useExisting: UserRenoteMutingService };
 const $UserSearchService: Provider = { provide: 'UserSearchService', useExisting: UserSearchService };
 const $UserSuspendService: Provider = { provide: 'UserSuspendService', useExisting: UserSuspendService };
-const $UserAuthService: Provider = { provide: 'UserAuthService', useExisting: UserAuthService };
+const $TotpService: Provider = { provide: 'TotpService', useExisting: TotpService };
 const $VideoProcessingService: Provider = { provide: 'VideoProcessingService', useExisting: VideoProcessingService };
 const $UserWebhookService: Provider = { provide: 'UserWebhookService', useExisting: UserWebhookService };
 const $SystemWebhookService: Provider = { provide: 'SystemWebhookService', useExisting: SystemWebhookService };
@@ -363,7 +363,7 @@ const $ApQuestionService: Provider = { provide: 'ApQuestionService', useExisting
 		UserRenoteMutingService,
 		UserSearchService,
 		UserSuspendService,
-		UserAuthService,
+		TotpService,
 		VideoProcessingService,
 		UserWebhookService,
 		SystemWebhookService,
@@ -513,7 +513,7 @@ const $ApQuestionService: Provider = { provide: 'ApQuestionService', useExisting
 		$UserRenoteMutingService,
 		$UserSearchService,
 		$UserSuspendService,
-		$UserAuthService,
+		$TotpService,
 		$VideoProcessingService,
 		$UserWebhookService,
 		$SystemWebhookService,
@@ -663,7 +663,7 @@ const $ApQuestionService: Provider = { provide: 'ApQuestionService', useExisting
 		UserRenoteMutingService,
 		UserSearchService,
 		UserSuspendService,
-		UserAuthService,
+		TotpService,
 		VideoProcessingService,
 		UserWebhookService,
 		SystemWebhookService,
@@ -812,7 +812,7 @@ const $ApQuestionService: Provider = { provide: 'ApQuestionService', useExisting
 		$UserRenoteMutingService,
 		$UserSearchService,
 		$UserSuspendService,
-		$UserAuthService,
+		$TotpService,
 		$VideoProcessingService,
 		$UserWebhookService,
 		$SystemWebhookService,
