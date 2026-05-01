@@ -200,23 +200,34 @@ export async function refreshTokens(token: Tokens): Promise<Tokens | null> {
 	}).then((r) => r.json() as Promise<Tokens>).catch(() => null);
 }
 
-let isMyTokenRefreshing = false;
+let currentAccountRefreshPromise: Promise<Tokens | null> | null = null;
 
-export async function refreshCurrentAccountToken(): Promise<Tokens | null> {
-	if (!$i || isMyTokenRefreshing) return null;
-	isMyTokenRefreshing = true;
+export function refreshCurrentAccountToken(): Promise<Tokens | null> {
+	if (currentAccountRefreshPromise) return currentAccountRefreshPromise;
 
-	const res = await refreshTokens($i.token);
+	currentAccountRefreshPromise = new Promise((resolve) => {
+		if (!$i) {
+			resolve(null);
+			return;
+		}
 
-	if (res) {
-		store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + $i.id]: res });
-		isMyTokenRefreshing = false;
-	} else {
-		// トークンのリフレッシュに失敗した場合はサインアウトする
-		signout();
-	}
+		return refreshTokens($i!.token).then(res => {
+			if (res) {
+				store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + $i!.id]: res });
+			} else {
+				// トークンのリフレッシュに失敗した場合はサインアウトする
+				signout();
+			}
 
-	return res;
+			return res;
+		});
+	});
+
+	currentAccountRefreshPromise.finally(() => {
+		currentAccountRefreshPromise = null;
+	});
+
+	return currentAccountRefreshPromise;
 }
 
 export async function login(token: AccountWithToken['token'], redirect?: string) {
