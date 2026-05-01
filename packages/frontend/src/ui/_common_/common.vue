@@ -110,7 +110,7 @@ import { isSafeMode } from '@@/js/config.js';
 import { popups } from '@/os.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { pendingApiRequestsCount } from '@/utility/misskey-api.js';
+import { pendingApiRequestsCount } from '@/utility/api-request-count.js';
 import * as sound from '@/utility/sound.js';
 import { $i } from '@/i.js';
 import { useStream } from '@/stream.js';

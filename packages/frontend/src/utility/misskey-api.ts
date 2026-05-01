@@ -7,9 +7,8 @@ import * as Misskey from 'misskey-js';
 import { ref } from 'vue';
 import { apiUrl } from '@@/js/config.js';
 import { $i } from '@/i.js';
+import { pendingApiRequestsCount } from '@/utility/api-request-count.js';
 import { refreshCurrentAccountToken } from '@/accounts.js';
-
-export const pendingApiRequestsCount = ref(0);
 
 // Implements Misskey.api.ApiClient.request
 export async function misskeyApi<

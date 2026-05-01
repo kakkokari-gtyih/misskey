@@ -19,7 +19,7 @@ export function useStream(): Misskey.IStream {
 	if (stream) return stream;
 
 	stream = markRaw(new Misskey.Stream(wsOrigin, $i ? {
-		token: $i.token,
+		token: $i.token.accessToken,
 	} : null));
 
 	if (timeoutHeartBeat) window.clearTimeout(timeoutHeartBeat);

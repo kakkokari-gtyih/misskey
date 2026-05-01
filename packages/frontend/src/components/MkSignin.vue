@@ -182,6 +182,9 @@ async function tryLogin(req: Omit<Misskey.entities.SigninFlowContinueRequest, 's
 	return await window.fetch(`${authUrl}/signin`, {
 		credentials: 'omit',
 		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
 		body: JSON.stringify(_req),
 	}).then((res) => res.json() as Promise<Misskey.entities.SigninFlowResponse>).catch((err) => {
 		onSigninApiError(err);
