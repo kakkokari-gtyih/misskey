@@ -186,8 +186,13 @@ export async function refreshCurrentAccount() {
 	});
 }
 
+const refreshTokenPromises = new Map<string, Promise<Tokens | null>>();
+
 export async function refreshTokens(token: Tokens): Promise<Tokens | null> {
-	return await window.fetch(`${authUrl}/refresh-token`, {
+	const existingPromise = refreshTokenPromises.get(token.accessToken);
+	if (existingPromise) return existingPromise;
+
+	const promise = window.fetch(`${authUrl}/refresh-token`, {
 		method: 'POST',
 		credentials: 'omit',
 		body: JSON.stringify({
@@ -198,6 +203,14 @@ export async function refreshTokens(token: Tokens): Promise<Tokens | null> {
 			'Content-Type': 'application/json',
 		},
 	}).then((r) => r.json() as Promise<Tokens>).catch(() => null);
+
+	refreshTokenPromises.set(token.accessToken, promise);
+
+	promise.finally(() => {
+		refreshTokenPromises.delete(token.accessToken);
+	});
+
+	return promise;
 }
 
 let currentAccountRefreshPromise: Promise<Tokens | null> | null = null;
@@ -214,6 +227,8 @@ export function refreshCurrentAccountToken(): Promise<Tokens | null> {
 		return refreshTokens($i!.token).then(res => {
 			if (res) {
 				store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + $i!.id]: res });
+				$i!.token = res;
+				miLocalStorage.setItem('account', JSON.stringify($i));
 			} else {
 				// トークンのリフレッシュに失敗した場合はサインアウトする
 				signout();
@@ -428,9 +443,9 @@ export async function getAccountMenu(opts: {
 }
 
 export function upgradeCurrentAccount() {
-	return new Promise((resolve) => {
+	return new Promise<string | null>((resolve) => {
 		if (!$i) {
-			resolve(false);
+			resolve(null);
 			return;
 		}
 
@@ -438,11 +453,11 @@ export function upgradeCurrentAccount() {
 			autoSet: true,
 			upgradeToken: true,
 		}, {
-			upgraded: () => {
-				resolve(true);
+			upgraded: (res) => {
+				resolve(res.accessToken);
 			},
 			cancelled: () => {
-				resolve(false);
+				resolve(null);
 			},
 			closed: () => {
 				dispose();
