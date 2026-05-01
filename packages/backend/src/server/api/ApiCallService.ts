@@ -18,6 +18,7 @@ import { bindThis } from '@/decorators.js';
 import { RoleService } from '@/core/RoleService.js';
 import type { Config } from '@/config.js';
 import { ApiError } from './error.js';
+import { CacheService } from '@/core/CacheService.js';
 import { RateLimiterService } from './RateLimiterService.js';
 import { ApiLoggerService } from './ApiLoggerService.js';
 import { AuthenticateService, AuthenticationError, MiJwt } from '@/server/auth/AuthenticateService.js';
@@ -52,6 +53,7 @@ export class ApiCallService implements OnApplicationShutdown {
 		private userIpsRepository: UserIpsRepository,
 
 		private authenticateService: AuthenticateService,
+		private cacheService: CacheService,
 		private rateLimiterService: RateLimiterService,
 		private roleService: RoleService,
 		private apiLoggerService: ApiLoggerService,
@@ -242,7 +244,7 @@ export class ApiCallService implements OnApplicationShutdown {
 		this.authenticateService.authenticate(token).then(async (aRes) => {
 			let user: MiJwt | MiLocalUser | null = aRes.user;
 			if (endpoint.meta.requireFullUserData && user) {
-				user = await this.usersRepository.findOneBy({ id: user.id }) as MiLocalUser ?? null;
+				user = (await this.cacheService.localUserByIdCache.fetchMaybe(user.id, () => this.usersRepository.findOneBy({ id: user!.id }).then(x => x ?? undefined) as Promise<MiLocalUser | undefined>)) ?? null;
 			}
 
 			this.call(endpoint, user, aRes.accessToken, fields, {
