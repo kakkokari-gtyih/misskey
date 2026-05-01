@@ -16,7 +16,6 @@ import { CacheService } from '@/core/CacheService.js';
 import { bindThis } from '@/decorators.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import type { MiAccessToken } from '@/models/AccessToken.js';
-import type { MiUser } from '@/models/User.js';
 import type { MiJwt } from '@/server/auth/AuthenticateService.js';
 import { MainChannel } from '@/server/api/stream/channels/main.js';
 import { HomeTimelineChannel } from '@/server/api/stream/channels/home-timeline.js';
