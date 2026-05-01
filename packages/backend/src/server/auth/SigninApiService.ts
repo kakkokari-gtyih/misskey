@@ -302,7 +302,7 @@ export class SigninApiService {
 	}
 
 	/**
-	 * ユーザー名の入力を処理する
+	 * ユーザー名の入力を処理＋Captchaが通るか検証
 	 */
 	@bindThis
 	private async handleSigninUsername(signinData: SigninData, request: SigninFlowContinueRequestUsername): Promise<SigninIndvidualResult> {

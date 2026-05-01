@@ -18,6 +18,7 @@ import { MiLocalUser } from '@/models/User.js';
 import { FastifyReplyError } from '@/misc/fastify-reply-error.js';
 import { bindThis } from '@/decorators.js';
 import { L_CHARS, secureRndstr } from '@/misc/secure-rndstr.js';
+import { AuthenticateService } from '@/server/auth/AuthenticateService.js';
 import { SigninService } from '@/server/auth/SigninService.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
@@ -62,6 +63,7 @@ export class SignupApiService {
 		private captchaService: CaptchaService,
 		private signupService: SignupService,
 		private signinService: SigninService,
+		private authenticateService: AuthenticateService,
 		private emailService: EmailService,
 	) {
 	}
@@ -226,7 +228,7 @@ export class SignupApiService {
 			return;
 		} else {
 			try {
-				const { account, secret } = await this.signupService.signup({
+				const { account } = await this.signupService.signup({
 					username, password, host,
 				});
 
@@ -243,9 +245,11 @@ export class SignupApiService {
 					});
 				}
 
+				const token = await this.authenticateService.generateNativeTokens(account);
+
 				return {
 					...res,
-					token: secret,
+					token,
 				};
 			} catch (err) {
 				throw new FastifyReplyError(400, typeof err === 'string' ? err : (err as Error).toString());

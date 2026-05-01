@@ -259,21 +259,25 @@ export type AnnouncementCreated = {
 	announcement: Announcement;
 };
 
+export type CaptchaType = 'hcaptcha' | 'recaptcha-v2' | 'turnstile' | 'm-captcha' | 'testcaptcha';
+
 export type SignupRequest = {
 	username: string;
 	password: string;
 	host?: string;
 	invitationCode?: string;
 	emailAddress?: string;
-	'hcaptcha-response'?: string | null;
-	'g-recaptcha-response'?: string | null;
-	'turnstile-response'?: string | null;
-	'm-captcha-response'?: string | null;
-	'testcaptcha-response'?: string | null;
+	captchaResponse?: {
+		type: CaptchaType;
+		response: string;
+	};
 };
 
 export type SignupResponse = MeDetailed & {
-	token: string;
+	token: {
+		accessToken: string;
+		refreshToken: string;
+	};
 };
 
 export type SignupPendingRequest = {

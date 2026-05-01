@@ -349,18 +349,17 @@ export class OAuth2ProviderService {
 				if (!token) {
 					throw new AuthorizationError('No user', 'invalid_request');
 				}
-				const user = await this.cacheService.localUserByNativeTokenCache.fetch(token,
-					() => this.usersRepository.findOneBy({ token }) as Promise<MiLocalUser | null>);
-				if (!user) {
+				const userId = await this.cacheService.localUserIdByNativeTokenCache.fetchMaybe(token, () => this.usersRepository.findOneBy({ token }).then(user => user?.id));
+				if (!userId) {
 					throw new AuthorizationError('No such user', 'invalid_request');
 				}
 
-				this.#logger.info(`Sending authorization code on behalf of user ${user.id} to ${client.id} through ${redirectUri}, with scope: [${areq.scope}]`);
+				this.#logger.info(`Sending authorization code on behalf of user ${userId} to ${client.id} through ${redirectUri}, with scope: [${areq.scope}]`);
 
 				const code = secureRndstr(128);
 				grantCodeCache.set(code, {
 					clientId: client.id,
-					userId: user.id,
+					userId,
 					redirectUri,
 					codeChallenge: (areq as OAuthParsedRequest).codeChallenge,
 					scopes: areq.scope,

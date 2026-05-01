@@ -17,7 +17,6 @@ import type { OnApplicationShutdown } from '@nestjs/common';
 @Injectable()
 export class CacheService implements OnApplicationShutdown {
 	public userByIdCache: MemoryKVCache<MiUser>;
-	public localUserByNativeTokenCache: MemoryKVCache<MiLocalUser | null>;
 	public localUserIdByNativeTokenCache: MemoryKVCache<MiLocalUser['id']>;
 	public localUserByIdCache: MemoryKVCache<MiLocalUser>;
 	public uriPersonCache: MemoryKVCache<MiUser | null>;
@@ -58,7 +57,6 @@ export class CacheService implements OnApplicationShutdown {
 		//this.onMessage = this.onMessage.bind(this);
 
 		this.userByIdCache = new MemoryKVCache<MiUser>(1000 * 60 * 5); // 5m
-		this.localUserByNativeTokenCache = new MemoryKVCache<MiLocalUser | null>(1000 * 60 * 5); // 5m
 		this.localUserIdByNativeTokenCache = new MemoryKVCache<MiLocalUser['id']>(1000 * 60 * 5); // 5m
 		this.localUserByIdCache = new MemoryKVCache<MiLocalUser>(1000 * 60 * 5); // 5m
 		this.uriPersonCache = new MemoryKVCache<MiUser | null>(1000 * 60 * 5); // 5m
@@ -150,7 +148,6 @@ export class CacheService implements OnApplicationShutdown {
 							}
 						}
 						if (this.userEntityService.isLocalUser(user)) {
-							this.localUserByNativeTokenCache.set(user.token!, user);
 							this.localUserByIdCache.set(user.id, user);
 						}
 					}
@@ -158,8 +155,6 @@ export class CacheService implements OnApplicationShutdown {
 				}
 				case 'userTokenRegenerated': {
 					const user = await this.usersRepository.findOneByOrFail({ id: body.id }) as MiLocalUser;
-					this.localUserByNativeTokenCache.delete(body.oldToken);
-					this.localUserByNativeTokenCache.set(body.newToken, user);
 					this.localUserIdByNativeTokenCache.delete(body.oldToken);
 					this.localUserIdByNativeTokenCache.set(body.newToken, user.id);
 					break;
@@ -187,7 +182,6 @@ export class CacheService implements OnApplicationShutdown {
 	public dispose(): void {
 		this.redisForSub.off('message', this.onMessage);
 		this.userByIdCache.dispose();
-		this.localUserByNativeTokenCache.dispose();
 		this.localUserIdByNativeTokenCache.dispose();
 		this.localUserByIdCache.dispose();
 		this.uriPersonCache.dispose();
