@@ -136,7 +136,7 @@ export class AuthenticateService {
 	}
 
 	@bindThis
-	public async generateNativeTokens(user: UserForTokenGeneration, session: SessionForTokenGeneration, sudoMode = false, now: string | number | Date = Date.now()): Promise<{ accessToken: string; refreshToken: string; }> {
+	public async generateNativeTokens(user: UserForTokenGeneration, session: SessionForTokenGeneration, sudoMode = false, now: string | number | Date = Math.round(Date.now() / 1000)): Promise<{ accessToken: string; refreshToken: string; }> {
 		const [accessToken, refreshToken] = await Promise.all([
 			this.generateNativeAccessToken(user, session.id, sudoMode, now),
 			this.generateNativeRefreshToken(user, session, now),
