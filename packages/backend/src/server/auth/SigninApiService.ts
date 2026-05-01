@@ -22,13 +22,9 @@ import { LoggerService } from '@/core/LoggerService.js';
 import { RateLimiterService } from '@/server/api/RateLimiterService.js';
 import { WebAuthnService } from '@/core/WebAuthnService.js';
 import { IdService } from '@/core/IdService.js';
-import { GlobalEventService } from '@/core/GlobalEventService.js';
-import { SigninEntityService } from '@/core/entities/SigninEntityService.js';
-import { EmailService } from '@/core/EmailService.js';
-import { NotificationService } from '@/core/NotificationService.js';
 import { CaptchaService } from '@/core/CaptchaService.js';
 import { TotpService } from '@/core/TotpService.js';
-import { AuthenticateService } from '@/server/auth/AuthenticateService.js';
+import { SigninService } from '@/server/auth/SigninService.js';
 
 import { getIpHash } from '@/misc/get-ip-hash.js';
 import { secureRndstr } from '@/misc/secure-rndstr.js';
@@ -160,14 +156,10 @@ export class SigninApiService {
 		private loggerService: LoggerService,
 		private rateLimiterService: RateLimiterService,
 		private webAuthnService: WebAuthnService,
-		private signinEntityService: SigninEntityService,
-		private emailService: EmailService,
-		private notificationService: NotificationService,
 		private idService: IdService,
-		private globalEventService: GlobalEventService,
 		private captchaService: CaptchaService,
 		private totpService: TotpService,
-		private authenticateService: AuthenticateService,
+		private signinService: SigninService,
 	) {
 		this.logger = this.loggerService.getLogger('Signin');
 	}
@@ -288,7 +280,8 @@ export class SigninApiService {
 			const nextStep = computeNextSigninStep(signinData);
 
 			if (nextStep === null) {
-				return await this.handleSigninSuccess(signinData, request);
+				const user = await this.usersRepository.findOneByOrFail({ id: signinData.id }) as MiLocalUser;
+				return this.signinService.signin(request, reply, user);
 			} else {
 				// Redisに保存するサインインの状態を更新
 				this.redisClient.setex(`signin:${sessionId}`, 90, JSON.stringify(signinData));
@@ -482,38 +475,5 @@ export class SigninApiService {
 				},
 			};
 		}
-	}
-
-	@bindThis
-	private async handleSigninSuccess(signinData: SigninDataWithUser, request: FastifyRequest) {
-		setImmediate(async () => {
-			this.notificationService.createNotification(signinData.id, 'login', {});
-
-			const record = await this.signinsRepository.insertOne({
-				id: this.idService.gen(),
-				userId: signinData.id,
-				ip: request.ip,
-				headers: request.headers as any,
-				success: true,
-			});
-
-			this.globalEventService.publishMainStream(signinData.id, 'signin', await this.signinEntityService.pack(record));
-
-			const profile = await this.userProfilesRepository.findOneByOrFail({ userId: signinData.id });
-			if (profile.email && profile.emailVerified) {
-				this.emailService.sendEmail(profile.email, 'New login / ログインがありました',
-					'There is a new login. If you do not recognize this login, update the security status of your account, including changing your password. / 新しいログインがありました。このログインに心当たりがない場合は、パスワードを変更するなど、アカウントのセキュリティ状態を更新してください。',
-					'There is a new login. If you do not recognize this login, update the security status of your account, including changing your password. / 新しいログインがありました。このログインに心当たりがない場合は、パスワードを変更するなど、アカウントのセキュリティ状態を更新してください。');
-			}
-		});
-
-		const user = await this.usersRepository.findOneByOrFail({ id: signinData.id });
-		const token = await this.authenticateService.generateNativeTokens(user);
-
-		return {
-			id: signinData.id,
-			accessToken: token.accessToken,
-			refreshToken: token.refreshToken,
-		};
 	}
 }
