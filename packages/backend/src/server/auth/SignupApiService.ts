@@ -18,8 +18,20 @@ import { MiLocalUser } from '@/models/User.js';
 import { FastifyReplyError } from '@/misc/fastify-reply-error.js';
 import { bindThis } from '@/decorators.js';
 import { L_CHARS, secureRndstr } from '@/misc/secure-rndstr.js';
-import { SigninService } from '@/server/api/SigninService.js';
+import { SigninService } from '@/server/auth/SigninService.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
+
+interface SignupRequest {
+	username: string;
+	password: string;
+	host?: string;
+	invitationCode?: string;
+	emailAddress?: string;
+	captchaResponse?: {
+		type: 'hcaptcha' | 'recaptcha-v2' | 'turnstile' | 'mcaptcha' | 'testcaptcha';
+		response: string;
+	};
+}
 
 @Injectable()
 export class SignupApiService {
@@ -55,56 +67,55 @@ export class SignupApiService {
 	}
 
 	@bindThis
-	public async signup(
-		request: FastifyRequest<{
-			Body: {
-				username: string;
-				password: string;
-				host?: string;
-				invitationCode?: string;
-				emailAddress?: string;
-				'hcaptcha-response'?: string;
-				'g-recaptcha-response'?: string;
-				'turnstile-response'?: string;
-				'm-captcha-response'?: string;
-				'testcaptcha-response'?: string;
-			}
-		}>,
+	public async signupRequestHandler(
+		request: FastifyRequest<{ Body: SignupRequest; }>,
 		reply: FastifyReply,
 	) {
 		const body = request.body;
 
 		// Verify *Captcha
 		// ただしテスト時はこの機構は障害となるため無効にする
-		if (process.env.NODE_ENV !== 'test') {
-			if (this.meta.enableHcaptcha && this.meta.hcaptchaSecretKey) {
-				await this.captchaService.verifyHcaptcha(this.meta.hcaptchaSecretKey, body['hcaptcha-response']).catch(err => {
-					throw new FastifyReplyError(400, err);
-				});
-			}
+		if (body.captchaResponse && process.env.NODE_ENV !== 'test') {
+			switch (body.captchaResponse.type) {
+				case 'hcaptcha':
+					if (this.meta.enableHcaptcha && this.meta.hcaptchaSecretKey) {
+						await this.captchaService.verifyHcaptcha(this.meta.hcaptchaSecretKey, body.captchaResponse.response).catch(err => {
+							throw new FastifyReplyError(400, err);
+						});
+					}
+					break;
 
-			if (this.meta.enableMcaptcha && this.meta.mcaptchaSecretKey && this.meta.mcaptchaSitekey && this.meta.mcaptchaInstanceUrl) {
-				await this.captchaService.verifyMcaptcha(this.meta.mcaptchaSecretKey, this.meta.mcaptchaSitekey, this.meta.mcaptchaInstanceUrl, body['m-captcha-response']).catch(err => {
-					throw new FastifyReplyError(400, err);
-				});
-			}
+				case 'recaptcha-v2':
+					if (this.meta.enableRecaptcha && this.meta.recaptchaSecretKey) {
+						await this.captchaService.verifyRecaptcha(this.meta.recaptchaSecretKey, body.captchaResponse.response).catch(err => {
+							throw new FastifyReplyError(400, err);
+						});
+					}
+					break;
 
-			if (this.meta.enableRecaptcha && this.meta.recaptchaSecretKey) {
-				await this.captchaService.verifyRecaptcha(this.meta.recaptchaSecretKey, body['g-recaptcha-response']).catch(err => {
-					throw new FastifyReplyError(400, err);
-				});
-			}
+				case 'turnstile':
+					if (this.meta.enableTurnstile && this.meta.turnstileSecretKey) {
+						await this.captchaService.verifyTurnstile(this.meta.turnstileSecretKey, body.captchaResponse.response).catch(err => {
+							throw new FastifyReplyError(400, err);
+						});
+					}
+					break;
 
-			if (this.meta.enableTurnstile && this.meta.turnstileSecretKey) {
-				await this.captchaService.verifyTurnstile(this.meta.turnstileSecretKey, body['turnstile-response']).catch(err => {
-					throw new FastifyReplyError(400, err);
-				});
-			}
+				case 'mcaptcha':
+					if (this.meta.enableMcaptcha && this.meta.mcaptchaSecretKey && this.meta.mcaptchaSitekey && this.meta.mcaptchaInstanceUrl) {
+						await this.captchaService.verifyMcaptcha(this.meta.mcaptchaSecretKey, this.meta.mcaptchaSitekey, this.meta.mcaptchaInstanceUrl, body.captchaResponse.response).catch(err => {
+							throw new FastifyReplyError(400, err);
+						});
+					}
+					break;
 
-			if (this.meta.enableTestcaptcha) {
-				await this.captchaService.verifyTestcaptcha(body['testcaptcha-response']).catch(err => {
-					throw new FastifyReplyError(400, err);
-				});
+				case 'testcaptcha':
+					if (this.meta.enableTestcaptcha) {
+						await this.captchaService.verifyTestcaptcha(body.captchaResponse.response).catch(err => {
+							throw new FastifyReplyError(400, err);
+						});
+					}
+					break;
 			}
 		}
 
