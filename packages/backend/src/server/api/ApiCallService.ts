@@ -181,7 +181,7 @@ export class ApiCallService implements OnApplicationShutdown {
 		this.authenticateService.authenticate(token).then(async (aRes) => {
 			let user: MiJwtUser | MiLocalUser | null = aRes.user;
 			if (endpoint.meta.requireFullUserData && user) {
-				user = await this.usersRepository.findOneBy({ id: user.id }) as MiLocalUser ?? null;
+				user = (await this.cacheService.localUserByIdCache.fetchMaybe(user.id, () => this.usersRepository.findOneBy({ id: user!.id }).then(x => x ?? undefined) as Promise<MiLocalUser | undefined>)) ?? null;
 			}
 
 			if (endpoint.meta.requireCredential && user == null) {
@@ -249,6 +249,10 @@ export class ApiCallService implements OnApplicationShutdown {
 			let user: MiJwtUser | MiLocalUser | null = aRes.user;
 			if (endpoint.meta.requireFullUserData && user) {
 				user = (await this.cacheService.localUserByIdCache.fetchMaybe(user.id, () => this.usersRepository.findOneBy({ id: user!.id }).then(x => x ?? undefined) as Promise<MiLocalUser | undefined>)) ?? null;
+			}
+
+			if (endpoint.meta.requireCredential && user == null) {
+				throw new AuthenticationError('User info not found');
 			}
 
 			this.call(endpoint, user, aRes.accessToken, fields, {
