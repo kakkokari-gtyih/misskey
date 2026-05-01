@@ -12,7 +12,7 @@ import { getIpHash } from '@/misc/get-ip-hash.js';
 import type { MiLocalUser, MiUser } from '@/models/User.js';
 import type { MiAccessToken } from '@/models/AccessToken.js';
 import type Logger from '@/logger.js';
-import type { MiMeta, UserIpsRepository } from '@/models/_.js';
+import type { MiMeta, UsersRepository, UserIpsRepository } from '@/models/_.js';
 import { createTemp } from '@/misc/create-temp.js';
 import { bindThis } from '@/decorators.js';
 import { RoleService } from '@/core/RoleService.js';
@@ -20,7 +20,7 @@ import type { Config } from '@/config.js';
 import { ApiError } from './error.js';
 import { RateLimiterService } from './RateLimiterService.js';
 import { ApiLoggerService } from './ApiLoggerService.js';
-import { AuthenticateService, AuthenticationError } from './AuthenticateService.js';
+import { AuthenticateService, AuthenticationError, MiJwt } from '@/server/auth/AuthenticateService.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { OnApplicationShutdown } from '@nestjs/common';
 import type { IEndpointMeta, IEndpoint } from './endpoints.js';
@@ -44,6 +44,9 @@ export class ApiCallService implements OnApplicationShutdown {
 
 		@Inject(DI.config)
 		private config: Config,
+
+		@Inject(DI.usersRepository)
+		private usersRepository: UsersRepository,
 
 		@Inject(DI.userIpsRepository)
 		private userIpsRepository: UserIpsRepository,
@@ -173,8 +176,13 @@ export class ApiCallService implements OnApplicationShutdown {
 			reply.code(400);
 			return;
 		}
-		this.authenticateService.authenticate(token).then(([user, app]) => {
-			this.call(endpoint, user, app, body, null, request).then((res) => {
+		this.authenticateService.authenticate(token).then(async (aRes) => {
+			let user: MiJwt | MiLocalUser | null = aRes.user;
+			if (endpoint.meta.requireFullUserData && user) {
+				user = await this.usersRepository.findOneBy({ id: user.id }) as MiLocalUser ?? null;
+			}
+
+			this.call(endpoint, user, aRes.accessToken, body, null, request).then((res) => {
 				if (request.method === 'GET' && endpoint.meta.cacheSec && !token && !user) {
 					reply.header('Cache-Control', `public, max-age=${endpoint.meta.cacheSec}`);
 				}
@@ -231,8 +239,13 @@ export class ApiCallService implements OnApplicationShutdown {
 			reply.code(400);
 			return;
 		}
-		this.authenticateService.authenticate(token).then(([user, app]) => {
-			this.call(endpoint, user, app, fields, {
+		this.authenticateService.authenticate(token).then(async (aRes) => {
+			let user: MiJwt | MiLocalUser | null = aRes.user;
+			if (endpoint.meta.requireFullUserData && user) {
+				user = await this.usersRepository.findOneBy({ id: user.id }) as MiLocalUser ?? null;
+			}
+
+			this.call(endpoint, user, aRes.accessToken, fields, {
 				name: multipartData.filename,
 				path: path,
 			}, request).then((res) => {
@@ -272,7 +285,7 @@ export class ApiCallService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	private logIp(request: FastifyRequest, user: MiLocalUser) {
+	private logIp(request: FastifyRequest, user: MiJwt | MiLocalUser) {
 		if (!this.meta.enableIpLogging) return;
 		const ip = request.ip;
 		const ips = this.userIpHistories.get(user.id);
@@ -297,7 +310,7 @@ export class ApiCallService implements OnApplicationShutdown {
 	@bindThis
 	private async call(
 		ep: IEndpoint & { exec: any },
-		user: MiLocalUser | null | undefined,
+		user: MiLocalUser | MiJwt | null | undefined,
 		token: MiAccessToken | null | undefined,
 		data: any,
 		file: {

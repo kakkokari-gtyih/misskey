@@ -17,6 +17,7 @@ import { bindThis } from '@/decorators.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import type { MiAccessToken } from '@/models/AccessToken.js';
 import type { MiUser } from '@/models/User.js';
+import type { MiJwt } from '@/server/auth/AuthenticateService.js';
 import { MainChannel } from '@/server/api/stream/channels/main.js';
 import { HomeTimelineChannel } from '@/server/api/stream/channels/home-timeline.js';
 import { LocalTimelineChannel } from '@/server/api/stream/channels/local-timeline.js';
@@ -48,7 +49,7 @@ const MAX_CHANNELS_PER_CONNECTION = 32;
 
 @Injectable({ scope: Scope.TRANSIENT })
 export default class Connection {
-	public user?: MiUser;
+	public user?: MiJwt;
 	public token?: MiAccessToken;
 	private wsConnection: WebSocket.WebSocket;
 	public subscriber: StreamEventEmitter;
@@ -388,6 +389,6 @@ export default class Connection {
 }
 
 export interface ConnectionRequest {
-	user: MiUser | null | undefined,
+	user: MiJwt | null | undefined,
 	token: MiAccessToken | null | undefined,
 }
