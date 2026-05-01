@@ -48,12 +48,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 							{{ i18n.ts._2fa.securityKeyInfo }}
 						</MkInfo>
 
-						<MkInfo v-if="!webAuthnSupported()" warn>
+						<MkInfo v-if="!browserSupportsWebAuthn()" warn>
 							{{ i18n.ts._2fa.securityKeyNotSupported }}
-						</MkInfo>
-
-						<MkInfo v-else-if="webAuthnSupported() && !$i.twoFactorEnabled" warn>
-							{{ i18n.ts._2fa.registerTOTPBeforeKey }}
 						</MkInfo>
 
 						<template v-else>
@@ -72,7 +68,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</SearchMarker>
 
 			<SearchMarker :keywords="['password', 'less', 'key', 'passkey', 'login', 'signin']">
-				<MkSwitch :disabled="!$i.twoFactorEnabled || $i.securityKeysList!.length === 0" :modelValue="usePasswordLessLogin" @update:modelValue="v => updatePasswordLessLogin(v)">
+				<MkSwitch :disabled="$i.securityKeysList!.length === 0" :modelValue="usePasswordLessLogin" @update:modelValue="v => updatePasswordLessLogin(v)">
 					<template #label><SearchLabel>{{ i18n.ts.passwordLessLogin }}</SearchLabel></template>
 					<template #caption><SearchText>{{ i18n.ts.passwordLessLoginDescription }}</SearchText></template>
 				</MkSwitch>
@@ -83,8 +79,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { defineAsyncComponent, computed } from 'vue';
-import { supported as webAuthnSupported, create as webAuthnCreate, parseCreationOptionsFromJSON } from '@github/webauthn-json/browser-ponyfill';
+import { computed } from 'vue';
+import { startRegistration, browserSupportsWebAuthn } from '@simplewebauthn/browser';
 import * as Misskey from 'misskey-js';
 import MkButton from '@/components/MkButton.vue';
 import MkInfo from '@/components/MkInfo.vue';
@@ -113,7 +109,7 @@ async function registerTOTP(): Promise<void> {
 	const auth = await os.authenticateDialog();
 	if (auth.canceled) return;
 
-	const twoFactorData = await os.apiWithDialog('i/2fa/register', {
+	const twoFactorData = await os.apiWithDialog('i/2fa/totp/register', {
 		password: auth.result.password,
 		token: auth.result.token,
 	});
@@ -129,7 +125,7 @@ async function unregisterTOTP(): Promise<void> {
 	const auth = await os.authenticateDialog();
 	if (auth.canceled) return;
 
-	os.apiWithDialog('i/2fa/unregister', {
+	os.apiWithDialog('i/2fa/totp/remove', {
 		password: auth.result.password,
 		token: auth.result.token,
 	}).then(res => {
@@ -168,7 +164,7 @@ async function unregisterKey(key: NonNullable<Misskey.entities.MeDetailedOnly['s
 	const auth = await os.authenticateDialog();
 	if (auth.canceled) return;
 
-	await os.apiWithDialog('i/2fa/remove-key', {
+	await os.apiWithDialog('i/2fa/passkey/remove', {
 		password: auth.result.password,
 		token: auth.result.token,
 		credentialId: key.id,
@@ -186,7 +182,7 @@ async function renameKey(key: NonNullable<Misskey.entities.MeDetailedOnly['secur
 	});
 	if (name.canceled) return;
 
-	await os.apiWithDialog('i/2fa/update-key', {
+	await os.apiWithDialog('i/2fa/passkey/update', {
 		name: name.result,
 		credentialId: key.id,
 	});
@@ -196,12 +192,9 @@ async function addSecurityKey() {
 	const auth = await os.authenticateDialog();
 	if (auth.canceled) return;
 
-	const registrationOptions = parseCreationOptionsFromJSON({
-		// @ts-expect-error misskey-js側に型がない
-		publicKey: await os.apiWithDialog('i/2fa/register-key', {
-			password: auth.result.password,
-			token: auth.result.token,
-		}),
+	const registrationOptions = await os.apiWithDialog('i/2fa/passkey/register', {
+		password: auth.result.password,
+		token: auth.result.token,
 	});
 
 	const name = await os.inputText({
@@ -211,10 +204,11 @@ async function addSecurityKey() {
 		minLength: 1,
 		maxLength: 30,
 	});
+
 	if (name.canceled) return;
 
 	const credential = await os.promiseDialog(
-		webAuthnCreate(registrationOptions),
+		startRegistration({ optionsJSON: registrationOptions }),
 		null,
 		() => {}, // ユーザーのキャンセルはrejectなのでエラーダイアログを出さない
 		i18n.ts._2fa.tapSecurityKey,
@@ -224,17 +218,16 @@ async function addSecurityKey() {
 	const auth2 = await os.authenticateDialog();
 	if (auth2.canceled) return;
 
-	await os.apiWithDialog('i/2fa/key-done', {
+	await os.apiWithDialog('i/2fa/passkey/done', {
 		password: auth.result.password,
 		token: auth.result.token,
 		name: name.result,
-		// @ts-expect-error misskey-js側に型がない
-		credential: credential.toJSON(),
+		credential: credential,
 	});
 }
 
 async function updatePasswordLessLogin(value: boolean) {
-	await os.apiWithDialog('i/2fa/password-less', {
+	await os.apiWithDialog('i/2fa/passkey/password-less', {
 		value,
 	});
 }

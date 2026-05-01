@@ -1,5 +1,5 @@
 import type { SwitchCaseResponseType } from '../api.js';
-import type { Endpoints } from './endpoint.js';
+import type { Endpoints } from '../api.types.js';
 
 declare module '../api.js' {
   export interface APIClient {
@@ -2840,7 +2840,7 @@ declare module '../api.js' {
      * **Internal Endpoint**: This endpoint is an API for the misskey mainframe and is not intended for use by third parties.
      * **Credential required**: *Yes*
      */
-    request<E extends 'i/2fa/done', P extends Endpoints[E]['req']>(
+    request<E extends 'i/2fa/passkey/done', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -2852,7 +2852,7 @@ declare module '../api.js' {
      * **Internal Endpoint**: This endpoint is an API for the misskey mainframe and is not intended for use by third parties.
      * **Credential required**: *Yes*
      */
-    request<E extends 'i/2fa/key-done', P extends Endpoints[E]['req']>(
+    request<E extends 'i/2fa/passkey/password-less', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -2864,7 +2864,7 @@ declare module '../api.js' {
      * **Internal Endpoint**: This endpoint is an API for the misskey mainframe and is not intended for use by third parties.
      * **Credential required**: *Yes*
      */
-    request<E extends 'i/2fa/password-less', P extends Endpoints[E]['req']>(
+    request<E extends 'i/2fa/passkey/register', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -2876,7 +2876,7 @@ declare module '../api.js' {
      * **Internal Endpoint**: This endpoint is an API for the misskey mainframe and is not intended for use by third parties.
      * **Credential required**: *Yes*
      */
-    request<E extends 'i/2fa/register', P extends Endpoints[E]['req']>(
+    request<E extends 'i/2fa/passkey/remove', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -2888,7 +2888,7 @@ declare module '../api.js' {
      * **Internal Endpoint**: This endpoint is an API for the misskey mainframe and is not intended for use by third parties.
      * **Credential required**: *Yes*
      */
-    request<E extends 'i/2fa/register-key', P extends Endpoints[E]['req']>(
+    request<E extends 'i/2fa/passkey/update', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -2900,7 +2900,7 @@ declare module '../api.js' {
      * **Internal Endpoint**: This endpoint is an API for the misskey mainframe and is not intended for use by third parties.
      * **Credential required**: *Yes*
      */
-    request<E extends 'i/2fa/remove-key', P extends Endpoints[E]['req']>(
+    request<E extends 'i/2fa/totp/done', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -2912,7 +2912,7 @@ declare module '../api.js' {
      * **Internal Endpoint**: This endpoint is an API for the misskey mainframe and is not intended for use by third parties.
      * **Credential required**: *Yes*
      */
-    request<E extends 'i/2fa/unregister', P extends Endpoints[E]['req']>(
+    request<E extends 'i/2fa/totp/register', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -2924,7 +2924,7 @@ declare module '../api.js' {
      * **Internal Endpoint**: This endpoint is an API for the misskey mainframe and is not intended for use by third parties.
      * **Credential required**: *Yes*
      */
-    request<E extends 'i/2fa/update-key', P extends Endpoints[E]['req']>(
+    request<E extends 'i/2fa/totp/remove', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,

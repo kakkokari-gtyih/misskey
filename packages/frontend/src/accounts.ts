@@ -64,7 +64,7 @@ export async function removeAccount(host: string, id: AccountWithToken['id']) {
 
 const isAccountDeleted = Symbol('isAccountDeleted');
 
-function fetchAccount(token: Tokens, id?: string, forceShowDialog?: boolean): Promise<Misskey.entities.MeDetailed> {
+function fetchAccount(token: Tokens, id?: string, forceShowDialog?: boolean, tryRefreshToken = true): Promise<Misskey.entities.MeDetailed> {
 	return new Promise((done, fail) => {
 		window.fetch(`${apiUrl}/i`, {
 			method: 'POST',
@@ -105,10 +105,12 @@ function fetchAccount(token: Tokens, id?: string, forceShowDialog?: boolean): Pr
 						// トークンが無効化されていたりアカウントが削除されたりしている
 
 						// トークンのローテートを試す
-						const newToken = await refreshTokens(token);
-						if (newToken) {
-							// トークンのローテートに成功した場合は新しいトークンで再度fetchAccountを試す
-							return fetchAccount(newToken, id, forceShowDialog).then(done).catch(fail);
+						if (tryRefreshToken) {
+							const newToken = await refreshTokens(token);
+							if (newToken) {
+								// トークンのローテートに成功した場合は新しいトークンで再度fetchAccountを試す
+								return fetchAccount(newToken, id, forceShowDialog, false).then(done).catch(fail);
+							}
 						}
 
 						if (forceShowDialog || ($i != null && id === $i.id)) {
@@ -189,13 +191,18 @@ export async function refreshTokens(token: Tokens): Promise<Tokens | null> {
 	}).then((r) => r.json() as Promise<Tokens>).catch(() => null);
 }
 
+let isMyTokenRefreshing = false;
+
 export async function refreshCurrentAccountToken(): Promise<Tokens | null> {
-	if (!$i) return null;
+	if (!$i || isMyTokenRefreshing) return null;
 
 	const res = await refreshTokens($i.token);
 
 	if (res) {
 		store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + $i.id]: res });
+	} else {
+		// トークンのリフレッシュに失敗した場合はサインアウトする
+		signout();
 	}
 
 	return res;

@@ -3,11 +3,15 @@ import { UserDetailed } from './autogen/models.js';
 import {
 	AdminRolesCreateRequest,
 	AdminRolesCreateResponse,
+	I2faPasskeyRegisterRequest,
+	I2faPasskeyDoneResponse,
 	EmptyRequest,
 	EmptyResponse,
 	UsersShowRequest,
 } from './autogen/entities.js';
 import {
+	I2faPasskeyRegisterResponse,
+	I2faPasskeyDoneRequest,
 	PartialRolePolicyOverride,
 } from './entities.js';
 
@@ -68,6 +72,14 @@ export type Endpoints = Overwrite<
 					$default: UserDetailed;
 				};
 			};
+		},
+		'i/2fa/passkey/register': {
+			req: I2faPasskeyRegisterRequest;
+			res: I2faPasskeyRegisterResponse;
+		},
+		'i/2fa/passkey/done': {
+			req: I2faPasskeyDoneRequest;
+			res: I2faPasskeyDoneResponse;
 		},
 		'admin/roles/create': {
 			req: Overwrite<AdminRolesCreateRequest, { policies: PartialRolePolicyOverride }>;

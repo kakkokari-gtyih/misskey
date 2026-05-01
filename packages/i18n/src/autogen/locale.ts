@@ -9253,10 +9253,6 @@ export interface Locale extends ILocale {
          */
         "securityKeyNotSupported": string;
         /**
-         * セキュリティキー・パスキーを登録するには、まず認証アプリの設定を行なってください。
-         */
-        "registerTOTPBeforeKey": string;
-        /**
          * FIDO2をサポートするハードウェアセキュリティキー、端末の生体認証やPINロック、パスキーといった、WebAuthn由来の鍵を登録します。
          */
         "securityKeyInfo": string;

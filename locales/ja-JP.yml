@@ -2434,7 +2434,6 @@ _2fa:
   setupCompleted: "設定が完了しました"
   step4: "これからログインするときも、同じようにコードを入力します。"
   securityKeyNotSupported: "お使いのブラウザはセキュリティキーに対応していません。"
-  registerTOTPBeforeKey: "セキュリティキー・パスキーを登録するには、まず認証アプリの設定を行なってください。"
   securityKeyInfo: "FIDO2をサポートするハードウェアセキュリティキー、端末の生体認証やPINロック、パスキーといった、WebAuthn由来の鍵を登録します。"
   registerSecurityKey: "セキュリティキー・パスキーを登録する"
   securityKeyName: "キーの名前を入力"

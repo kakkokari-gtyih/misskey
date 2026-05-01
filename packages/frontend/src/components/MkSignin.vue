@@ -186,7 +186,15 @@ async function tryLogin(req: Omit<Misskey.entities.SigninFlowContinueRequest, 's
 			'Content-Type': 'application/json',
 		},
 		body: JSON.stringify(_req),
-	}).then((res) => res.json() as Promise<Misskey.entities.SigninFlowResponse>).catch((err) => {
+	}).then(async (res) => {
+		const json = await res.json() as Misskey.entities.SigninFlowResponse;
+		if (res.ok) {
+			return json;
+		} else {
+			onSigninApiError(json);
+			return Promise.reject(json);
+		}
+	}).catch((err) => {
 		onSigninApiError(err);
 		return Promise.reject(err);
 	}).then(async (res) => {
@@ -230,7 +238,7 @@ async function onLoginSucceeded(res: Misskey.entities.SigninFlowSuccessResponse)
 }
 
 function onSigninApiError(err?: any): void {
-	const id = err?.id ?? null;
+	const id = err?.error?.id ?? null;
 
 	switch (id) {
 		case '6cc579cc-885d-43d8-95c2-b8c7fc963280': {
@@ -312,6 +320,20 @@ function onSigninApiError(err?: any): void {
 	}
 
 	inputPageEl.value?.resetCaptcha();
+
+	window.fetch(`${authUrl}/signin`, {
+		credentials: 'omit',
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: '{}',
+	}).then((res) => res.json() as Promise<Misskey.entities.SigninFlowInitResponse>).then((ssRes) => {
+		signinSession.value = ssRes;
+	}).catch(() => {
+		signinSession.value = null;
+	});
+
 	nextTick(() => {
 		waiting.value = false;
 	});
@@ -336,6 +358,7 @@ onMounted(async () => {
 				optionsJSON: ssRes.passkeyOptions,
 				useBrowserAutofill: true,
 			}).then(async (res) => {
+				console.log('Got passkey credential from browser autofill', res);
 				waiting.value = true;
 				const ssPasskeyPwLessRes = await window.fetch(`${authUrl}/signin`, {
 					credentials: 'omit',
@@ -347,7 +370,15 @@ onMounted(async () => {
 						sessionId: ssRes.sessionId,
 						passkeyCredential: res,
 					} satisfies Misskey.entities.SigninFlowContinueRequest),
-				}).then((res) => res.json() as Promise<Misskey.entities.SigninFlowResponse>).catch((err) => {
+				}).then(async (res) => {
+					const json = await res.json() as Misskey.entities.SigninFlowResponse;
+					if (res.ok) {
+						return json;
+					} else {
+						onSigninApiError(json);
+						return null;
+					}
+				}).catch((err) => {
 					onSigninApiError(err);
 					return null;
 				});

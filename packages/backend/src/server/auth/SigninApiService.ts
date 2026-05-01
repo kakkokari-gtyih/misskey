@@ -125,15 +125,39 @@ function isSigninDataWithUser(data: SigninData): data is SigninDataWithUser {
 }
 
 function computeNextSigninStep(signinData: SigninDataWithUser): 'password' | 'totp' | 'passkey' | null {
-	if (!signinData.result.password) {
-		return signinData.config.passkeyPasswordless ? 'passkey' : 'password';
-	} else if (signinData.config.passkey && !signinData.result.passkey) {
-		return 'passkey';
-	} else if (signinData.config.totp && !signinData.result.totp) {
-		return 'totp';
-	} else {
+	// パスワードレスログインが有効なら、通常のパスワード経路より先にその成立可否を判定する。
+	// この経路ではパスキー単独でログイン完了になる。
+	if (signinData.config.passkeyPasswordless && signinData.result.passkey) {
 		return null;
 	}
+
+	if (signinData.config.passkeyPasswordless) {
+		return 'passkey';
+	}
+
+	// 通常ログインでは、最初にパスワードを通して本人確認を完了させる。
+	if (!signinData.result.password) {
+		return 'password';
+	}
+
+	// 通常ログインの成功条件は「パスワード + TOTP」または「パスワード + パスキー」のいずれか。
+	// そのため、どちらか片方でも通っていれば以降の追加要素は不要。
+	if (signinData.result.totp || signinData.result.passkey) {
+		return null;
+	}
+
+	// どちらも未達なら、パスキーを優先して案内する。
+	// フロント側は WebAuthn 非対応時に TOTP 画面へフォールバックできる。
+	if (signinData.config.passkey) {
+		return 'passkey';
+	}
+
+	if (signinData.config.totp) {
+		return 'totp';
+	}
+
+	// ここまで未達要素がなければ、必要条件を満たしている。
+	return null;
 }
 
 @Injectable()
@@ -232,10 +256,11 @@ export class SigninApiService {
 
 	@bindThis
 	private async handleSigninContinue(request: FastifyRequest<{ Body: SigninFlowContinueRequest }>, reply: FastifyReply) {
-		function error(status: number, error: { id: string }) {
+		const error = async (status: number, error: { id: string }) => {
+			await this.redisClient.del(`signin:${request.body.sessionId}`);
 			reply.code(status);
 			return { error };
-		}
+		};
 
 		const { sessionId } = request.body;
 
@@ -248,7 +273,7 @@ export class SigninApiService {
 
 		const signinData: SigninData = JSON.parse(signinDataStr);
 
-		let individualResult: SigninIndvidualResult;
+		let individualResult: SigninIndvidualResult | null = null;
 
 		if ('username' in request.body) {
 			individualResult = await this.handleSigninUsername(signinData, request.body);
@@ -264,46 +289,39 @@ export class SigninApiService {
 					id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
 				});
 			}
-
-			const nextStep = computeNextSigninStep(signinData);
-
-			if (nextStep === null) {
-				const user = await this.usersRepository.findOneByOrFail({ id: signinData.id }) as MiLocalUser;
-				return this.signinService.signin(request, reply, user);
-			}
-
-			this.redisClient.setex(`signin:${sessionId}`, 90, JSON.stringify(signinData));
-
-			if (nextStep === 'passkey') {
-				const passkeyOptions = await this.webAuthnService.initiateAuthentication(signinData.id);
-				return {
-					next: 'passkey',
-					passkeyOptions,
-				} satisfies SigninFlowContinueResponse;
-			}
-
-			return {
-				next: nextStep,
-			} satisfies SigninFlowContinueResponse;
 		}
 
-		// これ以降のステップでユーザー名が確定していないことはありえない
 		if (!isSigninDataWithUser(signinData)) {
-			return error(500, {
-				id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
-			});
+			if ('passkeyCredential' in request.body) {
+				// パスキー＋パスワードレスの場合は、ユーザー名が確定して無くてもパスキーだけで認証できる可能性がある（ここで確定）
+				individualResult = await this.handleSigninPasskeyPasswordless(sessionId, signinData, request.body);
+
+				// これ以降のステップでユーザー名が確定していないことはありえない
+				if (!isSigninDataWithUser(signinData)) {
+					return error(500, {
+						id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
+					});
+				}
+			} else {
+				// これ以降のステップでユーザー名が確定していないことはありえない
+				return error(500, {
+					id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
+				});
+			}
 		}
 
-		if ('password' in request.body) {
-			individualResult = await this.handleSigninPassword(signinData, request.body);
-		} else if ('passkeyCredential' in request.body) {
-			individualResult = await this.handleSigninPasskey(signinData, request.body);
-		} else if ('totp' in request.body) {
-			individualResult = await this.handleSigninTotp(signinData, request.body);
-		} else {
-			return error(500, {
-				id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
-			});
+		if (individualResult == null) {
+			if ('password' in request.body) {
+				individualResult = await this.handleSigninPassword(signinData, request.body);
+			} else if ('passkeyCredential' in request.body) {
+				individualResult = await this.handleSigninPasskey(signinData, request.body);
+			} else if ('totp' in request.body) {
+				individualResult = await this.handleSigninTotp(signinData, request.body);
+			} else {
+				return error(500, {
+					id: '4e30e80c-e338-45a0-8c8f-44455efa3b76',
+				});
+			}
 		}
 
 		if (!individualResult.success) {
@@ -480,6 +498,56 @@ export class SigninApiService {
 		try {
 			await this.webAuthnService.verifyAuthentication(signinData.id, passkeyCredential);
 			signinData.result.passkey = true;
+			return {
+				success: true,
+			};
+		} catch (_) {
+			return {
+				success: false,
+				error: {
+					id: '932c904e-9460-45b7-9ce6-7ed33be7eb2c',
+					code: 403,
+				},
+			};
+		}
+	}
+
+	/**
+	 * パスキー（パスワードレス）の入力を処理する
+	 */
+	@bindThis
+	private async handleSigninPasskeyPasswordless(sessionId: string, signinData: SigninData, request: SigninFlowContinueRequestPasskey): Promise<SigninIndvidualResult> {
+		const { passkeyCredential } = request;
+
+		try {
+			const userId = await this.webAuthnService.verifyAnonymousAuthentication(sessionId, passkeyCredential);
+			console.log('Anonymous authentication result:', { userId }); // デバッグ用ログ
+			if (userId == null) {
+				throw new Error('Authentication failed');
+			}
+
+			const userProfile = await this.userProfilesRepository.findOneByOrFail({ userId });
+			const securityKeysAvailable = await this.userSecurityKeysRepository.countBy({ userId }).then(result => result >= 1);
+
+			signinData.id = userId;
+			signinData.config = {
+				totp: userProfile.twoFactorEnabled,
+				passkey: securityKeysAvailable,
+				passkeyPasswordless: userProfile.usePasswordLessLogin,
+			};
+
+			if (!userProfile.usePasswordLessLogin) {
+				return {
+					success: false,
+					error: {
+						id: '2d84773e-f7b7-4d0b-8f72-bb69b584c912',
+						code: 403,
+					},
+				};
+			}
+
+			signinData.result.passkey = true;
+
 			return {
 				success: true,
 			};
