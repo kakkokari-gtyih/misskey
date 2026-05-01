@@ -309,10 +309,6 @@ export class AuthenticateService {
 			}
 		}
 
-		return {
-			user: null,
-			sudo: false,
-			accessToken: null,
-		};
+		throw new AuthenticationError('Invalid token');
 	}
 }
