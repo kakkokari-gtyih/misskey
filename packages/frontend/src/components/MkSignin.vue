@@ -378,6 +378,7 @@ onMounted(async () => {
 		if (props.upgradeToken && 'next' in ssRes) {
 			// トークンアップグレードフロー
 			userInfo.value = $i;
+			signinSession.value = ssRes;
 
 			switch (ssRes.next) {
 				case 'password': {
