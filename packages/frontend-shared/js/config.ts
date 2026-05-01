@@ -12,6 +12,7 @@ export const hostname = address.hostname;
 export const url = address.origin;
 export const port = address.port;
 export const apiUrl = window.location.origin + '/api';
+export const authUrl = window.location.origin + '/auth';
 export const wsOrigin = window.location.origin;
 export const lang = localStorage.getItem('lang') ?? 'en-US';
 export const langs = _LANGS_;

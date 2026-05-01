@@ -104,13 +104,15 @@ type SigninFlowContinueResponse = {
 } | {
 	next: 'passkey';
 	passkeyOptions: PublicKeyCredentialRequestOptionsJSON;
-} | {
+};
+
+type SigninFlowSuccessResponse = {
 	id: string;
 	accessToken: string;
 	refreshToken: string;
 };
 
-type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse;
+type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse | SigninFlowSuccessResponse;
 //#endregion
 
 function error(reply: FastifyReply, status: number, error: { id: string }) {

@@ -614,9 +614,6 @@ importers:
       '@discordapp/twemoji':
         specifier: 16.0.1
         version: 16.0.1
-      '@github/webauthn-json':
-        specifier: 2.1.1
-        version: 2.1.1
       '@mcaptcha/core-glue':
         specifier: 0.1.0-alpha-5
         version: 0.1.0-alpha-5
@@ -626,6 +623,9 @@ importers:
       '@sentry/vue':
         specifier: 10.48.0
         version: 10.48.0(vue@3.5.32(typescript@5.9.3))
+      '@simplewebauthn/browser':
+        specifier: 13.3.0
+        version: 13.3.0
       '@syuilo/aiscript':
         specifier: 1.2.1
         version: 1.2.1
@@ -2245,11 +2245,6 @@ packages:
 
   '@file-type/xml@0.4.4':
     resolution: {integrity: sha512-NhCyXoHlVZ8TqM476hyzwGJ24+D5IPSaZhmrPj7qXnEVb3q6jrFzA3mM9TBpknKSI9EuQeGTKRg2DXGUwvBBoQ==}
-
-  '@github/webauthn-json@2.1.1':
-    resolution: {integrity: sha512-XrftRn4z75SnaJOmZQbt7Mk+IIjqVHw+glDGOxuHwXkZBZh/MBoRS7MHjSZMDaLhT4RjN2VqiEU7EOYleuJWSQ==}
-    deprecated: 'Deprecated: Modern browsers support built-in WebAuthn JSON methods. Please use native browser methods instead. For more information, visit https://github.com/github/webauthn-json'
-    hasBin: true
 
   '@hapi/address@5.1.1':
     resolution: {integrity: sha512-A+po2d/dVoY7cYajycYI43ZbYMXukuopIsqCjh5QzsBCipDtdofHntljDlpccMjIfTy6UOkg+5KPriwYch2bXA==}
@@ -11641,8 +11636,6 @@ snapshots:
     dependencies:
       sax: 1.5.0
       strtok3: 10.3.5
-
-  '@github/webauthn-json@2.1.1': {}
 
   '@hapi/address@5.1.1':
     dependencies:

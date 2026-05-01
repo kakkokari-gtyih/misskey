@@ -31,38 +31,43 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<!-- username入力 -->
-		<form class="_gaps_s" @submit.prevent="emit('usernameSubmitted', username)">
+		<form class="_gaps_s" @submit.prevent="onSubmit">
 			<MkInput v-model="username" :placeholder="i18n.ts.username" type="text" pattern="^[a-zA-Z0-9_]+$" :spellcheck="false" autocomplete="username webauthn" autofocus required data-cy-signin-username>
 				<template #prefix>@</template>
 				<template #suffix>@{{ host }}</template>
 			</MkInput>
-			<MkButton type="submit" large primary rounded style="margin: 0 auto;" data-cy-signin-page-input-continue>{{ i18n.ts.continue }} <i class="ti ti-arrow-right"></i></MkButton>
-		</form>
 
-		<!-- パスワードレスログイン -->
-		<div :class="$style.orHr">
-			<p :class="$style.orMsg">{{ i18n.ts.or }}</p>
-		</div>
-		<div>
-			<MkButton type="submit" style="margin: auto auto;" large rounded primary gradate @click="emit('passkeyClick', $event)">
-				<i class="ti ti-device-usb" style="font-size: medium;"></i>{{ i18n.ts.signinWithPasskey }}
-			</MkButton>
-		</div>
+			<div>
+				<MkCaptcha v-if="instance.enableHcaptcha" ref="hcaptcha" v-model="hCaptchaResponse" provider="hcaptcha" :sitekey="instance.hcaptchaSiteKey"/>
+				<MkCaptcha v-if="instance.enableMcaptcha" ref="mcaptcha" v-model="mCaptchaResponse" provider="mcaptcha" :sitekey="instance.mcaptchaSiteKey" :instanceUrl="instance.mcaptchaInstanceUrl"/>
+				<MkCaptcha v-if="instance.enableRecaptcha" ref="recaptcha" v-model="reCaptchaResponse" provider="recaptcha" :sitekey="instance.recaptchaSiteKey"/>
+				<MkCaptcha v-if="instance.enableTurnstile" ref="turnstile" v-model="turnstileResponse" provider="turnstile" :sitekey="instance.turnstileSiteKey"/>
+				<MkCaptcha v-if="instance.enableTestcaptcha" ref="testcaptcha" v-model="testcaptchaResponse" provider="testcaptcha" :sitekey="null"/>
+			</div>
+
+			<MkButton type="submit" :disabled="captchaFailed" large primary rounded style="margin: 0 auto;" data-cy-signin-page-input-continue>{{ i18n.ts.continue }} <i class="ti ti-arrow-right"></i></MkButton>
+		</form>
 	</div>
 </div>
 </template>
 
+<script lang="ts">
+</script>
+
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, useTemplateRef } from 'vue';
 import { toUnicode } from 'punycode.js';
+import * as Misskey from 'misskey-js';
 
 import { query, extractDomain } from '@@/js/url.js';
 import { host as configHost } from '@@/js/config.js';
 import type { OpenOnRemoteOptions } from '@/utility/please-login.js';
+import { instance } from '@/instance.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 
 import MkButton from '@/components/MkButton.vue';
+import MkCaptcha from '@/components/MkCaptcha.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkInfo from '@/components/MkInfo.vue';
 
@@ -77,13 +82,71 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
-	(ev: 'usernameSubmitted', v: string): void;
-	(ev: 'passkeyClick', v: PointerEvent): void;
+	(ev: 'usernameSubmitted', v: Omit<Misskey.entities.SigninFlowContinueRequestUsername, 'sessionId'>): void;
 }>();
 
 const host = toUnicode(configHost);
 
 const username = ref(props.initialUsername ?? '');
+
+const hCaptcha = useTemplateRef('hcaptcha');
+const mCaptcha = useTemplateRef('mcaptcha');
+const reCaptcha = useTemplateRef('recaptcha');
+const turnstile = useTemplateRef('turnstile');
+const testcaptcha = useTemplateRef('testcaptcha');
+
+const hCaptchaResponse = ref<string | null>(null);
+const mCaptchaResponse = ref<string | null>(null);
+const reCaptchaResponse = ref<string | null>(null);
+const turnstileResponse = ref<string | null>(null);
+const testcaptchaResponse = ref<string | null>(null);
+
+const captchaType = computed<Misskey.entities.AuthCaptchaType | null>(() => {
+	if (instance.enableHcaptcha) return 'hcaptcha';
+	if (instance.enableMcaptcha) return 'm-captcha';
+	if (instance.enableRecaptcha) return 'recaptcha-v2';
+	if (instance.enableTurnstile) return 'turnstile';
+	if (instance.enableTestcaptcha) return 'testcaptcha';
+	return null;
+});
+
+const captchaFailed = computed((): boolean => {
+	return (
+		(instance.enableHcaptcha && !hCaptchaResponse.value) ||
+		(instance.enableMcaptcha && !mCaptchaResponse.value) ||
+		(instance.enableRecaptcha && !reCaptchaResponse.value) ||
+		(instance.enableTurnstile && !turnstileResponse.value) ||
+		(instance.enableTestcaptcha && !testcaptchaResponse.value)
+	);
+});
+
+function resetCaptcha() {
+	hCaptcha.value?.reset();
+	mCaptcha.value?.reset();
+	reCaptcha.value?.reset();
+	turnstile.value?.reset();
+	testcaptcha.value?.reset();
+}
+
+function onSubmit() {
+	emit('usernameSubmitted', {
+		username: username.value,
+		captchaResponse: captchaType.value ? {
+			type: captchaType.value,
+			response: (
+				hCaptchaResponse.value ||
+				mCaptchaResponse.value ||
+				reCaptchaResponse.value ||
+				turnstileResponse.value ||
+				testcaptchaResponse.value
+			) ?? '',
+		} : undefined,
+	});
+}
+
+defineExpose({
+	resetCaptcha,
+});
 
 //#region Open on remote
 function openRemote(options: OpenOnRemoteOptions, targetHost?: string): void {

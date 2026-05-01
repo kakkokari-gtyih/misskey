@@ -18,22 +18,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<XInput
 			v-if="page === 'input'"
 			key="input"
+			ref="inputPageEl"
 			:message="message"
 			:openOnRemote="openOnRemote"
 			:initialUsername="initialUsername"
 
 			@usernameSubmitted="onUsernameSubmitted"
-			@passkeyClick="onPasskeyLogin"
 		/>
 
 		<!-- 2. パスワード入力 -->
 		<XPassword
 			v-else-if="page === 'password'"
 			key="password"
-			ref="passwordPageEl"
 
 			:user="userInfo!"
-			:needCaptcha="needCaptcha"
 
 			@passwordSubmitted="onPasswordSubmitted"
 		/>
@@ -52,7 +50,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 			key="passkey"
 
 			:credentialRequest="credentialRequest!"
-			:isPerformingPasswordlessLogin="doingPasskeyFromInputPage"
 
 			@done="onPasskeyDone"
 			@useTotp="onUseTotp"
@@ -65,25 +62,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, shallowRef, useTemplateRef } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef } from 'vue';
 import * as Misskey from 'misskey-js';
-import { supported as webAuthnSupported, parseRequestOptionsFromJSON } from '@github/webauthn-json/browser-ponyfill';
-import type { AuthenticationPublicKeyCredential } from '@github/webauthn-json/browser-ponyfill';
+import { browserSupportsWebAuthn, browserSupportsWebAuthnAutofill, startAuthentication } from '@simplewebauthn/browser';
+import type { PublicKeyCredentialRequestOptionsJSON, AuthenticationResponseJSON } from '@simplewebauthn/browser';
 import type { OpenOnRemoteOptions } from '@/utility/please-login.js';
-import type { PwResponse } from '@/components/MkSignin.password.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { showSuspendedDialog } from '@/utility/show-suspended-dialog.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
+import { login } from '@/accounts.js';
+import { authUrl } from '@@/js/config.js';
 
 import XInput from '@/components/MkSignin.input.vue';
 import XPassword from '@/components/MkSignin.password.vue';
 import XTotp from '@/components/MkSignin.totp.vue';
 import XPasskey from '@/components/MkSignin.passkey.vue';
-import { login } from '@/accounts.js';
 
 const emit = defineEmits<{
-	(ev: 'login', v: Misskey.entities.SigninFlowResponse & { finished: true }): void;
+	(ev: 'login', v: Misskey.entities.SigninFlowSuccessResponse): void;
 }>();
 
 const props = withDefaults(defineProps<{
@@ -101,81 +98,33 @@ const props = withDefaults(defineProps<{
 const page = ref<'input' | 'password' | 'totp' | 'passkey'>('input');
 const waiting = ref(false);
 
-const passwordPageEl = useTemplateRef('passwordPageEl');
-const needCaptcha = ref(false);
+const inputPageEl = useTemplateRef('inputPageEl');
+
+const signinSession = shallowRef<Misskey.entities.SigninFlowInitResponse | null>(null);
 
 const userInfo = ref<null | Misskey.entities.UserDetailed>(null);
 const password = ref('');
 
-//#region Passkey Passwordless
-const credentialRequest = shallowRef<CredentialRequestOptions | null>(null);
-const passkeyContext = ref('');
-const doingPasskeyFromInputPage = ref(false);
-
-function onPasskeyLogin(): void {
-	if (webAuthnSupported()) {
-		doingPasskeyFromInputPage.value = true;
-		waiting.value = true;
-		misskeyApi('signin-with-passkey', {})
-			.then((res) => {
-				passkeyContext.value = res.context ?? '';
-				credentialRequest.value = parseRequestOptionsFromJSON({
-					// @ts-expect-error TODO: misskey-js由来の型（@simplewebauthn/types）とフロントエンド由来の型（@github/webauthn-json）が合わない
-					publicKey: res.option,
-				});
-
-				page.value = 'passkey';
-				waiting.value = false;
-			})
-			.catch(onSigninApiError);
-	}
-}
-
-function onPasskeyDone(credential: AuthenticationPublicKeyCredential): void {
-	waiting.value = true;
-
-	if (doingPasskeyFromInputPage.value) {
-		misskeyApi<Misskey.entities.SigninWithPasskeyResponse>('signin-with-passkey', {
-			credential: credential.toJSON(),
-			context: passkeyContext.value,
-		}).then((res) => {
-			if (res.signinResponse == null) {
-				onSigninApiError();
-				return;
-			}
-			emit('login', res.signinResponse);
-			onLoginSucceeded(res.signinResponse);
-		}).catch(onSigninApiError);
-	} else if (userInfo.value != null) {
-		tryLogin({
-			username: userInfo.value.username,
-			password: password.value,
-			// @ts-expect-error TODO: misskey-js由来の型（@simplewebauthn/types）とフロントエンド由来の型（@github/webauthn-json）が合わない
-			credential: credential.toJSON(),
-		});
-	}
-}
-
+const credentialRequest = ref<PublicKeyCredentialRequestOptionsJSON | null>(null);
 function onUseTotp(): void {
 	page.value = 'totp';
 }
-//#endregion
 
-async function onUsernameSubmitted(username: string) {
+async function onUsernameSubmitted(ur: Omit<Misskey.entities.SigninFlowContinueRequestUsername, 'sessionId'>) {
 	waiting.value = true;
 
 	userInfo.value = await misskeyApi('users/show', {
-		username,
+		username: ur.username,
 	}).catch(() => null);
 
 	await tryLogin({
-		username,
+		...ur,
 	});
 }
 
-async function onPasswordSubmitted(pw: PwResponse) {
+async function onPasswordSubmitted(pw: string) {
 	waiting.value = true;
-	password.value = pw.password;
+	password.value = pw;
 
 	if (userInfo.value == null) {
 		await os.alert({
@@ -187,13 +136,7 @@ async function onPasswordSubmitted(pw: PwResponse) {
 		return;
 	} else {
 		await tryLogin({
-			username: userInfo.value.username,
-			password: pw.password,
-			'hcaptcha-response': pw.captcha.hCaptchaResponse,
-			'm-captcha-response': pw.captcha.mCaptchaResponse,
-			'g-recaptcha-response': pw.captcha.reCaptchaResponse,
-			'turnstile-response': pw.captcha.turnstileResponse,
-			'testcaptcha-response': pw.captcha.testcaptchaResponse,
+			password: pw,
 		});
 	}
 }
@@ -218,33 +161,38 @@ async function onTotpSubmitted(token: string) {
 	}
 }
 
-async function tryLogin(req: Partial<Misskey.entities.SigninFlowRequest>): Promise<Misskey.entities.SigninFlowResponse> {
+async function onPasskeyDone(credential: AuthenticationResponseJSON) {
+	waiting.value = true;
+
+	await tryLogin({
+		passkeyCredential: credential,
+	});
+}
+
+async function tryLogin(req: Omit<Misskey.entities.SigninFlowContinueRequest, 'sessionId'>): Promise<Misskey.entities.SigninFlowResponse> {
+	if (signinSession.value == null) {
+		throw new Error('Signin session is not initialized');
+	}
+
 	const _req = {
-		username: req.username ?? userInfo.value?.username,
+		sessionId: signinSession.value.sessionId,
 		...req,
-	};
+	} as Misskey.entities.SigninFlowContinueRequest;
 
-	function assertIsSigninFlowRequest(x: Partial<Misskey.entities.SigninFlowRequest>): x is Misskey.entities.SigninFlowRequest {
-		return x.username != null;
-	}
-
-	if (!assertIsSigninFlowRequest(_req)) {
-		throw new Error('Invalid request');
-	}
-
-	return await misskeyApi('signin-flow', _req).then(async (res) => {
-		if (res.finished) {
+	return await window.fetch(`${authUrl}/signin`, {
+		credentials: 'omit',
+		method: 'POST',
+		body: JSON.stringify(_req),
+	}).then((res) => res.json() as Promise<Misskey.entities.SigninFlowResponse>).catch((err) => {
+		onSigninApiError(err);
+		return Promise.reject(err);
+	}).then(async (res) => {
+		if ('id' in res) {
 			emit('login', res);
 			await onLoginSucceeded(res);
-		} else {
+		} else if ('next' in res) {
 			switch (res.next) {
-				case 'captcha': {
-					needCaptcha.value = true;
-					page.value = 'password';
-					break;
-				}
 				case 'password': {
-					needCaptcha.value = false;
 					page.value = 'password';
 					break;
 				}
@@ -253,11 +201,8 @@ async function tryLogin(req: Partial<Misskey.entities.SigninFlowRequest>): Promi
 					break;
 				}
 				case 'passkey': {
-					if (webAuthnSupported()) {
-						credentialRequest.value = parseRequestOptionsFromJSON({
-							// @ts-expect-error TODO: misskey-js由来の型（@simplewebauthn/types）とフロントエンド由来の型（@github/webauthn-json）が合わない
-							publicKey: res.authRequest,
-						});
+					if (browserSupportsWebAuthn()) {
+						credentialRequest.value = res.passkeyOptions;
 						page.value = 'passkey';
 					} else {
 						page.value = 'totp';
@@ -266,26 +211,18 @@ async function tryLogin(req: Partial<Misskey.entities.SigninFlowRequest>): Promi
 				}
 			}
 
-			if (doingPasskeyFromInputPage.value === true) {
-				doingPasskeyFromInputPage.value = false;
-				page.value = 'input';
-				password.value = '';
-			}
-			passwordPageEl.value?.resetCaptcha();
+			inputPageEl.value?.resetCaptcha();
 			nextTick(() => {
 				waiting.value = false;
 			});
 		}
 		return res;
-	}).catch((err) => {
-		onSigninApiError(err);
-		return Promise.reject(err);
 	});
 }
 
-async function onLoginSucceeded(res: Misskey.entities.SigninFlowResponse & { finished: true }) {
+async function onLoginSucceeded(res: Misskey.entities.SigninFlowSuccessResponse): Promise<void> {
 	if (props.autoSet) {
-		await login(res.i);
+		await login(res);
 	}
 }
 
@@ -371,20 +308,60 @@ function onSigninApiError(err?: any): void {
 		}
 	}
 
-	if (doingPasskeyFromInputPage.value === true) {
-		doingPasskeyFromInputPage.value = false;
-		page.value = 'input';
-		password.value = '';
-	}
-	passwordPageEl.value?.resetCaptcha();
+	inputPageEl.value?.resetCaptcha();
 	nextTick(() => {
 		waiting.value = false;
 	});
 }
 
+onMounted(async () => {
+	const ssRes = await window.fetch(`${authUrl}/signin`, {
+		credentials: 'omit',
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: '{}',
+	}).then((res) => res.json() as Promise<Misskey.entities.SigninFlowInitResponse>).catch(() => null);
+
+	if (ssRes != null) {
+		signinSession.value = ssRes;
+
+		// オートフィルのパスキーログインセッション
+		if (await browserSupportsWebAuthnAutofill()) {
+			startAuthentication({
+				optionsJSON: ssRes.passkeyOptions,
+				useBrowserAutofill: true,
+			}).then(async (res) => {
+				waiting.value = true;
+				const ssPasskeyPwLessRes = await window.fetch(`${authUrl}/signin`, {
+					credentials: 'omit',
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						sessionId: ssRes.sessionId,
+						passkeyCredential: res,
+					} satisfies Misskey.entities.SigninFlowContinueRequest),
+				}).then((res) => res.json() as Promise<Misskey.entities.SigninFlowResponse>).catch((err) => {
+					onSigninApiError(err);
+					return null;
+				});
+
+				if (ssPasskeyPwLessRes != null && 'id' in ssPasskeyPwLessRes) {
+					emit('login', ssPasskeyPwLessRes!);
+					await onLoginSucceeded(ssPasskeyPwLessRes!);
+				} else {
+					waiting.value = false;
+				}
+			});
+		}
+	}
+});
+
 onBeforeUnmount(() => {
 	password.value = '';
-	needCaptcha.value = false;
 	userInfo.value = null;
 });
 </script>

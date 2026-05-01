@@ -568,6 +568,9 @@ type ApShowResponse = operations['ap___show']['responses']['200']['content']['ap
 type AuthAcceptRequest = operations['auth___accept']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+type AuthCaptchaType = 'hcaptcha' | 'recaptcha-v2' | 'turnstile' | 'm-captcha' | 'testcaptcha';
+
+// @public (undocumented)
 type AuthSessionGenerateRequest = operations['auth___session___generate']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -614,9 +617,6 @@ type BubbleGameRankingResponse = operations['bubble-game___ranking']['responses'
 
 // @public (undocumented)
 type BubbleGameRegisterRequest = operations['bubble-game___register']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type CaptchaType = 'hcaptcha' | 'recaptcha-v2' | 'turnstile' | 'm-captcha' | 'testcaptcha';
 
 // @public (undocumented)
 type Channel = components['schemas']['Channel'];
@@ -1476,16 +1476,21 @@ declare namespace entities {
         EmojiUpdated,
         EmojiDeleted,
         AnnouncementCreated,
-        CaptchaType,
+        AuthCaptchaType,
         SignupRequest,
         SignupResponse,
         SignupPendingRequest,
         SignupPendingResponse,
         SigninFlowInitRequest,
+        SigninFlowContinueRequestUsername,
+        SigninFlowContinueRequestPassword,
+        SigninFlowContinueRequestPasskey,
+        SigninFlowContinueRequestTotp,
         SigninFlowContinueRequest,
         SigninFlowRequest,
         SigninFlowInitResponse,
         SigninFlowContinueResponse,
+        SigninFlowSuccessResponse,
         SigninFlowResponse,
         PartialRolePolicyOverride,
         EmptyRequest,
@@ -3492,13 +3497,39 @@ type ServerStatsLog = ServerStats[];
 // @public (undocumented)
 type Signin = components['schemas']['Signin'];
 
-// Warning: (ae-forgotten-export) The symbol "SigninFlowContinueRequestUsername" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "SigninFlowContinueRequestPassword" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "SigninFlowContinueRequestPasskey" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "SigninFlowContinueRequestTotp" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 type SigninFlowContinueRequest = SigninFlowContinueRequestUsername | SigninFlowContinueRequestPassword | SigninFlowContinueRequestPasskey | SigninFlowContinueRequestTotp;
+
+// @public (undocumented)
+interface SigninFlowContinueRequestPasskey extends SigninFlowContinueRequestBase {
+    // (undocumented)
+    passkeyCredential: AuthenticationResponseJSON;
+}
+
+// @public (undocumented)
+interface SigninFlowContinueRequestPassword extends SigninFlowContinueRequestBase {
+    // (undocumented)
+    password: string;
+}
+
+// @public (undocumented)
+interface SigninFlowContinueRequestTotp extends SigninFlowContinueRequestBase {
+    // (undocumented)
+    totp: string;
+}
+
+// Warning: (ae-forgotten-export) The symbol "SigninFlowContinueRequestBase" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+interface SigninFlowContinueRequestUsername extends SigninFlowContinueRequestBase {
+    // (undocumented)
+    captchaResponse?: {
+        type: AuthCaptchaType;
+        response: string;
+    };
+    // (undocumented)
+    username: string;
+}
 
 // @public (undocumented)
 type SigninFlowContinueResponse = {
@@ -3506,10 +3537,6 @@ type SigninFlowContinueResponse = {
 } | {
     next: 'passkey';
     passkeyOptions: PublicKeyCredentialRequestOptionsJSON_2;
-} | {
-    id: string;
-    accessToken: string;
-    refreshToken: string;
 };
 
 // @public (undocumented)
@@ -3525,7 +3552,14 @@ type SigninFlowInitResponse = {
 type SigninFlowRequest = SigninFlowInitRequest | SigninFlowContinueRequest;
 
 // @public (undocumented)
-type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse;
+type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse | SigninFlowSuccessResponse;
+
+// @public (undocumented)
+type SigninFlowSuccessResponse = {
+    id: string;
+    accessToken: string;
+    refreshToken: string;
+};
 
 // @public (undocumented)
 type SignupPendingRequest = {
@@ -3546,7 +3580,7 @@ type SignupRequest = {
     invitationCode?: string;
     emailAddress?: string;
     captchaResponse?: {
-        type: CaptchaType;
+        type: AuthCaptchaType;
         response: string;
     };
 };

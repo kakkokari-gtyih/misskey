@@ -123,24 +123,6 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		miLocalStorage.setItem('v', instance.version);
 	});
 
-	//#region loginId
-	const params = new URLSearchParams(window.location.search);
-	const loginId = params.get('loginId');
-
-	if (loginId) {
-		const target = getUrlWithoutLoginId(window.location.href);
-
-		if (!$i || $i.id !== loginId) {
-			const account = await getAccountFromId(loginId);
-			if (account) {
-				await login(account.token, target);
-			}
-		}
-
-		window.history.replaceState({ misskey: 'loginId' }, '', target);
-	}
-	//#endregion
-
 	//#region Sync dark mode
 	if (prefer.s.syncDeviceDarkMode) {
 		store.set('darkMode', isDeviceDarkmode());

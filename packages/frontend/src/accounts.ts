@@ -5,26 +5,31 @@
 
 import { defineAsyncComponent, ref } from 'vue';
 import * as Misskey from 'misskey-js';
-import { apiUrl, host } from '@@/js/config.js';
+import { apiUrl, authUrl, host } from '@@/js/config.js';
 import type { MenuItem } from '@/types/menu.js';
 import { showSuspendedDialog } from '@/utility/show-suspended-dialog.js';
 import { i18n } from '@/i18n.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { waiting, popup, popupMenu, success, alert } from '@/os.js';
+import { popup, success, alert } from '@/os.js';
 import { unisonReload, reloadChannel } from '@/utility/unison-reload.js';
 import { prefer } from '@/preferences.js';
 import { store } from '@/store.js';
 import { $i } from '@/i.js';
 import { signout } from '@/signout.js';
 
-type AccountWithToken = Misskey.entities.MeDetailed & { token: string };
+type Tokens = {
+	accessToken: string;
+	refreshToken: string;
+};
+
+type AccountWithToken = Misskey.entities.MeDetailed & { token: Tokens };
 
 export async function getAccounts(): Promise<{
 	host: string;
 	id: Misskey.entities.User['id'];
 	username: Misskey.entities.User['username'];
 	user?: Misskey.entities.MeDetailed | null;
-	token: string | null;
+	token: Tokens | null;
 }[]> {
 	const tokens = store.s.accountTokens;
 	const accountInfos = store.s.accountInfos;
@@ -59,7 +64,7 @@ export async function removeAccount(host: string, id: AccountWithToken['id']) {
 
 const isAccountDeleted = Symbol('isAccountDeleted');
 
-function fetchAccount(token: string, id?: string, forceShowDialog?: boolean): Promise<Misskey.entities.MeDetailed> {
+function fetchAccount(token: Tokens, id?: string, forceShowDialog?: boolean): Promise<Misskey.entities.MeDetailed> {
 	return new Promise((done, fail) => {
 		window.fetch(`${apiUrl}/i`, {
 			method: 'POST',
@@ -82,13 +87,13 @@ function fetchAccount(token: string, id?: string, forceShowDialog?: boolean): Pr
 				if ('error' in res) {
 					if (res.error.id === 'a8c724b3-6e9c-4b46-b1a8-bc3ed6258370') {
 						// SUSPENDED
-						if (forceShowDialog || $i && (token === $i.token || id === $i.id)) {
+						if (forceShowDialog || ($i != null && id === $i.id)) {
 							await showSuspendedDialog();
 						}
 					} else if (res.error.id === 'e5b3b9f0-2b8f-4b9f-9c1f-8c5c1b2e1b1a') {
 						// USER_IS_DELETED
 						// アカウントが削除されている
-						if (forceShowDialog || $i && (token === $i.token || id === $i.id)) {
+						if (forceShowDialog || ($i != null && id === $i.id)) {
 							await alert({
 								type: 'error',
 								title: i18n.ts.accountDeleted,
@@ -98,7 +103,15 @@ function fetchAccount(token: string, id?: string, forceShowDialog?: boolean): Pr
 					} else if (res.error.id === 'b0a7f5f8-dc2f-4171-b91f-de88ad238e14') {
 						// AUTHENTICATION_FAILED
 						// トークンが無効化されていたりアカウントが削除されたりしている
-						if (forceShowDialog || $i && (token === $i.token || id === $i.id)) {
+
+						// トークンのローテートを試す
+						const newToken = await refreshTokens(token);
+						if (newToken) {
+							// トークンのローテートに成功した場合は新しいトークンで再度fetchAccountを試す
+							return fetchAccount(newToken, id, forceShowDialog).then(done).catch(fail);
+						}
+
+						if (forceShowDialog || ($i != null && id === $i.id)) {
 							await alert({
 								type: 'error',
 								title: i18n.ts.tokenRevoked,
@@ -162,6 +175,32 @@ export async function refreshCurrentAccount() {
 	});
 }
 
+export async function refreshTokens(token: Tokens): Promise<Tokens | null> {
+	return await window.fetch(`${authUrl}/refresh-token`, {
+		method: 'POST',
+		credentials: 'omit',
+		body: JSON.stringify({
+			i: token.accessToken,
+			refreshToken: token.refreshToken,
+		}),
+		headers: {
+			'Content-Type': 'application/json',
+		},
+	}).then((r) => r.json() as Promise<Tokens>).catch(() => null);
+}
+
+export async function refreshCurrentAccountToken(): Promise<Tokens | null> {
+	if (!$i) return null;
+
+	const res = await refreshTokens($i.token);
+
+	if (res) {
+		store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + $i.id]: res });
+	}
+
+	return res;
+}
+
 export async function login(token: AccountWithToken['token'], redirect?: string) {
 	const showing = ref(true);
 	const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkWaitingDialog.vue')), {
@@ -200,9 +239,15 @@ export async function switchAccount(host: string, id: string) {
 		login(token);
 	} else {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkSigninDialog.vue')), {}, {
-			done: async (res: Misskey.entities.SigninFlowResponse & { finished: true }) => {
-				store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + res.id]: res.i });
-				login(res.i);
+			done: async (res: Misskey.entities.SigninFlowSuccessResponse) => {
+				store.set('accountTokens', {
+					...store.s.accountTokens,
+					[host + '/' + res.id]: {
+						accessToken: res.accessToken,
+						refreshToken: res.refreshToken,
+					},
+				});
+				login(res);
 			},
 			closed: () => {
 				dispose();
@@ -222,7 +267,13 @@ export async function getAccountMenu(opts: {
 
 	const callback = opts.onChoose;
 
-	function createItem(host: string, id: Misskey.entities.User['id'], username: Misskey.entities.User['username'], account: Misskey.entities.MeDetailed | null | undefined, token: string | null): MenuItem {
+	function createItem(
+		host: string,
+		id: Misskey.entities.User['id'],
+		username: Misskey.entities.User['username'],
+		account: Misskey.entities.MeDetailed | null | undefined,
+		token: Tokens | null,
+	): MenuItem {
 		if (account) {
 			return {
 				type: 'user' as const,
@@ -260,11 +311,17 @@ export async function getAccountMenu(opts: {
 					const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkSigninDialog.vue')), {
 						initialUsername: username,
 					}, {
-						done: async (res: Misskey.entities.SigninFlowResponse & { finished: true }) => {
-							store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + res.id]: res.i });
+						done: async (res: Misskey.entities.SigninFlowSuccessResponse) => {
+							store.set('accountTokens', {
+								...store.s.accountTokens,
+								[host + '/' + res.id]: {
+									accessToken: res.accessToken,
+									refreshToken: res.refreshToken,
+								},
+							});
 
 							if (callback) {
-								fetchAccount(res.i, id).then(account => {
+								fetchAccount(res, id).then(account => {
 									callback(account);
 								});
 							} else {
@@ -341,13 +398,13 @@ export async function getAccountMenu(opts: {
 	return menuItems;
 }
 
-export function getAccountWithSigninDialog(): Promise<{ id: string, token: string } | null> {
+export function getAccountWithSigninDialog(): Promise<Misskey.entities.SigninFlowSuccessResponse | null> {
 	return new Promise((resolve) => {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkSigninDialog.vue')), {}, {
-			done: async (res: Misskey.entities.SigninFlowResponse & { finished: true }) => {
-				const user = await fetchAccount(res.i, res.id, true);
-				await addAccount(host, user, res.i);
-				resolve({ id: res.id, token: res.i });
+			done: async (res: Misskey.entities.SigninFlowSuccessResponse) => {
+				const user = await fetchAccount(res, res.id, true);
+				await addAccount(host, user, res);
+				resolve(res);
 			},
 			cancelled: () => {
 				resolve(null);
@@ -359,14 +416,14 @@ export function getAccountWithSigninDialog(): Promise<{ id: string, token: strin
 	});
 }
 
-export function getAccountWithSignupDialog(): Promise<{ id: string, token: string } | null> {
+export function getAccountWithSignupDialog(): Promise<Misskey.entities.SignupResponse | null> {
 	return new Promise((resolve) => {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkSignupDialog.vue')), {}, {
 			done: async (res: Misskey.entities.SignupResponse) => {
 				const user = JSON.parse(JSON.stringify(res));
 				delete user.token;
 				await addAccount(host, user, res.token);
-				resolve({ id: res.id, token: res.token });
+				resolve(res);
 			},
 			cancelled: () => {
 				resolve(null);

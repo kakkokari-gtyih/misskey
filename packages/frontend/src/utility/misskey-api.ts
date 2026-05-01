@@ -7,10 +7,12 @@ import * as Misskey from 'misskey-js';
 import { ref } from 'vue';
 import { apiUrl } from '@@/js/config.js';
 import { $i } from '@/i.js';
+import { refreshCurrentAccountToken } from '@/accounts.js';
+
 export const pendingApiRequestsCount = ref(0);
 
 // Implements Misskey.api.ApiClient.request
-export function misskeyApi<
+export async function misskeyApi<
 	ResT = void,
 	E extends keyof Misskey.Endpoints = keyof Misskey.Endpoints,
 	P extends Misskey.Endpoints[E]['req'] = Misskey.Endpoints[E]['req'],
@@ -20,21 +22,22 @@ export function misskeyApi<
 	data: P & { i?: string | null; } = {} as any,
 	token?: string | null | undefined,
 	signal?: AbortSignal,
+	refreshTokenIfNeeded = true,
 ): Promise<_ResT> {
 	if (endpoint.includes('://')) throw new Error('invalid endpoint');
+
 	pendingApiRequestsCount.value++;
 
-	const onFinally = () => {
-		pendingApiRequestsCount.value--;
-	};
+	let resBody: _ResT;
+	let error: any = null;
 
-	const promise = new Promise<_ResT>((resolve, reject) => {
+	try {
 		// Append a credential
-		if ($i) data.i = $i.token;
+		if ($i) data.i = $i.token.accessToken;
 		if (token !== undefined) data.i = token;
 
 		// Send request
-		window.fetch(`${apiUrl}/${endpoint}`, {
+		const res = await window.fetch(`${apiUrl}/${endpoint}`, {
 			method: 'POST',
 			body: JSON.stringify(data),
 			credentials: 'omit',
@@ -43,22 +46,33 @@ export function misskeyApi<
 				'Content-Type': 'application/json',
 			},
 			signal,
-		}).then(async (res) => {
-			const body = res.status === 204 ? null : await res.json();
+		});
 
-			if (res.status === 200) {
-				resolve(body);
-			} else if (res.status === 204) {
-				resolve(undefined as _ResT); // void -> undefined
-			} else {
-				reject(body.error);
-			}
-		}).catch(reject);
-	});
+		const body = res.status === 204 ? null : await res.json();
 
-	promise.then(onFinally, onFinally);
+		// Token expired
+		if (token === undefined && $i != null && refreshTokenIfNeeded && body?.error?.id === 'b0a7f5f8-dc2f-4171-b91f-de88ad238e14') {
+			await refreshCurrentAccountToken();
+			// Retry once with new token
+			return misskeyApi(endpoint, data, $i?.token.accessToken ?? null, signal, false);
+		}
 
-	return promise;
+		if (res.status === 200) {
+			resBody = body;
+		} else if (res.status === 204) {
+			resBody = undefined as _ResT; // void -> undefined
+		} else {
+			error = Promise.reject(body.error);
+		}
+	} catch (err) {
+		error = Promise.reject(err);
+	} finally {
+		pendingApiRequestsCount.value--;
+	}
+
+	if (error) return Promise.reject(error);
+
+	return resBody!;
 }
 
 // Implements Misskey.api.ApiClient.request

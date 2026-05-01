@@ -23,77 +23,31 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template #caption><button class="_textButton" type="button" @click="resetPassword">{{ i18n.ts.forgotPassword }}</button></template>
 			</MkInput>
 
-			<div v-if="needCaptcha">
-				<MkCaptcha v-if="instance.enableHcaptcha" ref="hcaptcha" v-model="hCaptchaResponse" provider="hcaptcha" :sitekey="instance.hcaptchaSiteKey"/>
-				<MkCaptcha v-if="instance.enableMcaptcha" ref="mcaptcha" v-model="mCaptchaResponse" provider="mcaptcha" :sitekey="instance.mcaptchaSiteKey" :instanceUrl="instance.mcaptchaInstanceUrl"/>
-				<MkCaptcha v-if="instance.enableRecaptcha" ref="recaptcha" v-model="reCaptchaResponse" provider="recaptcha" :sitekey="instance.recaptchaSiteKey"/>
-				<MkCaptcha v-if="instance.enableTurnstile" ref="turnstile" v-model="turnstileResponse" provider="turnstile" :sitekey="instance.turnstileSiteKey"/>
-				<MkCaptcha v-if="instance.enableTestcaptcha" ref="testcaptcha" v-model="testcaptchaResponse" provider="testcaptcha" :sitekey="null"/>
-			</div>
-
-			<MkButton type="submit" :disabled="needCaptcha && captchaFailed" large primary rounded style="margin: 0 auto;" data-cy-signin-page-password-continue>{{ i18n.ts.continue }} <i class="ti ti-arrow-right"></i></MkButton>
+			<MkButton type="submit" large primary rounded style="margin: 0 auto;" data-cy-signin-page-password-continue>{{ i18n.ts.continue }} <i class="ti ti-arrow-right"></i></MkButton>
 		</form>
 	</div>
 </div>
 </template>
 
-<script lang="ts">
-export type PwResponse = {
-	password: string;
-	captcha: {
-		hCaptchaResponse: string | null;
-		mCaptchaResponse: string | null;
-		reCaptchaResponse: string | null;
-		turnstileResponse: string | null;
-		testcaptchaResponse: string | null;
-	};
-};
-</script>
-
 <script setup lang="ts">
-import { ref, computed, useTemplateRef, defineAsyncComponent } from 'vue';
+import { ref, defineAsyncComponent } from 'vue';
 import * as Misskey from 'misskey-js';
 
-import { instance } from '@/instance.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 
 import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
-import MkCaptcha from '@/components/MkCaptcha.vue';
 
 const props = defineProps<{
 	user: Misskey.entities.UserDetailed;
-	needCaptcha: boolean;
 }>();
 
 const emit = defineEmits<{
-	(ev: 'passwordSubmitted', v: PwResponse): void;
+	(ev: 'passwordSubmitted', v: string): void;
 }>();
 
 const password = ref('');
-
-const hCaptcha = useTemplateRef('hcaptcha');
-const mCaptcha = useTemplateRef('mcaptcha');
-const reCaptcha = useTemplateRef('recaptcha');
-const turnstile = useTemplateRef('turnstile');
-const testcaptcha = useTemplateRef('testcaptcha');
-
-const hCaptchaResponse = ref<string | null>(null);
-const mCaptchaResponse = ref<string | null>(null);
-const reCaptchaResponse = ref<string | null>(null);
-const turnstileResponse = ref<string | null>(null);
-const testcaptchaResponse = ref<string | null>(null);
-
-const captchaFailed = computed((): boolean => {
-	return (
-		(instance.enableHcaptcha && !hCaptchaResponse.value) ||
-		(instance.enableMcaptcha && !mCaptchaResponse.value) ||
-		(instance.enableRecaptcha && !reCaptchaResponse.value) ||
-		(instance.enableTurnstile && !turnstileResponse.value) ||
-		(instance.enableTestcaptcha && !testcaptchaResponse.value)
-	);
-});
 
 function resetPassword(): void {
 	const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkForgotPassword.vue')), {}, {
@@ -102,29 +56,8 @@ function resetPassword(): void {
 }
 
 function onSubmit() {
-	emit('passwordSubmitted', {
-		password: password.value,
-		captcha: {
-			hCaptchaResponse: hCaptchaResponse.value,
-			mCaptchaResponse: mCaptchaResponse.value,
-			reCaptchaResponse: reCaptchaResponse.value,
-			turnstileResponse: turnstileResponse.value,
-			testcaptchaResponse: testcaptchaResponse.value,
-		},
-	});
+	emit('passwordSubmitted', password.value);
 }
-
-function resetCaptcha() {
-	hCaptcha.value?.reset();
-	mCaptcha.value?.reset();
-	reCaptcha.value?.reset();
-	turnstile.value?.reset();
-	testcaptcha.value?.reset();
-}
-
-defineExpose({
-	resetCaptcha,
-});
 </script>
 
 <style lang="scss" module>

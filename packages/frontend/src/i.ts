@@ -8,8 +8,12 @@ import * as Misskey from 'misskey-js';
 import { miLocalStorage } from '@/local-storage.js';
 
 // TODO: 他のタブと永続化されたstateを同期
+type Tokens = {
+	accessToken: string;
+	refreshToken: string;
+};
 
-type AccountWithToken = Misskey.entities.MeDetailed & { token: string };
+type AccountWithToken = Misskey.entities.MeDetailed & { token: Tokens };
 
 const accountData = miLocalStorage.getItem('account');
 

@@ -259,7 +259,7 @@ export type AnnouncementCreated = {
 	announcement: Announcement;
 };
 
-export type CaptchaType = 'hcaptcha' | 'recaptcha-v2' | 'turnstile' | 'm-captcha' | 'testcaptcha';
+export type AuthCaptchaType = 'hcaptcha' | 'recaptcha-v2' | 'turnstile' | 'm-captcha' | 'testcaptcha';
 
 export type SignupRequest = {
 	username: string;
@@ -268,7 +268,7 @@ export type SignupRequest = {
 	invitationCode?: string;
 	emailAddress?: string;
 	captchaResponse?: {
-		type: CaptchaType;
+		type: AuthCaptchaType;
 		response: string;
 	};
 };
@@ -296,23 +296,23 @@ interface SigninFlowContinueRequestBase {
 	sessionId: string;
 }
 
-interface SigninFlowContinueRequestUsername extends SigninFlowContinueRequestBase {
+export interface SigninFlowContinueRequestUsername extends SigninFlowContinueRequestBase {
 	username: string;
 	captchaResponse?: {
-		type: CaptchaType;
+		type: AuthCaptchaType;
 		response: string;
 	};
 }
 
-interface SigninFlowContinueRequestPassword extends SigninFlowContinueRequestBase {
+export interface SigninFlowContinueRequestPassword extends SigninFlowContinueRequestBase {
 	password: string;
 }
 
-interface SigninFlowContinueRequestPasskey extends SigninFlowContinueRequestBase {
+export interface SigninFlowContinueRequestPasskey extends SigninFlowContinueRequestBase {
 	passkeyCredential: AuthenticationResponseJSON;
 }
 
-interface SigninFlowContinueRequestTotp extends SigninFlowContinueRequestBase {
+export interface SigninFlowContinueRequestTotp extends SigninFlowContinueRequestBase {
 	totp: string;
 }
 
@@ -330,13 +330,15 @@ export type SigninFlowContinueResponse = {
 } | {
 	next: 'passkey';
 	passkeyOptions: PublicKeyCredentialRequestOptionsJSON;
-} | {
+};
+
+export type SigninFlowSuccessResponse = {
 	id: string;
 	accessToken: string;
 	refreshToken: string;
 };
 
-export type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse;
+export type SigninFlowResponse = SigninFlowInitResponse | SigninFlowContinueResponse | SigninFlowSuccessResponse;
 //#endregion
 
 type Values<T extends Record<PropertyKey, unknown>> = T[keyof T];

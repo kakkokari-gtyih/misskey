@@ -122,13 +122,24 @@ const emailState = ref<null | 'wait' | 'ok' | 'unavailable:used' | 'unavailable:
 const passwordStrength = ref<'' | 'low' | 'medium' | 'high'>('');
 const passwordRetypeState = ref<null | 'match' | 'not-match'>(null);
 const submitting = ref<boolean>(false);
+
 const hCaptchaResponse = ref<string | null>(null);
 const mCaptchaResponse = ref<string | null>(null);
 const reCaptchaResponse = ref<string | null>(null);
 const turnstileResponse = ref<string | null>(null);
 const testcaptchaResponse = ref<string | null>(null);
+
 const usernameAbortController = ref<null | AbortController>(null);
 const emailAbortController = ref<null | AbortController>(null);
+
+const captchaType = computed<Misskey.entities.AuthCaptchaType | null>(() => {
+	if (instance.enableHcaptcha) return 'hcaptcha';
+	if (instance.enableMcaptcha) return 'm-captcha';
+	if (instance.enableRecaptcha) return 'recaptcha-v2';
+	if (instance.enableTurnstile) return 'turnstile';
+	if (instance.enableTestcaptcha) return 'testcaptcha';
+	return null;
+});
 
 const shouldDisableSubmitting = computed((): boolean => {
 	return submitting.value ||
@@ -261,11 +272,16 @@ async function onSubmit(): Promise<void> {
 		password: password.value,
 		emailAddress: email.value,
 		invitationCode: invitationCode.value,
-		'hcaptcha-response': hCaptchaResponse.value,
-		'm-captcha-response': mCaptchaResponse.value,
-		'g-recaptcha-response': reCaptchaResponse.value,
-		'turnstile-response': turnstileResponse.value,
-		'testcaptcha-response': testcaptchaResponse.value,
+		captchaResponse: captchaType.value ? {
+			type: captchaType.value,
+			response: (
+				hCaptchaResponse.value ||
+				mCaptchaResponse.value ||
+				reCaptchaResponse.value ||
+				turnstileResponse.value ||
+				testcaptchaResponse.value
+			) ?? '',
+		} : undefined,
 	};
 
 	const res = await window.fetch(`${config.apiUrl}/signup`, {
