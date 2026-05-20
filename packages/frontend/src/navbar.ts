@@ -14,6 +14,7 @@ import { lookup } from '@/utility/lookup.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { unisonReload } from '@/utility/unison-reload.js';
+import { openCommandPalette } from '@/utility/command-palette.js';
 
 export const navbarItemDef = reactive<{
 	[key: string]: {
@@ -69,6 +70,13 @@ export const navbarItemDef = reactive<{
 		title: i18n.ts.search,
 		icon: 'ti ti-search',
 		to: '/search',
+	},
+	commandPalette: {
+		title: i18n.ts.commandPalette,
+		icon: 'ti ti-terminal-2',
+		action: () => {
+			openCommandPalette();
+		},
 	},
 	lookup: {
 		title: i18n.ts.lookup,
