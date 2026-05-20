@@ -1506,6 +1506,8 @@ declare namespace entities {
         SigninFlowResponse,
         I2faPasskeyRegisterResponse_2 as I2faPasskeyRegisterResponse,
         I2faPasskeyDoneRequest_2 as I2faPasskeyDoneRequest,
+        I2faRegisterKeyResponse,
+        I2faKeyDoneRequest,
         PartialRolePolicyOverride,
         EmptyRequest,
         EmptyResponse,
@@ -1868,6 +1870,8 @@ declare namespace entities {
         FollowingDeleteResponse,
         FollowingInvalidateRequest,
         FollowingInvalidateResponse,
+        FollowingListRequest,
+        FollowingListResponse,
         FollowingRequestsAcceptRequest,
         FollowingRequestsCancelRequest,
         FollowingRequestsCancelResponse,
@@ -2381,6 +2385,12 @@ type FollowingInvalidateRequest = operations['following___invalidate']['requestB
 type FollowingInvalidateResponse = operations['following___invalidate']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type FollowingListRequest = operations['following___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type FollowingListResponse = operations['following___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type FollowingRequestsAcceptRequest = operations['following___requests___accept']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -2498,6 +2508,14 @@ type HashtagsUsersRequest = operations['hashtags___users']['requestBody']['conte
 type HashtagsUsersResponse = operations['hashtags___users']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type I2faKeyDoneRequest = {
+    password: string;
+    token?: string | null;
+    name: string;
+    credential: RegistrationResponseJSON;
+};
+
+// @public (undocumented)
 type I2faPasskeyDoneRequest_2 = {
     name: string;
     credential: RegistrationResponseJSON;
@@ -2517,6 +2535,9 @@ type I2faPasskeyRemoveRequest = operations['i___2fa___passkey___remove']['reques
 
 // @public (undocumented)
 type I2faPasskeyUpdateRequest = operations['i___2fa___passkey___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type I2faRegisterKeyResponse = PublicKeyCredentialCreationOptionsJSON_2;
 
 // @public (undocumented)
 type I2faTotpDoneRequest = operations['i___2fa___totp___done']['requestBody']['content']['application/json'];
@@ -3443,7 +3464,7 @@ type RoleLite = components['schemas']['RoleLite'];
 type RolePolicies = components['schemas']['RolePolicies'];
 
 // @public (undocumented)
-export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "canPublicNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canUseTranslator", "canHideAds", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable"];
+export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "canPublicNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canUseTranslator", "canHideAds", "canCreateChannel", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable"];
 
 // @public (undocumented)
 type RolesListResponse = operations['roles___list']['responses']['200']['content']['application/json'];

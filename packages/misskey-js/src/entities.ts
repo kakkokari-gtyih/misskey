@@ -13,8 +13,8 @@ import {
 import type {
 	AuthenticationResponseJSON,
 	RegistrationResponseJSON,
-	PublicKeyCredentialRequestOptionsJSON,
 	PublicKeyCredentialCreationOptionsJSON,
+	PublicKeyCredentialRequestOptionsJSON,
 } from '@simplewebauthn/browser';
 
 export * from './autogen/entities.js';
@@ -362,6 +362,15 @@ export type SigninFlowResponse = SigninFlowInitResponse | SigninFlowUpgradeInitR
 export type I2faPasskeyRegisterResponse = PublicKeyCredentialCreationOptionsJSON;
 
 export type I2faPasskeyDoneRequest = {
+	name: string;
+	credential: RegistrationResponseJSON;
+};
+
+export type I2faRegisterKeyResponse = PublicKeyCredentialCreationOptionsJSON;
+
+export type I2faKeyDoneRequest = {
+	password: string;
+	token?: string | null;
 	name: string;
 	credential: RegistrationResponseJSON;
 };

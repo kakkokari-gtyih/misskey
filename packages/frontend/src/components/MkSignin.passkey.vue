@@ -44,9 +44,7 @@ const queryingKey = ref(true);
 
 async function queryKey() {
 	queryingKey.value = true;
-	await startAuthentication({
-		optionsJSON: props.credentialRequest,
-	})
+	await startAuthentication({ optionsJSON: props.credentialRequest })
 		.catch(() => {
 			return Promise.reject(null);
 		})
