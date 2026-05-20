@@ -71,7 +71,8 @@ import {
 import * as os from '@/os.js';
 import { createColumn } from '@/components/grid/column.js';
 import { createRow, defaultGridRowSetting, resetRow } from '@/components/grid/row.js';
-import { makeHotkey } from '@/utility/hotkey.js';
+import { i18n } from '@/i18n.js';
+import { defineHotkeyCommands, makeHotkey } from '@/utility/hotkey.js';
 
 type RowHolder = {
 	row: GridRow,
@@ -289,8 +290,13 @@ function onKeyDown(ev: KeyboardEvent) {
 			const max = availableBounds.value;
 			const bounds = rangedBounds.value;
 
-			makeHotkey({
-				'delete': () => {
+			makeHotkey(defineHotkeyCommands([{
+				id: 'component.grid.deleteSelection',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.deleteSelection,
+				defaultKey: 'delete',
+				editable: false,
+				callback: () => {
 					if (rangedRows.value.length > 0) {
 						if (rowSetting.events.delete) {
 							rowSetting.events.delete(rangedRows.value);
@@ -302,54 +308,120 @@ function onKeyDown(ev: KeyboardEvent) {
 						});
 					}
 				},
-				'ctrl+c|meta+c': () => {
+			}, {
+				id: 'component.grid.copySelection',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.copySelection,
+				defaultKey: 'ctrl+c|meta+c',
+				editable: false,
+				callback: () => {
 					const context = createContext();
 					copyGridDataToClipboard(data.value, context);
 				},
-				'ctrl+v|meta+v': async () => {
+			}, {
+				id: 'component.grid.pasteClipboard',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.pasteClipboard,
+				defaultKey: 'ctrl+v|meta+v',
+				editable: false,
+				callback: async () => {
 					const _cells = cells.value;
 					const context = createContext();
 					await pasteToGridFromClipboard(context, (row, col, parsedValue) => {
 						emitCellValue(_cells[row.index].cells[col.index], parsedValue);
 					});
 				},
-				'ctrl+shift+right|meta+shift+right': () => {
+			}, {
+				id: 'component.grid.expandSelectionToRightEdge',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.expandSelectionToRightEdge,
+				defaultKey: 'ctrl+shift+right|meta+shift+right',
+				editable: false,
+				callback: () => {
 					updateSelectionRange({
 						leftTop: { col: selectedCellAddress.col, row: bounds.leftTop.row },
 						rightBottom: { col: max.rightBottom.col, row: bounds.rightBottom.row },
 					});
 				},
-				'ctrl+shift+left|meta+shift+left': () => {
+			}, {
+				id: 'component.grid.expandSelectionToLeftEdge',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.expandSelectionToLeftEdge,
+				defaultKey: 'ctrl+shift+left|meta+shift+left',
+				editable: false,
+				callback: () => {
 					updateSelectionRange({
 						leftTop: { col: max.leftTop.col, row: bounds.leftTop.row },
 						rightBottom: { col: selectedCellAddress.col, row: bounds.rightBottom.row },
 					});
 				},
-				'ctrl+shift+up|meta+shift+up': () => {
+			}, {
+				id: 'component.grid.expandSelectionToTopEdge',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.expandSelectionToTopEdge,
+				defaultKey: 'ctrl+shift+up|meta+shift+up',
+				editable: false,
+				callback: () => {
 					updateSelectionRange({
 						leftTop: { col: bounds.leftTop.col, row: max.leftTop.row },
 						rightBottom: { col: bounds.rightBottom.col, row: selectedCellAddress.row },
 					});
 				},
-				'ctrl+shift+down|meta+shift+down': () => {
+			}, {
+				id: 'component.grid.expandSelectionToBottomEdge',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.expandSelectionToBottomEdge,
+				defaultKey: 'ctrl+shift+down|meta+shift+down',
+				editable: false,
+				callback: () => {
 					updateSelectionRange({
 						leftTop: { col: bounds.leftTop.col, row: selectedCellAddress.row },
 						rightBottom: { col: bounds.rightBottom.col, row: max.rightBottom.row },
 					});
 				},
-				'ctrl+right|meta+right': () => {
+			}, {
+				id: 'component.grid.moveToRightEdge',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.moveToRightEdge,
+				defaultKey: 'ctrl+right|meta+right',
+				editable: false,
+				callback: () => {
 					selectionCell({ col: max.rightBottom.col, row: selectedCellAddress.row });
 				},
-				'ctrl+left|meta+left': () => {
+			}, {
+				id: 'component.grid.moveToLeftEdge',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.moveToLeftEdge,
+				defaultKey: 'ctrl+left|meta+left',
+				editable: false,
+				callback: () => {
 					selectionCell({ col: max.leftTop.col, row: selectedCellAddress.row });
 				},
-				'ctrl+up|meta+up': () => {
+			}, {
+				id: 'component.grid.moveToTopEdge',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.moveToTopEdge,
+				defaultKey: 'ctrl+up|meta+up',
+				editable: false,
+				callback: () => {
 					selectionCell({ col: selectedCellAddress.col, row: max.leftTop.row });
 				},
-				'ctrl+down|meta+down': () => {
+			}, {
+				id: 'component.grid.moveToBottomEdge',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.moveToBottomEdge,
+				defaultKey: 'ctrl+down|meta+down',
+				editable: false,
+				callback: () => {
 					selectionCell({ col: selectedCellAddress.col, row: max.rightBottom.row });
 				},
-				'shift+right': () => {
+			}, {
+				id: 'component.grid.expandSelectionRight',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.expandSelectionRight,
+				defaultKey: 'shift+right',
+				editable: false,
+				callback: () => {
 					updateSelectionRange({
 						leftTop: {
 							col: bounds.leftTop.col < selectedCellAddress.col
@@ -365,7 +437,13 @@ function onKeyDown(ev: KeyboardEvent) {
 						},
 					});
 				},
-				'shift+left': () => {
+			}, {
+				id: 'component.grid.expandSelectionLeft',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.expandSelectionLeft,
+				defaultKey: 'shift+left',
+				editable: false,
+				callback: () => {
 					updateSelectionRange({
 						leftTop: {
 							col: (bounds.leftTop.col < selectedCellAddress.col || bounds.rightBottom.col === selectedCellAddress.col)
@@ -381,7 +459,13 @@ function onKeyDown(ev: KeyboardEvent) {
 						},
 					});
 				},
-				'shift+up': () => {
+			}, {
+				id: 'component.grid.expandSelectionUp',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.expandSelectionUp,
+				defaultKey: 'shift+up',
+				editable: false,
+				callback: () => {
 					updateSelectionRange({
 						leftTop: {
 							col: bounds.leftTop.col,
@@ -397,7 +481,13 @@ function onKeyDown(ev: KeyboardEvent) {
 						},
 					});
 				},
-				'shift+down': () => {
+			}, {
+				id: 'component.grid.expandSelectionDown',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.expandSelectionDown,
+				defaultKey: 'shift+down',
+				editable: false,
+				callback: () => {
 					updateSelectionRange({
 						leftTop: {
 							col: bounds.leftTop.col,
@@ -413,19 +503,43 @@ function onKeyDown(ev: KeyboardEvent) {
 						},
 					});
 				},
-				'down': () => {
+			}, {
+				id: 'component.grid.moveDown',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.moveDown,
+				defaultKey: 'down',
+				editable: false,
+				callback: () => {
 					selectionCell({ col: selectedCellAddress.col, row: selectedCellAddress.row + 1 });
 				},
-				'up': () => {
+			}, {
+				id: 'component.grid.moveUp',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.moveUp,
+				defaultKey: 'up',
+				editable: false,
+				callback: () => {
 					selectionCell({ col: selectedCellAddress.col, row: selectedCellAddress.row - 1 });
 				},
-				'right': () => {
+			}, {
+				id: 'component.grid.moveRight',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.moveRight,
+				defaultKey: 'right',
+				editable: false,
+				callback: () => {
 					selectionCell({ col: selectedCellAddress.col + 1, row: selectedCellAddress.row });
 				},
-				'left': () => {
+			}, {
+				id: 'component.grid.moveLeft',
+				scope: 'component',
+				name: () => i18n.ts._gridComponent._hotkeys.moveLeft,
+				defaultKey: 'left',
+				editable: false,
+				callback: () => {
 					selectionCell({ col: selectedCellAddress.col - 1, row: selectedCellAddress.row });
 				},
-			}, [])(ev);
+			}]), [])(ev);
 
 			break;
 		}

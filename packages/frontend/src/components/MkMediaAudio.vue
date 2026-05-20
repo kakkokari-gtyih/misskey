@@ -91,7 +91,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { useTemplateRef, watch, computed, ref, onDeactivated, onActivated, onMounted } from 'vue';
 import * as Misskey from 'misskey-js';
 import type { MenuItem } from '@/types/menu.js';
-import type { Keymap } from '@/utility/hotkey.js';
+import { defineHotkeyCommands } from '@/utility/hotkey.js';
 import { copyToClipboard } from '@/utility/copy-to-clipboard';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
@@ -106,45 +106,66 @@ const props = defineProps<{
 	audio: Misskey.entities.DriveFile;
 }>();
 
-const keymap = {
-	'up': {
-		allowRepeat: true,
-		callback: () => {
-			if (hasFocus() && audioEl.value) {
-				volume.value = Math.min(volume.value + 0.1, 1);
-			}
-		},
+const keymap = defineHotkeyCommands([{
+	id: 'component.mediaAudio.volumeUp',
+	scope: 'component',
+	name: () => i18n.ts._mediaControls.volumeUp,
+	defaultKey: 'up',
+	allowRepeat: true,
+	editable: false,
+	callback: () => {
+		if (hasFocus() && audioEl.value) {
+			volume.value = Math.min(volume.value + 0.1, 1);
+		}
 	},
-	'down': {
-		allowRepeat: true,
-		callback: () => {
-			if (hasFocus() && audioEl.value) {
-				volume.value = Math.max(volume.value - 0.1, 0);
-			}
-		},
+}, {
+	id: 'component.mediaAudio.volumeDown',
+	scope: 'component',
+	name: () => i18n.ts._mediaControls.volumeDown,
+	defaultKey: 'down',
+	allowRepeat: true,
+	editable: false,
+	callback: () => {
+		if (hasFocus() && audioEl.value) {
+			volume.value = Math.max(volume.value - 0.1, 0);
+		}
 	},
-	'left': {
-		allowRepeat: true,
-		callback: () => {
-			if (hasFocus() && audioEl.value) {
-				audioEl.value.currentTime = Math.max(audioEl.value.currentTime - 5, 0);
-			}
-		},
+}, {
+	id: 'component.mediaAudio.seekBackward',
+	scope: 'component',
+	name: () => i18n.ts._mediaControls.seekBackward,
+	defaultKey: 'left',
+	allowRepeat: true,
+	editable: false,
+	callback: () => {
+		if (hasFocus() && audioEl.value) {
+			audioEl.value.currentTime = Math.max(audioEl.value.currentTime - 5, 0);
+		}
 	},
-	'right': {
-		allowRepeat: true,
-		callback: () => {
-			if (hasFocus() && audioEl.value) {
-				audioEl.value.currentTime = Math.min(audioEl.value.currentTime + 5, audioEl.value.duration);
-			}
-		},
+}, {
+	id: 'component.mediaAudio.seekForward',
+	scope: 'component',
+	name: () => i18n.ts._mediaControls.seekForward,
+	defaultKey: 'right',
+	allowRepeat: true,
+	editable: false,
+	callback: () => {
+		if (hasFocus() && audioEl.value) {
+			audioEl.value.currentTime = Math.min(audioEl.value.currentTime + 5, audioEl.value.duration);
+		}
 	},
-	'space': () => {
+}, {
+	id: 'component.mediaAudio.playPause',
+	scope: 'component',
+	name: () => i18n.ts._mediaControls.playPause,
+	defaultKey: 'space',
+	editable: false,
+	callback: () => {
 		if (hasFocus()) {
 			togglePlayPause();
 		}
 	},
-} as const satisfies Keymap;
+}]);
 
 // PlayerElもしくはその子要素にフォーカスがあるかどうか
 function hasFocus() {

@@ -12103,6 +12103,34 @@ export interface Locale extends ILocale {
     };
     "_mediaControls": {
         /**
+         * 再生/一時停止
+         */
+        "playPause": string;
+        /**
+         * 5秒戻る
+         */
+        "seekBackward": string;
+        /**
+         * 5秒進む
+         */
+        "seekForward": string;
+        /**
+         * 音量を上げる
+         */
+        "volumeUp": string;
+        /**
+         * 音量を下げる
+         */
+        "volumeDown": string;
+        /**
+         * ミュート切り替え
+         */
+        "toggleMute": string;
+        /**
+         * フルスクリーン切り替え
+         */
+        "toggleFullscreen": string;
+        /**
          * ピクチャインピクチャ
          */
         "pip": string;
@@ -12134,6 +12162,84 @@ export interface Locale extends ILocale {
         "native": string;
     };
     "_gridComponent": {
+        "_hotkeys": {
+            /**
+             * 選択内容を削除
+             */
+            "deleteSelection": string;
+            /**
+             * 選択内容をコピー
+             */
+            "copySelection": string;
+            /**
+             * クリップボードを貼り付け
+             */
+            "pasteClipboard": string;
+            /**
+             * 選択範囲を右端まで拡張
+             */
+            "expandSelectionToRightEdge": string;
+            /**
+             * 選択範囲を左端まで拡張
+             */
+            "expandSelectionToLeftEdge": string;
+            /**
+             * 選択範囲を上端まで拡張
+             */
+            "expandSelectionToTopEdge": string;
+            /**
+             * 選択範囲を下端まで拡張
+             */
+            "expandSelectionToBottomEdge": string;
+            /**
+             * 右端へ移動
+             */
+            "moveToRightEdge": string;
+            /**
+             * 左端へ移動
+             */
+            "moveToLeftEdge": string;
+            /**
+             * 上端へ移動
+             */
+            "moveToTopEdge": string;
+            /**
+             * 下端へ移動
+             */
+            "moveToBottomEdge": string;
+            /**
+             * 選択範囲を右へ拡張
+             */
+            "expandSelectionRight": string;
+            /**
+             * 選択範囲を左へ拡張
+             */
+            "expandSelectionLeft": string;
+            /**
+             * 選択範囲を上へ拡張
+             */
+            "expandSelectionUp": string;
+            /**
+             * 選択範囲を下へ拡張
+             */
+            "expandSelectionDown": string;
+            /**
+             * 下へ移動
+             */
+            "moveDown": string;
+            /**
+             * 上へ移動
+             */
+            "moveUp": string;
+            /**
+             * 右へ移動
+             */
+            "moveRight": string;
+            /**
+             * 左へ移動
+             */
+            "moveLeft": string;
+        };
         "_error": {
             /**
              * この値は必須項目です

@@ -113,7 +113,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, useTemplateRef, computed, watch, onDeactivated, onActivated, onMounted } from 'vue';
 import * as Misskey from 'misskey-js';
 import type { MenuItem } from '@/types/menu.js';
-import type { Keymap } from '@/utility/hotkey.js';
+import { defineHotkeyCommands } from '@/utility/hotkey.js';
 import { copyToClipboard } from '@/utility/copy-to-clipboard';
 import bytes from '@/filters/bytes.js';
 import { hms } from '@/filters/hms.js';
@@ -130,45 +130,66 @@ const props = defineProps<{
 	video: Misskey.entities.DriveFile;
 }>();
 
-const keymap = {
-	'up': {
-		allowRepeat: true,
-		callback: () => {
-			if (hasFocus() && videoEl.value) {
-				volume.value = Math.min(volume.value + 0.1, 1);
-			}
-		},
+const keymap = defineHotkeyCommands([{
+	id: 'component.mediaVideo.volumeUp',
+	scope: 'component',
+	name: () => i18n.ts._mediaControls.volumeUp,
+	defaultKey: 'up',
+	allowRepeat: true,
+	editable: false,
+	callback: () => {
+		if (hasFocus() && videoEl.value) {
+			volume.value = Math.min(volume.value + 0.1, 1);
+		}
 	},
-	'down': {
-		allowRepeat: true,
-		callback: () => {
-			if (hasFocus() && videoEl.value) {
-				volume.value = Math.max(volume.value - 0.1, 0);
-			}
-		},
+}, {
+	id: 'component.mediaVideo.volumeDown',
+	scope: 'component',
+	name: () => i18n.ts._mediaControls.volumeDown,
+	defaultKey: 'down',
+	allowRepeat: true,
+	editable: false,
+	callback: () => {
+		if (hasFocus() && videoEl.value) {
+			volume.value = Math.max(volume.value - 0.1, 0);
+		}
 	},
-	'left': {
-		allowRepeat: true,
-		callback: () => {
-			if (hasFocus() && videoEl.value) {
-				videoEl.value.currentTime = Math.max(videoEl.value.currentTime - 5, 0);
-			}
-		},
+}, {
+	id: 'component.mediaVideo.seekBackward',
+	scope: 'component',
+	name: () => i18n.ts._mediaControls.seekBackward,
+	defaultKey: 'left',
+	allowRepeat: true,
+	editable: false,
+	callback: () => {
+		if (hasFocus() && videoEl.value) {
+			videoEl.value.currentTime = Math.max(videoEl.value.currentTime - 5, 0);
+		}
 	},
-	'right': {
-		allowRepeat: true,
-		callback: () => {
-			if (hasFocus() && videoEl.value) {
-				videoEl.value.currentTime = Math.min(videoEl.value.currentTime + 5, videoEl.value.duration);
-			}
-		},
+}, {
+	id: 'component.mediaVideo.seekForward',
+	scope: 'component',
+	name: () => i18n.ts._mediaControls.seekForward,
+	defaultKey: 'right',
+	allowRepeat: true,
+	editable: false,
+	callback: () => {
+		if (hasFocus() && videoEl.value) {
+			videoEl.value.currentTime = Math.min(videoEl.value.currentTime + 5, videoEl.value.duration);
+		}
 	},
-	'space': () => {
+}, {
+	id: 'component.mediaVideo.playPause',
+	scope: 'component',
+	name: () => i18n.ts._mediaControls.playPause,
+	defaultKey: 'space',
+	editable: false,
+	callback: () => {
 		if (hasFocus()) {
 			togglePlayPause();
 		}
 	},
-} as const satisfies Keymap;
+}]);
 
 // PlayerElもしくはその子要素にフォーカスがあるかどうか
 function hasFocus() {

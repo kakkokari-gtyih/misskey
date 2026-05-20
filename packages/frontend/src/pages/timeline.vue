@@ -38,7 +38,7 @@ import * as os from '@/os.js';
 import { store } from '@/store.js';
 import { i18n } from '@/i18n.js';
 import { $i } from '@/i.js';
-import { definePage } from '@/page.js';
+import { definePage, definePageCommands } from '@/page.js';
 import { antennasCache, userListsCache, favoritedChannelsCache } from '@/cache.js';
 import { deviceKind } from '@/utility/device-kind.js';
 import { deepMerge } from '@/utility/merge.js';
@@ -297,6 +297,61 @@ const headerTabsWhenNotLogin = computed(() => [...availableBasicTimelines().map(
 	icon: basicTimelineIconClass(tl),
 	iconOnly: true,
 }))] as Tab[]);
+
+definePageCommands(computed(() => [{
+	id: 'page.timeline.reload',
+	scope: 'page' as const,
+	name: () => i18n.ts.reload,
+	callback: () => {
+		tlComponent.value?.reloadTimeline();
+	},
+}, {
+	id: 'page.timeline.toggleRenotes',
+	scope: 'page' as const,
+	name: () => i18n.ts.showRenotes,
+	callback: () => {
+		withRenotes.value = !withRenotes.value;
+	},
+}, {
+	id: 'page.timeline.toggleReplies',
+	scope: 'page' as const,
+	name: () => i18n.ts.showRepliesToOthersInTimeline,
+	callback: () => {
+		if (!isBasicTimeline(src.value) || !hasWithReplies(src.value) || onlyFiles.value) return;
+		withReplies.value = !withReplies.value;
+	},
+	palette: {
+		enabled: () => isBasicTimeline(src.value) && hasWithReplies(src.value) && !onlyFiles.value,
+	},
+}, {
+	id: 'page.timeline.toggleSensitive',
+	scope: 'page' as const,
+	name: () => i18n.ts.withSensitive,
+	callback: () => {
+		withSensitive.value = !withSensitive.value;
+	},
+}, {
+	id: 'page.timeline.toggleOnlyFiles',
+	scope: 'page' as const,
+	name: () => i18n.ts.fileAttachedOnly,
+	callback: () => {
+		if (isBasicTimeline(src.value) && hasWithReplies(src.value) && withReplies.value) return;
+		onlyFiles.value = !onlyFiles.value;
+	},
+	palette: {
+		enabled: () => !(isBasicTimeline(src.value) && hasWithReplies(src.value) && withReplies.value),
+	},
+}, {
+	id: 'page.timeline.toggleFixedPostForm',
+	scope: 'page' as const,
+	name: () => i18n.ts.showFixedPostForm,
+	callback: () => {
+		showFixedPostForm.value = !showFixedPostForm.value;
+	},
+	palette: {
+		enabled: () => $i != null,
+	},
+}]));
 
 definePage(() => ({
 	title: i18n.ts.timeline,
