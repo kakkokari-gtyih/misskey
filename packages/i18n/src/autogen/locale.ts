@@ -1989,6 +1989,10 @@ export interface Locale extends ILocale {
      */
     "enable": string;
     /**
+     * 前
+     */
+    "previous": string;
+    /**
      * 次
      */
     "next": string;

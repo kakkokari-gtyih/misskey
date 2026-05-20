@@ -245,7 +245,7 @@ import * as Misskey from 'misskey-js';
 import { isLink } from '@@/js/is-link.js';
 import { host } from '@@/js/config.js';
 import type { OpenOnRemoteOptions } from '@/utility/please-login.js';
-import type { Keymap } from '@/utility/hotkey.js';
+import { defineHotkeyCommands } from '@/utility/hotkey.js';
 import type { MenuItem } from '@/types/menu.js';
 import MkNoteSub from '@/components/MkNoteSub.vue';
 import MkNoteSimple from '@/components/MkNoteSimple.vue';
@@ -356,28 +356,73 @@ const pleaseLoginContext = computed<OpenOnRemoteOptions>(() => ({
 	url: `https://${host}/notes/${appearNote.id}`,
 }));
 
-const keymap = {
-	'r': () => reply(),
-	'e|a|plus': () => react(),
-	'q': () => renote(),
-	'm': () => showMenu(),
-	'c': () => {
+const keymap = defineHotkeyCommands([{
+	id: 'component.noteDetailed.reply',
+	scope: 'component',
+	name: () => i18n.ts.reply,
+	defaultKey: 'r',
+	editable: false,
+	callback: () => reply(),
+}, {
+	id: 'component.noteDetailed.react',
+	scope: 'component',
+	name: () => i18n.ts.reaction,
+	defaultKey: 'e|a|plus',
+	editable: false,
+	callback: () => react(),
+}, {
+	id: 'component.noteDetailed.renote',
+	scope: 'component',
+	name: () => i18n.ts.renote,
+	defaultKey: 'q',
+	editable: false,
+	callback: () => renote(),
+}, {
+	id: 'component.noteDetailed.menu',
+	scope: 'component',
+	name: () => i18n.ts.menu,
+	defaultKey: 'm',
+	editable: false,
+	callback: () => showMenu(),
+}, {
+	id: 'component.noteDetailed.clip',
+	scope: 'component',
+	name: () => i18n.ts.clip,
+	defaultKey: 'c',
+	editable: false,
+	callback: () => {
 		if (!prefer.s.showClipButtonInNoteFooter) return;
 		clip();
 	},
-	'o': () => {
+}, {
+	id: 'component.noteDetailed.openGallery',
+	scope: 'component',
+	name: () => i18n.ts.gallery,
+	defaultKey: 'o',
+	editable: false,
+	callback: () => {
 		galleryEl.value?.openGallery();
 	},
-	'v|enter': () => {
+}, {
+	id: 'component.noteDetailed.toggleContent',
+	scope: 'component',
+	name: () => i18n.ts.showMore,
+	defaultKey: 'v|enter',
+	editable: false,
+	callback: () => {
 		if (appearNote.cw != null) {
 			showContent.value = !showContent.value;
 		}
 	},
-	'esc': {
-		allowRepeat: true,
-		callback: () => blur(),
-	},
-} as const satisfies Keymap;
+}, {
+	id: 'component.noteDetailed.blur',
+	scope: 'component',
+	name: () => i18n.ts.close,
+	defaultKey: 'esc',
+	allowRepeat: true,
+	editable: false,
+	callback: () => blur(),
+}]);
 
 provide(DI.mfmEmojiReactCallback, (reaction) => {
 	sound.playMisskeySfx('reaction');

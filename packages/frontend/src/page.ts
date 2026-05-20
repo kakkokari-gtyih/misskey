@@ -4,7 +4,7 @@
  */
 
 import * as Misskey from 'misskey-js';
-import { inject, isRef, onActivated, onBeforeUnmount, provide, ref, toValue, watch } from 'vue';
+import { inject, isRef, onActivated, onBeforeUnmount, onDeactivated, provide, ref, toValue, watch } from 'vue';
 import { DI } from './di.js';
 import type { MaybeRefOrGetter, Ref } from 'vue';
 import { normalizeHotkeyCommands, registerHotkeyCommands, unregisterHotkeyCommands } from '@/utility/hotkey.js';
@@ -92,6 +92,9 @@ export const definePageCommands = (maybeRefOrGetterCommands: MaybeRefOrGetter<Ho
 	onActivated(() => {
 		registerHotkeyCommands('page', source, toValue(maybeRefOrGetterCommands));
 		receiver?.(commandsGetter);
+	});
+	onDeactivated(() => {
+		unregisterHotkeyCommands('page', source);
 	});
 	onBeforeUnmount(() => {
 		unregisterHotkeyCommands('page', source);

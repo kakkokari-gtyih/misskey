@@ -235,7 +235,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts">
 import { computed, defineAsyncComponent, inject, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, unref, watch, shallowRef, reactive, isRef } from 'vue';
 import type { MenuItem, InnerMenuItem, MenuPending, MenuAction, MenuSwitch, MenuRadio, MenuRadioOption, MenuParent } from '@/types/menu.js';
-import type { Keymap } from '@/utility/hotkey.js';
+import { defineHotkeyCommands } from '@/utility/hotkey.js';
 import MkSwitchButton from '@/components/MkSwitch.button.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
@@ -274,20 +274,31 @@ const items2 = ref<InnerMenuItem[]>();
 
 const child = useTemplateRef('child');
 
-const keymap = {
-	'up|k|shift+tab': {
-		allowRepeat: true,
-		callback: () => focusUp(),
-	},
-	'down|j|tab': {
-		allowRepeat: true,
-		callback: () => focusDown(),
-	},
-	'esc': {
-		allowRepeat: true,
-		callback: () => close(false),
-	},
-} as const satisfies Keymap;
+const keymap = defineHotkeyCommands([{
+	id: 'component.menu.focusPrevious',
+	scope: 'component',
+	name: () => i18n.ts.previous,
+	defaultKey: 'up|k|shift+tab',
+	allowRepeat: true,
+	editable: false,
+	callback: () => focusUp(),
+}, {
+	id: 'component.menu.focusNext',
+	scope: 'component',
+	name: () => i18n.ts.next,
+	defaultKey: 'down|j|tab',
+	allowRepeat: true,
+	editable: false,
+	callback: () => focusDown(),
+}, {
+	id: 'component.menu.close',
+	scope: 'component',
+	name: () => i18n.ts.close,
+	defaultKey: 'esc',
+	allowRepeat: true,
+	editable: false,
+	callback: () => close(false),
+}]);
 
 const childShowingItem = ref<MenuItem | null>();
 

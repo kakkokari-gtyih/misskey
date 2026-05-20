@@ -43,8 +43,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { nextTick, normalizeClass, onMounted, onUnmounted, provide, watch, ref, useTemplateRef, computed } from 'vue';
-import type { Keymap } from '@/utility/hotkey.js';
+import { defineHotkeyCommands } from '@/utility/hotkey.js';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
 import { isTouchUsing } from '@/utility/touch.js';
 import { deviceKind } from '@/utility/device-kind.js';
 import { focusTrap } from '@/utility/focus-trap.js';
@@ -162,12 +163,15 @@ if (type.value === 'drawer') {
 	maxHeight.value = window.innerHeight / 1.5;
 }
 
-const keymap = {
-	'esc': {
-		allowRepeat: true,
-		callback: () => emit('esc'),
-	},
-} as const satisfies Keymap;
+const keymap = defineHotkeyCommands([{
+	id: 'component.modal.close',
+	scope: 'component',
+	name: () => i18n.ts.close,
+	defaultKey: 'esc',
+	allowRepeat: true,
+	editable: false,
+	callback: () => emit('esc'),
+}]);
 
 const MARGIN = 16;
 const SCROLLBAR_THICKNESS = 16;

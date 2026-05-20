@@ -205,7 +205,7 @@ import { host } from '@@/js/config.js';
 import type { Ref } from 'vue';
 import type { MenuItem } from '@/types/menu.js';
 import type { OpenOnRemoteOptions } from '@/utility/please-login.js';
-import type { Keymap } from '@/utility/hotkey.js';
+import { defineHotkeyCommands } from '@/utility/hotkey.js';
 import MkNoteSub from '@/components/MkNoteSub.vue';
 import MkNoteHeader from '@/components/MkNoteHeader.vue';
 import MkNoteSimple from '@/components/MkNoteSimple.vue';
@@ -360,33 +360,74 @@ function checkMute(noteToCheck: Misskey.entities.Note, mutedWords: Array<string 
 }
 /* eslint-enable no-redeclare */
 
-const keymap = {
-	'r': () => {
+const keymap = defineHotkeyCommands([{
+	id: 'component.note.reply',
+	scope: 'component',
+	name: () => i18n.ts.reply,
+	defaultKey: 'r',
+	editable: false,
+	callback: () => {
 		if (renoteCollapsed.value) return;
 		reply();
 	},
-	'e|a|plus': () => {
+}, {
+	id: 'component.note.react',
+	scope: 'component',
+	name: () => i18n.ts.reaction,
+	defaultKey: 'e|a|plus',
+	editable: false,
+	callback: () => {
 		if (renoteCollapsed.value) return;
 		react();
 	},
-	'q': () => {
+}, {
+	id: 'component.note.renote',
+	scope: 'component',
+	name: () => i18n.ts.renote,
+	defaultKey: 'q',
+	editable: false,
+	callback: () => {
 		if (renoteCollapsed.value) return;
 		renote();
 	},
-	'm': () => {
+}, {
+	id: 'component.note.menu',
+	scope: 'component',
+	name: () => i18n.ts.menu,
+	defaultKey: 'm',
+	editable: false,
+	callback: () => {
 		if (renoteCollapsed.value) return;
 		showMenu();
 	},
-	'c': () => {
+}, {
+	id: 'component.note.clip',
+	scope: 'component',
+	name: () => i18n.ts.clip,
+	defaultKey: 'c',
+	editable: false,
+	callback: () => {
 		if (renoteCollapsed.value) return;
 		if (!prefer.s.showClipButtonInNoteFooter) return;
 		clip();
 	},
-	'o': () => {
+}, {
+	id: 'component.note.openGallery',
+	scope: 'component',
+	name: () => i18n.ts.gallery,
+	defaultKey: 'o',
+	editable: false,
+	callback: () => {
 		if (renoteCollapsed.value) return;
 		galleryEl.value?.openGallery();
 	},
-	'v|enter': () => {
+}, {
+	id: 'component.note.toggleContent',
+	scope: 'component',
+	name: () => i18n.ts.showMore,
+	defaultKey: 'v|enter',
+	editable: false,
+	callback: () => {
 		if (renoteCollapsed.value) {
 			renoteCollapsed.value = false;
 		} else if (appearNote.cw != null) {
@@ -395,19 +436,31 @@ const keymap = {
 			collapsed.value = !collapsed.value;
 		}
 	},
-	'esc': {
-		allowRepeat: true,
-		callback: () => blur(),
-	},
-	'up|k|shift+tab': {
-		allowRepeat: true,
-		callback: () => focusBefore(),
-	},
-	'down|j|tab': {
-		allowRepeat: true,
-		callback: () => focusAfter(),
-	},
-} as const satisfies Keymap;
+}, {
+	id: 'component.note.blur',
+	scope: 'component',
+	name: () => i18n.ts.close,
+	defaultKey: 'esc',
+	allowRepeat: true,
+	editable: false,
+	callback: () => blur(),
+}, {
+	id: 'component.note.focusPrevious',
+	scope: 'component',
+	name: () => i18n.ts.previous,
+	defaultKey: 'up|k|shift+tab',
+	allowRepeat: true,
+	editable: false,
+	callback: () => focusBefore(),
+}, {
+	id: 'component.note.focusNext',
+	scope: 'component',
+	name: () => i18n.ts.next,
+	defaultKey: 'down|j|tab',
+	allowRepeat: true,
+	editable: false,
+	callback: () => focusAfter(),
+}]);
 
 provide(DI.mfmEmojiReactCallback, (reaction) => {
 	sound.playMisskeySfx('reaction');
