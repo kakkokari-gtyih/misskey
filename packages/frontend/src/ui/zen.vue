@@ -26,7 +26,8 @@ import { computed, provide, ref } from 'vue';
 import { instanceName, ui } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
 import type { PageMetadata } from '@/page.js';
-import { provideMetadataReceiver, provideReactiveMetadata } from '@/page.js';
+import type { NormalizedHotkeyCommand } from '@/utility/hotkey.js';
+import { provideMetadataReceiver, providePageCommandReceiver, provideReactiveMetadata, provideReactivePageCommands } from '@/page.js';
 import { i18n } from '@/i18n.js';
 import { mainRouter } from '@/router.js';
 import { DI } from '@/di.js';
@@ -34,6 +35,7 @@ import { DI } from '@/di.js';
 const isRoot = computed(() => mainRouter.currentRoute.value.name === 'index');
 
 const pageMetadata = ref<null | PageMetadata>(null);
+const pageCommands = ref<NormalizedHotkeyCommand[]>([]);
 
 const showDeckNav = !(new URLSearchParams(window.location.search)).has('zen') && ui === 'deck';
 
@@ -49,7 +51,11 @@ provideMetadataReceiver((metadataGetter) => {
 		}
 	}
 });
+providePageCommandReceiver((commandsGetter) => {
+	pageCommands.value = commandsGetter();
+});
 provideReactiveMetadata(pageMetadata);
+provideReactivePageCommands(pageCommands);
 
 function goToDeck() {
 	window.location.href = '/';

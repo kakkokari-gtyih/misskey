@@ -5,18 +5,21 @@
 
 import type { Directive } from 'vue';
 import { makeHotkey } from '@/utility/hotkey.js';
-import type { Keymap } from '@/utility/hotkey.js';
+import type { HotkeyCommandDefinition, Keymap } from '@/utility/hotkey.js';
+import { prefer } from '@/preferences.js';
 
 interface HTMLElementWithHotkey extends HTMLElement {
 	_hotkey_global?: boolean;
 	_keyHandler?: (ev: KeyboardEvent) => void;
 }
 
+const getHotkeyOverrides = () => ((prefer.r as unknown) as Record<string, { value: Record<string, string | null> }>)['hotkey.overrides'].value;
+
 export const hotkeyDirective = {
 	mounted(el, binding) {
 		el._hotkey_global = binding.modifiers.global === true;
 
-		el._keyHandler = makeHotkey(binding.value);
+		el._keyHandler = makeHotkey(binding.value, undefined, getHotkeyOverrides);
 
 		if (el._hotkey_global) {
 			window.document.addEventListener('keydown', el._keyHandler, { passive: false });
@@ -33,4 +36,4 @@ export const hotkeyDirective = {
 			el.removeEventListener('keydown', el._keyHandler);
 		}
 	},
-} as Directive<HTMLElementWithHotkey, Keymap>;
+} as Directive<HTMLElementWithHotkey, Keymap | HotkeyCommandDefinition[]>;

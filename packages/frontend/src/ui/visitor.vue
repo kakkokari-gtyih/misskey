@@ -33,9 +33,10 @@ import { onMounted, provide, ref, computed } from 'vue';
 import { instanceName } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
 import type { PageMetadata } from '@/page.js';
+import type { NormalizedHotkeyCommand } from '@/utility/hotkey.js';
 import * as os from '@/os.js';
 import { instance } from '@/instance.js';
-import { provideMetadataReceiver, provideReactiveMetadata } from '@/page.js';
+import { provideMetadataReceiver, providePageCommandReceiver, provideReactiveMetadata, provideReactivePageCommands } from '@/page.js';
 import { i18n } from '@/i18n.js';
 import MkVisitorDashboard from '@/components/MkVisitorDashboard.vue';
 import { mainRouter } from '@/router.js';
@@ -47,6 +48,7 @@ const isRoot = computed(() => mainRouter.currentRoute.value.name === 'index');
 const DESKTOP_THRESHOLD = 1100;
 
 const pageMetadata = ref<null | PageMetadata>(null);
+const pageCommands = ref<NormalizedHotkeyCommand[]>([]);
 
 provide(DI.router, mainRouter);
 provideMetadataReceiver((metadataGetter) => {
@@ -60,7 +62,11 @@ provideMetadataReceiver((metadataGetter) => {
 		}
 	}
 });
+providePageCommandReceiver((commandsGetter) => {
+	pageCommands.value = commandsGetter();
+});
 provideReactiveMetadata(pageMetadata);
+provideReactivePageCommands(pageCommands);
 
 const isDesktop = ref(window.innerWidth >= DESKTOP_THRESHOLD);
 const narrow = ref(window.innerWidth < 1280);

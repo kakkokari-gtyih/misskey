@@ -9,7 +9,6 @@ import * as Misskey from 'misskey-js';
 import { compareVersions } from 'compare-versions';
 import { common } from './common.js';
 import type { Component } from 'vue';
-import type { Keymap } from '@/utility/hotkey.js';
 import { i18n } from '@/i18n.js';
 import { alert, confirm, popup, post } from '@/os.js';
 import { useStream } from '@/stream.js';
@@ -23,13 +22,15 @@ import { claimAchievement, claimedAchievements } from '@/utility/achievements.js
 import { initializeSw } from '@/utility/initialize-sw.js';
 import { emojiPicker } from '@/utility/emoji-picker.js';
 import { mainRouter } from '@/router.js';
-import { makeHotkey } from '@/utility/hotkey.js';
+import { defineHotkeyCommands, makeHotkey, registerHotkeyCommands } from '@/utility/hotkey.js';
 import { addCustomEmoji, removeCustomEmojis, updateCustomEmojis } from '@/custom-emojis.js';
 import { prefer } from '@/preferences.js';
 import { updateCurrentAccountPartial } from '@/accounts.js';
 import { migrateOldSettings } from '@/pref-migrate.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { isBirthday } from '@/utility/is-birthday.js';
+
+const getHotkeyOverrides = () => ((prefer.r as unknown) as Record<string, { value: Record<string, string | null> }>)['hotkey.overrides'].value;
 
 export async function mainBoot() {
 	const { isClientUpdated, lastVersion } = await common(async () => {
@@ -375,37 +376,60 @@ export async function mainBoot() {
 	// shortcut
 	let safemodeRequestCount = 0;
 	let safemodeRequestTimer: number | null = null;
-	const keymap = {
-		'p|n': () => {
+	const globalHotkeys = defineHotkeyCommands([{
+		id: 'global.createNote',
+		scope: 'global',
+		name: () => i18n.ts.note,
+		keywords: [() => i18n.ts.newNote],
+		defaultKey: 'p|n',
+		callback: () => {
 			if ($i == null) return;
 			post();
 		},
-		'd': () => {
+	}, {
+		id: 'global.toggleColorMode',
+		scope: 'global',
+		name: () => i18n.ts.theme,
+		keywords: [() => i18n.ts.themeForDarkMode],
+		defaultKey: 'd',
+		callback: () => {
 			store.set('darkMode', !store.s.darkMode);
 		},
-		's': () => {
+	}, {
+		id: 'global.openSearch',
+		scope: 'global',
+		name: () => i18n.ts.search,
+		keywords: [() => i18n.ts.searchResult],
+		defaultKey: 's',
+		callback: () => {
 			mainRouter.push('/search');
 		},
-		'g': {
-			callback: () => {
-				// mを5回押すとセーフモードに入る
-				safemodeRequestCount++;
-				if (safemodeRequestCount >= 5) {
-					miLocalStorage.setItem('isSafeMode', 'true');
-					unisonReload();
-				} else {
-					if (safemodeRequestTimer != null) {
-						window.clearTimeout(safemodeRequestTimer);
-					}
-					safemodeRequestTimer = window.setTimeout(() => {
-						safemodeRequestCount = 0;
-					}, 300);
+	}, {
+		id: 'global.enableSafeMode',
+		scope: 'global',
+		name: () => i18n.ts.safeModeEnabled,
+		keywords: [() => i18n.ts.reload],
+		defaultKey: 'g',
+		allowRepeat: true,
+		editable: false,
+		callback: () => {
+			// mを5回押すとセーフモードに入る
+			safemodeRequestCount++;
+			if (safemodeRequestCount >= 5) {
+				miLocalStorage.setItem('isSafeMode', 'true');
+				unisonReload();
+			} else {
+				if (safemodeRequestTimer != null) {
+					window.clearTimeout(safemodeRequestTimer);
 				}
-			},
-			allowRepeat: true,
+				safemodeRequestTimer = window.setTimeout(() => {
+					safemodeRequestCount = 0;
+				}, 300);
+			}
 		},
-	} as const satisfies Keymap;
-	window.document.addEventListener('keydown', makeHotkey(keymap), { passive: false });
+	}]);
+	registerHotkeyCommands('global', 'boot:global', globalHotkeys);
+	window.document.addEventListener('keydown', makeHotkey(globalHotkeys, undefined, getHotkeyOverrides), { passive: false });
 
 	initializeSw();
 }

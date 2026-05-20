@@ -399,6 +399,9 @@ export const PREF_DEF = definePreferences({
 	showAvailableReactionsFirstInNote: {
 		default: false,
 	},
+	'hotkey.overrides': {
+		default: {} as Record<string, string | null>,
+	},
 	showPageTabBarBottom: {
 		default: false,
 	},

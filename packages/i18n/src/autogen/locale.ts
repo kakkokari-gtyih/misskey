@@ -31,6 +31,10 @@ export interface Locale extends ILocale {
      */
     "search": string;
     /**
+     * ホットキー
+     */
+    "hotkeys": string;
+    /**
      * リセット
      */
     "reset": string;
@@ -5591,6 +5595,56 @@ export interface Locale extends ILocale {
      * セーフモードが有効な間はデフォルトのテーマが使用されます。セーフモードをオフにすると元に戻ります。
      */
     "themeIsDefaultBecauseSafeMode": string;
+    "_hotkeys": {
+        /**
+         * コマンドに割り当てるホットキーを設定できます。空欄にすると無効化されます。
+         */
+        "description": string;
+        /**
+         * 割り当てキー
+         */
+        "assignedKey": string;
+        /**
+         * 既定キー
+         */
+        "defaultKey": string;
+        /**
+         * 未割り当て
+         */
+        "unassigned": string;
+        /**
+         * ホットキーを編集
+         */
+        "editKeybind": string;
+        /**
+         * ホットキーを無効化
+         */
+        "disableHotkey": string;
+        /**
+         * 既定に戻す
+         */
+        "restoreDefault": string;
+        /**
+         * 編集中のホットキーと競合するため保存できません。
+         */
+        "conflictWithEditable": string;
+        /**
+         * 固定のホットキーと競合しています。優先順位に従って動作します。
+         */
+        "conflictWithReadonly": string;
+        /**
+         * このページでは使用できません
+         */
+        "unavailableHere": string;
+        /**
+         * 現在表示できるホットキーはありません。
+         */
+        "noAvailableCommands": string;
+        /**
+         * 固定
+         */
+        "fixed": string;
+    };
     /**
      * ベータ版の検証にご協力いただきありがとうございます！
      */

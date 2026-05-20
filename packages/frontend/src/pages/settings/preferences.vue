@@ -10,6 +10,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<SearchText>{{ i18n.ts._settings.preferencesBanner }}</SearchText>
 		</MkFeatureBanner>
 
+		<SearchMarker path="/settings/preferences/hotkeys" :label="i18n.ts.hotkeys" :keywords="['hotkeys', 'shortcut', 'keybinding', 'keyboard']" icon="ti ti-keyboard">
+			<FormLink to="/settings/preferences/hotkeys"><template #icon><i class="ti ti-keyboard"></i></template>{{ i18n.ts.hotkeys }}</FormLink>
+		</SearchMarker>
+
 		<div class="_gaps_s">
 			<SearchMarker v-slot="slotProps" :keywords="['general']">
 				<MkFolder :defaultOpen="slotProps.isParentOfTarget">

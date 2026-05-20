@@ -38,6 +38,7 @@ import { instanceName } from '@@/js/config.js';
 import { isLink } from '@@/js/is-link.js';
 import XCommon from './_common_/common.vue';
 import type { PageMetadata } from '@/page.js';
+import type { NormalizedHotkeyCommand } from '@/utility/hotkey.js';
 import XMobileFooterMenu from '@/ui/_common_/mobile-footer-menu.vue';
 import XPreferenceRestore from '@/ui/_common_/PreferenceRestore.vue';
 import XReloadSuggestion from '@/ui/_common_/ReloadSuggestion.vue';
@@ -48,7 +49,7 @@ import { isPreviewMode as isThemePreviewMode } from '@/theme.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { $i } from '@/i.js';
-import { provideMetadataReceiver, provideReactiveMetadata } from '@/page.js';
+import { provideMetadataReceiver, providePageCommandReceiver, provideReactiveMetadata, provideReactivePageCommands } from '@/page.js';
 import { deviceKind } from '@/utility/device-kind.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { mainRouter } from '@/router.js';
@@ -75,6 +76,7 @@ window.addEventListener('resize', () => {
 });
 
 const pageMetadata = ref<null | PageMetadata>(null);
+const pageCommands = ref<NormalizedHotkeyCommand[]>([]);
 const widgetsShowing = ref(false);
 
 provide(DI.router, mainRouter);
@@ -89,7 +91,11 @@ provideMetadataReceiver((metadataGetter) => {
 		}
 	}
 });
+providePageCommandReceiver((commandsGetter) => {
+	pageCommands.value = commandsGetter();
+});
 provideReactiveMetadata(pageMetadata);
+provideReactivePageCommands(pageCommands);
 
 const drawerMenuShowing = ref(false);
 

@@ -4,7 +4,7 @@
 -
 
 ### Client
--
+- Enhance: ホットキー設定の基盤を追加し、preferences 配下にホットキー設定ページを追加
 
 ### Server
 -
