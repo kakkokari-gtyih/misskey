@@ -425,6 +425,9 @@ export async function mainBoot() {
 		defaultKey: 'g',
 		allowRepeat: true,
 		editable: false,
+		palette: {
+			visible: false,
+		},
 		callback: () => {
 			// mを5回押すとセーフモードに入る
 			safemodeRequestCount++;

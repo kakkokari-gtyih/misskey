@@ -119,7 +119,7 @@ export const ROUTE_DEF = [{
 	}, {
 		path: '/preferences/hotkeys',
 		name: 'preferences-hotkeys',
-		component: page(() => import('@/pages/settings/preferences/hotkeys.vue')),
+		component: page(() => import('@/pages/settings/hotkeys.vue')),
 	}, {
 		path: '/theme/install',
 		name: 'theme',

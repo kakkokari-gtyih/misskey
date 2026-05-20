@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <MkModal
 	ref="dialogEl"
 	:preferType="'dialog'"
-	@close="close()"
+	@click="close()"
 	@closed="emit('closed')"
 	@esc="close()"
 >
@@ -38,6 +38,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:key="command.id"
 				type="button"
 				:data-selected="selectedIndex === index ? 'true' : undefined"
+				class="_button"
 				:class="[$style.item, {
 					[$style.selected]: selectedIndex === index,
 					[$style.disabled]: !command.palette.enabled,
@@ -48,7 +49,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.itemMain">
 					<div :class="$style.itemName">{{ command.name }}</div>
 					<div :class="$style.itemMeta">
-						<span :class="$style.scope">{{ command.scope }}</span>
 						<span :class="$style.id">{{ command.id }}</span>
 					</div>
 					<div v-if="!command.palette.enabled && command.palette.disabledReason" :class="$style.reason">{{ command.palette.disabledReason }}</div>
@@ -206,21 +206,21 @@ function formatHotkey(value: string | null): string {
 	height: 100%;
 	max-width: 680px;
 	max-height: 560px;
-	background:
-		radial-gradient(circle at top right, color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent), transparent 34%),
-		var(--MI_THEME-bg);
+	margin: 0 auto;
+	border-radius: var(--MI-radius);
+	overflow: clip;
+	background: var(--MI_THEME-panel);
 }
 
 .searchWrap {
-	padding: 16px;
-	padding-bottom: 12px;
+	padding: var(--MI-margin);
 	border-bottom: 1px solid var(--MI_THEME-divider);
 }
 
 .results {
 	flex: 1;
 	overflow: auto;
-	padding: 10px;
+	padding: var(--MI-margin);
 	container-type: inline-size;
 }
 
@@ -230,18 +230,16 @@ function formatHotkey(value: string | null): string {
 	gap: 12px;
 	align-items: center;
 	width: 100%;
-	padding: 12px 14px;
+	padding: 10px 12px;
 	text-align: left;
-	border-radius: 12px;
-	transition: background 0.15s ease, transform 0.15s ease;
+	border-radius: 8px;
+	background: var(--MI_THEME-buttonBg);
+	--commandPaletteKeybindBg: var(--MI_THEME-buttonHoverBg);
 
 	&:hover,
 	&.selected {
-		background: var(--MI_THEME-panelHighlight);
-	}
-
-	&.selected {
-		transform: translateX(2px);
+		background: var(--MI_THEME-buttonHoverBg);
+		--commandPaletteKeybindBg: var(--MI_THEME-buttonBg);
 	}
 
 	&.disabled {
@@ -262,27 +260,13 @@ function formatHotkey(value: string | null): string {
 }
 
 .itemName {
-	font-weight: 700;
 	word-break: break-word;
 }
 
 .itemMeta {
-	margin-top: 4px;
 	font-size: 0.8em;
-	color: var(--MI_THEME-fgTransparentWeak);
+	color: color(from var(--MI_THEME-fg) srgb r g b / 0.75);
 	word-break: break-word;
-}
-
-.scope {
-	display: inline-block;
-	margin-right: 8px;
-	padding: 2px 6px;
-	border-radius: 999px;
-	background: var(--MI_THEME-accentedBg);
-	color: var(--MI_THEME-accent);
-	text-transform: uppercase;
-	font-weight: 700;
-	font-size: 0.85em;
 }
 
 .id {
@@ -302,7 +286,7 @@ function formatHotkey(value: string | null): string {
 	font-size: 0.85em;
 	padding: 6px 8px;
 	border-radius: 8px;
-	background: var(--MI_THEME-buttonBg);
+	background: var(--commandPaletteKeybindBg);
 	white-space: nowrap;
 	align-self: start;
 }
