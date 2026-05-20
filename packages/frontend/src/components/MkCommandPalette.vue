@@ -4,10 +4,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<MkModalWindow
+<MkModal
 	ref="dialogEl"
-	:width="680"
-	:height="560"
+	:preferType="'dialog'"
 	@close="close()"
 	@closed="emit('closed')"
 	@esc="close()"
@@ -63,13 +62,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span :class="$style.footerKeybind">Ctrl+K</span>
 		</div>
 	</div>
-</MkModalWindow>
+</MkModal>
 </template>
 
 <script lang="ts" setup>
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import MkInput from '@/components/MkInput.vue';
-import MkModalWindow from '@/components/MkModalWindow.vue';
+import MkModal from '@/components/MkModal.vue';
 import { i18n } from '@/i18n.js';
 import { compareStringIncludes, initIntlString } from '@/utility/intl-string.js';
 import { getPaletteHotkeyCommands, hotkeyRegistryVersion } from '@/utility/hotkey.js';
@@ -203,7 +202,10 @@ function formatHotkey(value: string | null): string {
 .root {
 	display: flex;
 	flex-direction: column;
+	width: 100%;
 	height: 100%;
+	max-width: 680px;
+	max-height: 560px;
 	background:
 		radial-gradient(circle at top right, color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent), transparent 34%),
 		var(--MI_THEME-bg);
