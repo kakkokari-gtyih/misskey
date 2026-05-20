@@ -22,7 +22,7 @@ import { claimAchievement, claimedAchievements } from '@/utility/achievements.js
 import { initializeSw } from '@/utility/initialize-sw.js';
 import { emojiPicker } from '@/utility/emoji-picker.js';
 import { mainRouter } from '@/router.js';
-import { defineHotkeyCommands, makeHotkey, registerHotkeyCommands } from '@/utility/hotkey.js';
+import { defineHotkeyCommands, getRegisteredHotkeyCommandDefinitions, makeHotkey, registerHotkeyCommands } from '@/utility/hotkey.js';
 import { addCustomEmoji, removeCustomEmojis, updateCustomEmojis } from '@/custom-emojis.js';
 import { prefer } from '@/preferences.js';
 import { updateCurrentAccountPartial } from '@/accounts.js';
@@ -429,7 +429,10 @@ export async function mainBoot() {
 		},
 	}]);
 	registerHotkeyCommands('global', 'boot:global', globalHotkeys);
-	window.document.addEventListener('keydown', makeHotkey(globalHotkeys, undefined, getHotkeyOverrides), { passive: false });
+	window.document.addEventListener('keydown', makeHotkey(() => [
+		...getRegisteredHotkeyCommandDefinitions('global'),
+		...getRegisteredHotkeyCommandDefinitions('page'),
+	], undefined, getHotkeyOverrides), { passive: false });
 
 	initializeSw();
 }

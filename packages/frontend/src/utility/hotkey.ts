@@ -50,6 +50,7 @@ export type ResolvedHotkeyCommand = NormalizedHotkeyCommand & {
 
 type HotkeyRegistryEntry = {
 	source: string;
+	definitions: HotkeyCommandDefinition[];
 	commands: NormalizedHotkeyCommand[];
 };
 
@@ -98,15 +99,18 @@ const hotkeyRegistry: Record<HotkeyScope, Map<string, HotkeyRegistryEntry>> = {
 
 //#region impl
 export const makeHotkey = (
-	keymap: Keymap | HotkeyCommandDefinition[],
+	keymap: Keymap | HotkeyCommandDefinition[] | (() => Keymap | HotkeyCommandDefinition[]),
 	ignoreElements = IGNORE_ELEMENTS,
 	resolveOverrides?: () => HotkeyOverrideMap | undefined,
 ) => {
-	const getActions = () => parseKeymap(
-		isKeymap(keymap)
-			? keymap
-			: compileHotkeyCommandsToKeymap(keymap, resolveOverrides?.()),
-	);
+	const getActions = () => {
+		const resolvedKeymap = typeof keymap === 'function' ? keymap() : keymap;
+		return parseKeymap(
+			isKeymap(resolvedKeymap)
+				? resolvedKeymap
+				: compileHotkeyCommandsToKeymap(resolvedKeymap, resolveOverrides?.()),
+		);
+	};
 	return (ev: KeyboardEvent) => {
 		const actions = getActions();
 		if ('pswp' in window && window.pswp != null) return;
@@ -173,6 +177,7 @@ export function resolveHotkeyCommands(commands: NormalizedHotkeyCommand[], overr
 export function registerHotkeyCommands(scope: HotkeyScope, source: string, commands: HotkeyCommandDefinition[]): void {
 	hotkeyRegistry[scope].set(source, {
 		source,
+		definitions: commands,
 		commands: normalizeHotkeyCommands(commands),
 	});
 }
@@ -189,6 +194,16 @@ export function getRegisteredHotkeyCommands(scope?: HotkeyScope): NormalizedHotk
 	return (Object.keys(hotkeyRegistry) as HotkeyScope[])
 		.flatMap((key) => Array.from(hotkeyRegistry[key].values()))
 		.flatMap((entry) => entry.commands);
+}
+
+export function getRegisteredHotkeyCommandDefinitions(scope?: HotkeyScope): HotkeyCommandDefinition[] {
+	if (scope != null) {
+		return Array.from(hotkeyRegistry[scope].values()).flatMap((entry) => entry.definitions);
+	}
+
+	return (Object.keys(hotkeyRegistry) as HotkeyScope[])
+		.flatMap((key) => Array.from(hotkeyRegistry[key].values()))
+		.flatMap((entry) => entry.definitions);
 }
 
 export function getPaletteHotkeyCommands(overrides?: HotkeyOverrideMap): ResolvedHotkeyCommand[] {
