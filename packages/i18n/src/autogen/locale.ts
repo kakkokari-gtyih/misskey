@@ -1957,6 +1957,10 @@ export interface Locale extends ILocale {
      */
     "help": string;
     /**
+     * コマンドパレット
+     */
+    "commandPalette": string;
+    /**
      * ここにメッセージを入力
      */
     "inputMessageHere": string;
@@ -5648,6 +5652,28 @@ export interface Locale extends ILocale {
          * 固定
          */
         "fixed": string;
+    };
+    "_commandPalette": {
+        /**
+         * コマンドパレットを開く
+         */
+        "open": string;
+        /**
+         * コマンドを検索
+         */
+        "placeholder": string;
+        /**
+         * 一致するコマンドがありません
+         */
+        "noResults": string;
+        /**
+         * 名前、ID、キーバインド、キーワードで絞り込めます。
+         */
+        "noResultsDescription": string;
+        /**
+         * 固定ショートカット
+         */
+        "fixedShortcut": string;
     };
     /**
      * ベータ版の検証にご協力いただきありがとうございます！

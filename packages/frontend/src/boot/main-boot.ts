@@ -29,6 +29,7 @@ import { updateCurrentAccountPartial } from '@/accounts.js';
 import { migrateOldSettings } from '@/pref-migrate.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { isBirthday } from '@/utility/is-birthday.js';
+import { openCommandPalette } from '@/utility/command-palette.js';
 
 const getHotkeyOverrides = () => ((prefer.r as unknown) as Record<string, { value: Record<string, string | null> }>)['hotkey.overrides'].value;
 
@@ -377,6 +378,18 @@ export async function mainBoot() {
 	let safemodeRequestCount = 0;
 	let safemodeRequestTimer: number | null = null;
 	const globalHotkeys = defineHotkeyCommands([{
+		id: 'global.openCommandPalette',
+		scope: 'global',
+		name: () => i18n.ts._commandPalette.open,
+		defaultKey: 'ctrl+k',
+		editable: false,
+		palette: {
+			visible: false,
+		},
+		callback: () => {
+			openCommandPalette();
+		},
+	}, {
 		id: 'global.createNote',
 		scope: 'global',
 		name: () => i18n.ts.note,

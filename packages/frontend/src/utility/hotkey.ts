@@ -2,6 +2,7 @@
  * SPDX-FileCopyrightText: syuilo and misskey-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { ref } from 'vue';
 import { getHTMLElementOrNull } from '@/utility/get-dom-node-or-null.js';
 
 //#region types
@@ -95,6 +96,7 @@ const hotkeyRegistry: Record<HotkeyScope, Map<string, HotkeyRegistryEntry>> = {
 	page: new Map(),
 	component: new Map(),
 };
+export const hotkeyRegistryVersion = ref(0);
 //#endregion
 
 //#region impl
@@ -180,10 +182,13 @@ export function registerHotkeyCommands(scope: HotkeyScope, source: string, comma
 		definitions: commands,
 		commands: normalizeHotkeyCommands(commands),
 	});
+	hotkeyRegistryVersion.value++;
 }
 
 export function unregisterHotkeyCommands(scope: HotkeyScope, source: string): void {
-	hotkeyRegistry[scope].delete(source);
+	if (hotkeyRegistry[scope].delete(source)) {
+		hotkeyRegistryVersion.value++;
+	}
 }
 
 export function getRegisteredHotkeyCommands(scope?: HotkeyScope): NormalizedHotkeyCommand[] {
