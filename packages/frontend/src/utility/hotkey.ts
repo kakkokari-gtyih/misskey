@@ -11,7 +11,10 @@ export type HotkeyScope = 'global' | 'page' | 'component';
 export type HotkeyText = string | (() => string);
 export type HotkeyOverrideMap = Partial<Record<string, string | null>>;
 
-type CallbackFunction = (ev: KeyboardEvent) => unknown;
+type CallbackFunction = {
+	(event: KeyboardEvent, origin: 'hotkey'): void;
+	(event: null, origin: 'palette'): void;
+};
 
 type CallbackObject = {
 	callback: CallbackFunction;
@@ -124,7 +127,7 @@ export const makeHotkey = (
 			if (matchPatterns(ev, action)) {
 				ev.preventDefault();
 				ev.stopPropagation();
-				action.callback(ev);
+				action.callback(ev, 'hotkey');
 				storePattern(ev, action.callback);
 			}
 		}

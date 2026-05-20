@@ -143,7 +143,7 @@ function runCommand(command: ResolvedHotkeyCommand | undefined) {
 
 	close();
 	window.setTimeout(() => {
-		command.callback(new KeyboardEvent('keydown'));
+		command.callback(null, 'palette');
 	}, 0);
 }
 
@@ -219,7 +219,7 @@ function formatHotkey(value: string | null): string {
 
 .results {
 	flex: 1;
-	overflow: auto;
+	overflow-y: scroll;
 	padding: var(--MI-margin);
 	container-type: inline-size;
 }

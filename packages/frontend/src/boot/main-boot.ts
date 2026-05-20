@@ -425,13 +425,11 @@ export async function mainBoot() {
 		defaultKey: 'g',
 		allowRepeat: true,
 		editable: false,
-		palette: {
-			visible: false,
-		},
-		callback: () => {
+		callback: (_, origin) => {
 			// mを5回押すとセーフモードに入る
+			// コマンドパレットから発動された場合は即
 			safemodeRequestCount++;
-			if (safemodeRequestCount >= 5) {
+			if (safemodeRequestCount >= 5 || origin === 'palette') {
 				miLocalStorage.setItem('isSafeMode', 'true');
 				unisonReload();
 			} else {
