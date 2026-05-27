@@ -10,6 +10,7 @@
 | [backend.md](./backend.md) | `packages/backend` を編集する時 (NestJS / TypeORM / API endpoint / migration) |
 | [frontend.md](./frontend.md) | `packages/frontend` を編集する時 (Vue 3 / Mk* / i18n / SCSS Modules / `os.ts`) |
 | [testing.md](./testing.md) | テストを書く・走らせる時 (Vitest 構成、Cypress、Storybook) |
+| [issue-pr.md](./issue-pr.md) | Issue および Pull Request を起票する時 |
 | [plugins.md](./plugins.md) | 有効化済の Claude Code プラグインの用途を確認したい時 |
 
 ## 補足: ルール vs ドキュメント

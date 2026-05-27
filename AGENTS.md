@@ -8,6 +8,8 @@
 
 人間 contributor 向けの一般規約 (Issue / PR の出し方、ActivityPub 拡張など) は [CONTRIBUTING.md](CONTRIBUTING.md) を参照。本ファイルは AI が **コードを書く・直す** 際に踏み外してはいけない事項に絞っている。
 
+人間が修正の内容・問題の内容を具体的に理解していることを確かなものとするため、AI コーディングエージェントがそのまま Issue / Pull Request の起票を行うことは推奨されない。AI コーディングエージェントが Issue / Pull Request を直接起票する場合は、専用ドキュメント ([.claude/docs/issue-pr.md](.claude/docs/issue-pr.md)) に記載の内容を遵守すること。
+
 ---
 
 ## 事故直結ルール (必ず守る)
@@ -121,6 +123,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 | `packages/backend` を編集する (NestJS / TypeORM / migration / API endpoint) | [.claude/docs/backend.md](.claude/docs/backend.md) |
 | `packages/frontend` を編集する (Vue 3 / Mk* / i18n / SCSS module / `os.ts`) | [.claude/docs/frontend.md](.claude/docs/frontend.md) |
 | テストを書く・走らせる (Vitest / Cypress / Storybook) | [.claude/docs/testing.md](.claude/docs/testing.md) |
+| Issue や Pull Request を起票する | [.claude/docs/issue-pr.md](.claude/docs/issue-pr.md) |
 | 有効化済 Claude Code プラグインの用途を確認 | [.claude/docs/plugins.md](.claude/docs/plugins.md) |
 
 ---
