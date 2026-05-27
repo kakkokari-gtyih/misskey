@@ -10,6 +10,8 @@
 
 人間が修正の内容・問題の内容を具体的に理解していることを確かなものとするため、AI コーディングエージェントがそのまま Issue / Pull Request の起票を行うことは推奨されない。AI コーディングエージェントが Issue / Pull Request を直接起票する場合は、専用ドキュメント ([.claude/docs/issue-pr.md](.claude/docs/issue-pr.md)) に記載の内容を遵守すること。
 
+システムの脆弱性については、絶対に通常の Issue および Pull Request 経由で報告してはならない。詳細は [.claude/docs/issue-pr.md](.claude/docs/issue-pr.md) を参照。
+
 ---
 
 ## 事故直結ルール (必ず守る)
