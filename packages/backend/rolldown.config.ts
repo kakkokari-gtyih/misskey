@@ -1,7 +1,11 @@
 import { defineConfig } from 'rolldown';
+import { resolve } from 'path';
+import { existsSync, promises as fsp } from 'fs';
 import type { Plugin, ExternalOption } from 'rolldown';
 import { execa, execaNode } from 'execa';
 import type { ResultPromise } from 'execa';
+import { externals } from 'nf3/plugin';
+import { minifySync } from 'oxc-minify';
 import esmShim from '@rollup/plugin-esm-shim';
 
 /**
@@ -20,7 +24,7 @@ function backendDevServerPlugin(): Plugin {
 
 	async function killBackendProcess() {
 		if (backendProcess) {
-			backendProcess.catch(() => {}); // backendProcess.kill()によって発生する例外を無視するためにcatch()を呼び出す
+			backendProcess.catch(() => { }); // backendProcess.kill()によって発生する例外を無視するためにcatch()を呼び出す
 			backendProcess.kill();
 			await new Promise(resolve => backendProcess!.on('exit', resolve));
 			backendProcess = null;
@@ -51,9 +55,32 @@ function backendDevServerPlugin(): Plugin {
 	};
 }
 
+function repackagePlugin(destDir: string): Plugin {
+	return {
+		name: 'repackage',
+		// ビルド開始前に出力先ディレクトリをクリーンアップする
+		async buildStart() {
+			if (existsSync(destDir)) {
+				await fsp.rm(destDir, { recursive: true, force: true });
+			}
+			await fsp.mkdir(destDir, { recursive: true });
+		},
+		// ビルド後に、生成されたファイルを出力先ディレクトリに移動する
+		async closeBundle() {
+			await fsp.cp('./built', resolve(destDir, './built'), { recursive: true });
+			await fsp.cp('./assets', resolve(destDir, './assets'), { recursive: true });
+			await fsp.cp('./scripts', resolve(destDir, './scripts'), { recursive: true });
+			await fsp.cp('./migration', resolve(destDir, './migration'), { recursive: true });
+			await fsp.cp('./nsfw-model', resolve(destDir, './nsfw-model'), { recursive: true });
+		},
+	};
+}
+
 export default defineConfig((args) => {
 	const isWatchMode = args.watch != null && args.watch !== 'false';
 	const isE2E = args.e2e != null && args.e2e !== 'false';
+
+	const destinationDir = resolve(import.meta.dirname, '../../built/_backend_dist_');
 
 	// 通常のビルド時にexternalとするモジュール
 	const externalModules: ExternalOption = [
@@ -114,7 +141,30 @@ export default defineConfig((args) => {
 			tsconfig: true,
 			plugins: [
 				esmShim(),
-				(isWatchMode ? backendDevServerPlugin() : undefined),
+				(isWatchMode ? backendDevServerPlugin() : [
+					repackagePlugin(destinationDir),
+					externals({
+						trace: {
+							outDir: destinationDir,
+							writePackageJson: false,
+							// transform: [{
+							// 	filter: (id) => /\.[mc]?js$/.test(id),
+							// 	handler: (code, id) => minifySync(id, code, { compress: { keepNames: { function: true, class: true } } }).code,
+							// }],
+							hooks: {
+								tracedPackages: async (packages) => {
+									// package.jsonを作成
+									const packageJson = JSON.parse(await fsp.readFile(resolve(import.meta.dirname, './package.json'), 'utf-8'));
+									packageJson.dependencies = Object.fromEntries(Object.values(packages).map((pkg) => [pkg.name, Object.keys(pkg.versions)[0]]).sort((a, b) => a[0].localeCompare(b[0])));
+									packageJson.devDependencies = undefined;
+									packageJson.peerDependencies = undefined;
+									packageJson.optionalDependencies = undefined;
+									await fsp.writeFile(resolve(destinationDir, 'package.json'), JSON.stringify(packageJson, null, '\t'), 'utf-8');
+								},
+							},
+						},
+					}),
+				]),
 			],
 			output: {
 				keepNames: true,

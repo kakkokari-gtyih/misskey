@@ -222,12 +222,12 @@ const _dirname = dirname(_filename);
 /** Path of repository root directory */
 let rootDir = _dirname;
 // 見つかるまで上に遡る
-while (!fs.existsSync(resolve(rootDir, 'packages'))) {
-	const parentDir = dirname(rootDir);
-	if (parentDir === rootDir) {
-		throw new Error('Cannot find root directory');
+while (!fs.existsSync(resolve(rootDir, 'Dockerfile')) && !fs.existsSync(resolve(rootDir, 'package.json'))) {
+	rootDir = resolve(rootDir, '..');
+
+	if (rootDir === resolve(rootDir, '..')) {
+		throw new Error('Failed to find repository root directory');
 	}
-	rootDir = parentDir;
 }
 
 /** Path of configuration directory */
