@@ -27,7 +27,7 @@ export class AiService {
 		@Inject(DI.config)
 		private config: Config,
 	) {
-		const md = resolve(this.config.rootDir, 'packages/backend/nsfw-model');
+		const md = resolve(this.config.backendPackageRootDir, 'nsfw-model');
 		this.modelDir = md.endsWith('/') ? md : md + '/';
 	}
 

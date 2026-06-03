@@ -67,6 +67,7 @@ import type { FastifyError, FastifyInstance, FastifyPluginOptions, FastifyReply 
 
 @Injectable()
 export class ClientServerService {
+	private readonly backendAssets: string;
 	private readonly staticAssets: string;
 	private readonly clientAssets: string;
 	private readonly assets: string;
@@ -129,14 +130,14 @@ export class ClientServerService {
 		private clientLoggerService: ClientLoggerService,
 	) {
 		//this.createServer = this.createServer.bind(this);
-		const backendRootdir = resolve(this.config.rootDir, 'packages/backend');
 		const frontendRootdir = resolve(this.config.rootDir, 'packages/frontend');
-		this.staticAssets = resolve(backendRootdir, 'assets');
+		this.backendAssets = resolve(this.config.backendPackageRootDir, 'assets');
+		this.staticAssets = resolve(this.config.backendPackageRootDir, 'assets/static');
 		this.clientAssets = resolve(frontendRootdir, 'assets');
 		this.assets = resolve(this.config.rootDir, 'built/_frontend_dist_');
 		this.swAssets = resolve(this.config.rootDir, 'built/_sw_dist_');
-		this.fluentEmojiDir = resolve(backendRootdir, 'node_modules/@misskey-dev/emoji-assets/built/fluent-emoji');
-		this.twemojiDir = resolve(backendRootdir, 'node_modules/@misskey-dev/emoji-assets/built/twemoji');
+		this.fluentEmojiDir = resolve(this.config.backendPackageRootDir, 'node_modules/@misskey-dev/emoji-assets/built/fluent-emoji');
+		this.twemojiDir = resolve(this.config.backendPackageRootDir, 'node_modules/@misskey-dev/emoji-assets/built/twemoji');
 		this.frontendViteOut = resolve(this.config.rootDir, 'built/_frontend_vite_');
 		this.frontendEmbedViteOut = resolve(this.config.rootDir, 'built/_frontend_embed_vite_');
 		this.tarball = resolve(this.config.rootDir, 'built/tarball');
@@ -234,7 +235,7 @@ export class ClientServerService {
 				done();
 			});
 		} else {
-			console.log('[ClientServerService] Proxying to Vite dev server.');
+			this.clientLoggerService.logger.info('[ClientServerService] Proxying to Vite dev server.');
 			const urlOriginWithoutPort = configUrl.origin.replace(/:\d+$/, '');
 
 			const port = (process.env.VITE_PORT ?? '5173');
@@ -289,11 +290,11 @@ export class ClientServerService {
 		});
 
 		fastify.get('/favicon.ico', async (request, reply) => {
-			return reply.sendFile('/favicon.ico', this.staticAssets);
+			return reply.sendFile('/favicon.ico', this.backendAssets);
 		});
 
 		fastify.get('/apple-touch-icon.png', async (request, reply) => {
-			return reply.sendFile('/apple-touch-icon.png', this.staticAssets);
+			return reply.sendFile('/apple-touch-icon.png', this.backendAssets);
 		});
 
 		fastify.get<{ Params: { path: string } }>('/fluent-emoji/:path(.*)', async (request, reply) => {
@@ -381,7 +382,7 @@ export class ClientServerService {
 
 		// Embed Javascript
 		fastify.get('/embed.js', async (request, reply) => {
-			return await reply.sendFile('/embed.js', this.staticAssets, {
+			return await reply.sendFile('/embed.js', this.backendAssets, {
 				maxAge: ms('1 day'),
 			});
 		});

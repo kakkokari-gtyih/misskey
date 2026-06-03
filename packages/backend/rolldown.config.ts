@@ -72,7 +72,10 @@ export default defineConfig((args) => {
 			tsconfig: true,
 			plugins: [
 				esmShim(),
-				(isWatchMode ? backendDevServerPlugin() : repackagePlugin(destinationDir, ['nsfwjs'])),
+				(isWatchMode ? backendDevServerPlugin() : repackagePlugin(destinationDir, [
+					'nsfwjs',
+					['@misskey-dev/emoji-assets', { glob: 'built/**' }],
+				])),
 			],
 			output: {
 				keepNames: true,

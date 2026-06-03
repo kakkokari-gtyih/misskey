@@ -193,6 +193,7 @@ export type Config = {
 	frontendManifestExists: boolean;
 	frontendEmbedManifestExists: boolean;
 	rootDir: string;
+	backendPackageRootDir: string;
 	mediaProxy: string;
 	externalMediaProxyEnabled: boolean;
 	videoThumbnailGenerator: string | null;
@@ -221,9 +222,16 @@ const _dirname = dirname(_filename);
 
 /** Path of repository root directory */
 let rootDir = _dirname;
+let backendPackageRootDir = _dirname;
+let backendPackageRootFound = false;
 // 見つかるまで上に遡る
 while (!fs.existsSync(resolve(rootDir, 'Dockerfile')) || !fs.existsSync(resolve(rootDir, 'package.json'))) {
 	rootDir = resolve(rootDir, '..');
+
+	if (!backendPackageRootFound && fs.existsSync(resolve(rootDir, 'package.json'))) {
+		backendPackageRootDir = rootDir;
+		backendPackageRootFound = true;
+	}
 
 	if (rootDir === resolve(rootDir, '..')) {
 		throw new Error('Failed to find repository root directory');
@@ -335,6 +343,7 @@ export function loadConfig(): Config {
 		frontendManifestExists: frontendManifestExists,
 		frontendEmbedManifestExists: frontendEmbedManifestExists,
 		rootDir,
+		backendPackageRootDir,
 		perChannelMaxNoteCacheCount: config.perChannelMaxNoteCacheCount ?? 1000,
 		perUserNotificationsMaxCount: config.perUserNotificationsMaxCount ?? 500,
 		deactivateAntennaThreshold: config.deactivateAntennaThreshold ?? (1000 * 60 * 60 * 24 * 7),
