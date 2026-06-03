@@ -73,7 +73,7 @@ export default defineConfig((args) => {
 			plugins: [
 				esmShim(),
 				(isWatchMode ? backendDevServerPlugin() : repackagePlugin(destinationDir, [
-					'nsfwjs',
+					'nsfwjs/core',
 					['@misskey-dev/emoji-assets', { glob: 'built/**' }],
 				])),
 			],
