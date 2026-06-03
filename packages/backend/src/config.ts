@@ -222,7 +222,7 @@ const _dirname = dirname(_filename);
 /** Path of repository root directory */
 let rootDir = _dirname;
 // 見つかるまで上に遡る
-while (!fs.existsSync(resolve(rootDir, 'Dockerfile')) && !fs.existsSync(resolve(rootDir, 'package.json'))) {
+while (!fs.existsSync(resolve(rootDir, 'Dockerfile')) || !fs.existsSync(resolve(rootDir, 'package.json'))) {
 	rootDir = resolve(rootDir, '..');
 
 	if (rootDir === resolve(rootDir, '..')) {
