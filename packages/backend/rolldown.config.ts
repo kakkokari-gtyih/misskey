@@ -76,6 +76,7 @@ export default defineConfig((args) => {
 					destDir: destinationDir,
 					additionalFiles: [
 						'./scripts/**/*.{ts,js}',
+						'./migration/**/*.{ts,js}',
 					],
 					forceCopyDeps: [
 						'nsfwjs/core', // 何故か認識されない
