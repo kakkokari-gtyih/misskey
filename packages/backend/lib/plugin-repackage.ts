@@ -140,9 +140,39 @@ export function repackagePlugin(options: PluginOptions): Plugin {
 				}],
 				hooks: {
 					tracedPackages: async (packages) => {
+						const packageInfo = Object.values(packages);
+						const packageJsonKv = Object.fromEntries(packageInfo.map((pkg) => [pkg.name, Object.keys(pkg.versions)[0]]).sort((a, b) => a[0].localeCompare(b[0])));
+						const bins = packageInfo.reduce((acc, pkg) => {
+							const version = Object.keys(pkg.versions)[0];
+							const pkgJson = pkg.versions[version].pkgJSON;
+							if (pkgJson.bin) {
+								const binEntries = typeof pkgJson.bin === 'string' ? [[pkg.name, pkgJson.bin]] : Object.entries(pkgJson.bin);
+								for (const [binName, binPath] of binEntries) {
+									acc[binName] = resolve(destDir, `node_modules/${pkg.name}`, binPath);
+								}
+							}
+							return acc;
+						}, {} as Record<string, string>);
+
+						// binのあるパッケージに対して、node_modules/.bin/ にシンボリックリンクを作成する
+						for (const [binName, binPath] of Object.entries(bins)) {
+							const linkPath = resolve(destDir, 'node_modules/.bin', binName);
+							await fsp.mkdir(resolve(destDir, 'node_modules/.bin'), { recursive: true });
+							try {
+								await fsp.symlink(binPath, linkPath);
+							} catch (err) {
+								if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+									await fsp.rm(linkPath);
+									await fsp.symlink(binPath, linkPath);
+								} else {
+									throw err;
+								}
+							}
+						}
+
 						// package.jsonを作成
 						const packageJson = JSON.parse(await fsp.readFile(resolve(import.meta.dirname, '../package.json'), 'utf-8'));
-						packageJson.dependencies = Object.fromEntries(Object.values(packages).map((pkg) => [pkg.name, Object.keys(pkg.versions)[0]]).sort((a, b) => a[0].localeCompare(b[0])));
+						packageJson.dependencies = packageJsonKv;
 						packageJson.devDependencies = undefined;
 						packageJson.peerDependencies = undefined;
 						packageJson.optionalDependencies = undefined;
@@ -150,6 +180,18 @@ export function repackagePlugin(options: PluginOptions): Plugin {
 					},
 				},
 			});
+
+			// リンク先のファイルがない場合はシンボリックリンクを削除する
+			for await (const binPath of fsp.glob(resolve(destDir, 'node_modules/.bin/*'))) {
+				try {
+					const targetPath = await fsp.readlink(binPath);
+					if (!existsSync(targetPath)) {
+						await fsp.rm(binPath);
+					}
+				} catch (err) {
+					// nop
+				}
+			}
 		},
 		// ビルド後に、生成されたファイルを出力先ディレクトリに移動する
 		async closeBundle() {
