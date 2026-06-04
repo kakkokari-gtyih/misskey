@@ -1,6 +1,6 @@
 import { existsSync, promises as fsp } from 'fs';
 import { resolve } from 'path';
-import type { Plugin } from 'rolldown';
+import type { Plugin, PluginContext } from 'rolldown';
 import { traceNodeModules } from 'nf3';
 import type { ExternalsTraceOptions } from 'nf3';
 import { builtinModules } from 'module';
@@ -8,11 +8,18 @@ import { minifySync } from 'oxc-minify';
 import { ResolverFactory } from 'oxc-resolver';
 
 type ForceCopyDeps = NonNullable<ExternalsTraceOptions['fullTraceInclude']>;
+type PluginOptions = {
+	destDir: string;
+	additionalFiles?: string[];
+	forceCopyDeps?: ForceCopyDeps;
+};
 
 /**
  * 本番環境用のビルドで、外部化した依存関係を出力先ディレクトリにコピーするプラグイン
  */
-export function repackagePlugin(destDir: string, forceCopyDeps: ForceCopyDeps = []): Plugin {
+export function repackagePlugin(options: PluginOptions): Plugin {
+	const { destDir, additionalFiles = [], forceCopyDeps = [] } = options;
+
 	const esmResolver = new ResolverFactory({
 		conditionNames: ['node', 'import'],
 		extensions: ['.js', '.mjs', '.json', '.node'],
@@ -38,6 +45,25 @@ export function repackagePlugin(destDir: string, forceCopyDeps: ForceCopyDeps = 
 		}
 
 		return null;
+	}
+
+	async function resolveAdditionalFileImports(filePath: string, parseFn: PluginContext['parse']) {
+		if (!existsSync(filePath)) {
+			return [];
+		}
+
+		const code = await fsp.readFile(filePath, 'utf-8');
+		const ast = parseFn(code);
+		const imports = new Set<string>();
+
+		// シンプルな静的インポートのみを対象とする
+		for (const node of ast.body) {
+			if (node.type === 'ImportDeclaration' && typeof node.source.value === 'string') {
+				imports.add(node.source.value);
+			}
+		}
+
+		return Array.from(imports);
 	}
 
 	return {
@@ -87,6 +113,20 @@ export function repackagePlugin(destDir: string, forceCopyDeps: ForceCopyDeps = 
 					// 直接解決できない場合、node_modules 内に存在するかを確認して追加
 					this.warn(`[WARN] Failed to resolve "${depName}" directly, but it exists in node_modules. Adding it to trace list.`);
 					externalModules.add(resolve(import.meta.dirname, `../node_modules/${depName}/package.json`));
+				}
+			}
+
+			for (const additionalFile of additionalFiles) {
+				const additionalFilePath = resolve(import.meta.dirname, `../${additionalFile}`);
+				for await (const filePath of fsp.glob(additionalFilePath)) {
+					const additionalFileImports = await resolveAdditionalFileImports(filePath, this.parse);
+					for (const imp of additionalFileImports) {
+						const resolvedPath = resolveEntryPath(imp, filePath);
+
+						if (resolvedPath) {
+							externalModules.add(resolvedPath);
+						}
+					}
 				}
 			}
 
