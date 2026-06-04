@@ -79,6 +79,7 @@ COPY --link --from=native-builder /misskey/packages/i18n/built ./packages/i18n/b
 COPY --link --from=native-builder /misskey/packages/misskey-js/built ./packages/misskey-js/built
 COPY --link --from=native-builder /misskey/packages/misskey-reversi/built ./packages/misskey-reversi/built
 
+RUN pnpm build-pre
 RUN pnpm --filter backend build
 
 FROM --platform=$TARGETPLATFORM node:${NODE_VERSION}-slim AS runner

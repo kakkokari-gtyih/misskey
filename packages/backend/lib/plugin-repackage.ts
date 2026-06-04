@@ -185,7 +185,9 @@ export function repackagePlugin(options: PluginOptions): Plugin {
 			for await (const binPath of fsp.glob(resolve(destDir, 'node_modules/.bin/*'))) {
 				try {
 					const targetPath = await fsp.readlink(binPath);
-					if (!existsSync(targetPath)) {
+					if (existsSync(targetPath)) {
+						await fsp.chmod(binPath, 0o755);
+					} else {
 						await fsp.rm(binPath);
 					}
 				} catch (err) {

@@ -225,7 +225,7 @@ let rootDir = _dirname;
 let backendPackageRootDir = _dirname;
 let backendPackageRootFound = false;
 // 見つかるまで上に遡る
-while (!fs.existsSync(resolve(rootDir, 'Dockerfile')) || !fs.existsSync(resolve(rootDir, 'package.json'))) {
+while (!fs.existsSync(resolve(rootDir, 'healthcheck.sh'))) {
 	rootDir = resolve(rootDir, '..');
 
 	if (!backendPackageRootFound && fs.existsSync(resolve(rootDir, 'package.json'))) {
