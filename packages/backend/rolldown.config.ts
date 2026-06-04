@@ -80,6 +80,7 @@ export default defineConfig((args) => {
 					],
 					forceCopyDeps: [
 						'nsfwjs/core', // 何故か認識されない
+						'strtok3', // file-typeで特殊なインポートをしているため
 						'typeorm', // CLIで使用しているため
 						'yargs', // CLIで使用しているため typeorm -> yargs
 						['@misskey-dev/emoji-assets', { glob: 'built/**' }], // アセットファイルしか無いのでtraceされない
