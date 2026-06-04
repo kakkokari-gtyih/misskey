@@ -78,8 +78,9 @@ export default defineConfig((args) => {
 						'./scripts/**/*.{ts,js}',
 					],
 					forceCopyDeps: [
-						'nsfwjs/core',
-						['@misskey-dev/emoji-assets', { glob: 'built/**' }],
+						'nsfwjs/core', // 何故か認識されない
+						'typeorm', // CLIで使用しているため
+						['@misskey-dev/emoji-assets', { glob: 'built/**' }], // アセットファイルしか無いのでtraceされない
 					],
 				})),
 			],
