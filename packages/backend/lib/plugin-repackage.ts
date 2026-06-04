@@ -117,7 +117,7 @@ export function repackagePlugin(options: PluginOptions): Plugin {
 			}
 
 			for (const additionalFile of additionalFiles) {
-				const additionalFilePath = resolve(import.meta.dirname, `../${additionalFile}`);
+				const additionalFilePath = resolve(import.meta.dirname, '../', additionalFile);
 				for await (const filePath of fsp.glob(additionalFilePath)) {
 					const additionalFileImports = await resolveAdditionalFileImports(filePath, this.parse);
 					for (const imp of additionalFileImports) {
@@ -154,12 +154,12 @@ export function repackagePlugin(options: PluginOptions): Plugin {
 		// ビルド後に、生成されたファイルを出力先ディレクトリに移動する
 		async closeBundle() {
 			this.info('Copying built files to destination directory...');
-			await fsp.cp(resolve(import.meta.dirname, './built'), resolve(destDir, './built'), { recursive: true });
-			await fsp.cp(resolve(import.meta.dirname, './assets'), resolve(destDir, './assets'), { recursive: true });
-			await fsp.cp(resolve(import.meta.dirname, './scripts'), resolve(destDir, './scripts'), { recursive: true });
-			await fsp.cp(resolve(import.meta.dirname, './migration'), resolve(destDir, './migration'), { recursive: true });
-			await fsp.cp(resolve(import.meta.dirname, './nsfw-model'), resolve(destDir, './nsfw-model'), { recursive: true });
-			await fsp.cp(resolve(import.meta.dirname, './ormconfig.js'), resolve(destDir, './ormconfig.js'), { recursive: true });
+			await fsp.cp(resolve(import.meta.dirname, '../built'), resolve(destDir, './built'), { recursive: true });
+			await fsp.cp(resolve(import.meta.dirname, '../assets'), resolve(destDir, './assets'), { recursive: true });
+			await fsp.cp(resolve(import.meta.dirname, '../scripts'), resolve(destDir, './scripts'), { recursive: true });
+			await fsp.cp(resolve(import.meta.dirname, '../migration'), resolve(destDir, './migration'), { recursive: true });
+			await fsp.cp(resolve(import.meta.dirname, '../nsfw-model'), resolve(destDir, './nsfw-model'), { recursive: true });
+			await fsp.cp(resolve(import.meta.dirname, '../ormconfig.js'), resolve(destDir, './ormconfig.js'), { recursive: true });
 		},
 	};
 }
