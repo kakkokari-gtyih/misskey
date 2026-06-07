@@ -1,5 +1,5 @@
 import path from 'path';
-import pluginVue from '@vitejs/plugin-vue';
+import pluginVue from '@vizejs/vite-plugin';
 import { defineConfig, type UserConfig } from 'vite';
 import * as yaml from 'js-yaml';
 import { promises as fsp } from 'fs';

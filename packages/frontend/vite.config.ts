@@ -1,8 +1,6 @@
 import path from 'path';
-// import pluginVue from '@vitejs/plugin-vue';
 import pluginVue from '@vizejs/vite-plugin';
 import pluginGlsl from 'vite-plugin-glsl';
-import pluginInspect from 'vite-plugin-inspect';
 import { replacePlugin } from 'rolldown/plugins';
 import type { UserConfig } from 'vite';
 import { defineConfig } from 'vite';
@@ -122,7 +120,6 @@ export function getConfig(): UserConfig {
 			pluginUnwindCssModuleClassName(),
 			pluginJson5(),
 			pluginGlsl({ minify: true }),
-			pluginInspect({ build: true }),
 			...process.env.NODE_ENV === 'production'
 				? [
 					replacePlugin({
