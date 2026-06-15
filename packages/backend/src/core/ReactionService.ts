@@ -15,7 +15,7 @@ import { isDuplicateKeyValueError } from '@/misc/is-duplicate-key-value-error.js
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import PerUserReactionsChart from '@/core/chart/charts/per-user-reactions.js';
-import { emojiRegex } from '@/misc/emoji-regex.js';
+import { normalizeEmoji } from '@/misc/emoji.js';
 import { ApDeliverManagerService } from '@/core/activitypub/ApDeliverManagerService.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
@@ -387,14 +387,8 @@ export class ReactionService {
 		if (Object.keys(legacies).includes(reaction)) return legacies[reaction];
 
 		// Unicode絵文字
-		const match = emojiRegex.exec(reaction);
-		if (match) {
-			// 合字を含む1つの絵文字
-			const unicode = match[0];
-
-			// 異体字セレクタ除去
-			return unicode.match('\u200d') ? unicode : unicode.replace(/\ufe0f/g, '');
-		}
+		const emoji = normalizeEmoji(reaction);
+		if (emoji != null) return emoji;
 
 		return FALLBACK;
 	}

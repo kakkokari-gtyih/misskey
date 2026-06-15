@@ -25,27 +25,13 @@ import { MiChatRoomInvitation } from '@/models/ChatRoomInvitation.js';
 import { Packed } from '@/misc/json-schema.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import { CustomEmojiService } from '@/core/CustomEmojiService.js';
-import { emojiRegex } from '@/misc/emoji-regex.js';
+import { normalizeEmoji } from '@/misc/emoji.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import { ModerationLogService } from '@/core/ModerationLogService.js';
 
 const MAX_ROOM_MEMBERS = 50;
 const MAX_REACTIONS_PER_MESSAGE = 100;
 const isCustomEmojiRegexp = /^:([\w+-]+)(?:@\.)?:$/;
-
-// TODO: ReactionServiceのやつと共通化
-function normalizeEmojiString(x: string) {
-	const match = emojiRegex.exec(x);
-	if (match) {
-		// 合字を含む1つの絵文字
-		const unicode = match[0];
-
-		// 異体字セレクタ除去
-		return unicode.match('\u200d') ? unicode : unicode.replace(/\ufe0f/g, '');
-	} else {
-		throw new Error('invalid emoji');
-	}
-}
 
 @Injectable()
 export class ChatService {
@@ -862,7 +848,10 @@ export class ChatService {
 		const custom = reaction_.match(isCustomEmojiRegexp);
 
 		if (custom == null) {
-			reaction = normalizeEmojiString(reaction_);
+			reaction = normalizeEmoji(reaction_);
+			if (reaction == null) {
+				throw new Error('invalid emoji');
+			}
 		} else {
 			const name = custom[1];
 			const emoji = (await this.customEmojiService.localEmojisCache.fetch()).get(name);
@@ -928,7 +917,10 @@ export class ChatService {
 		const custom = reaction_.match(isCustomEmojiRegexp);
 
 		if (custom == null) {
-			reaction = normalizeEmojiString(reaction_);
+			reaction = normalizeEmoji(reaction_);
+			if (reaction == null) {
+				throw new Error('invalid emoji');
+			}
 		} else { // 削除されたカスタム絵文字のリアクションを削除したいかもしれないので絵文字の存在チェックはする必要なし
 			const name = custom[1];
 			reaction = `:${name}:`;
