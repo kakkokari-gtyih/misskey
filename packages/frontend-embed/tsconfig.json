@@ -33,7 +33,8 @@
 			"./node_modules"
 		],
 		"types": [
-			"vite/client"
+			"vite/client",
+			"@vizejs/vite-plugin"
 		],
 		"lib": [
 			"esnext",

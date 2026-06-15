@@ -35,6 +35,7 @@
 		],
 		"types": [
 			"vite/client",
+			"@vizejs/vite-plugin",
 			"vite-plugin-glsl/ext",
 			"vitest/importMeta",
 		],
