@@ -53,7 +53,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				where: {
 					userId: me.id,
 				},
-				relations: ['user'],
+				relations: { user: true },
 			});
 
 			if (profile == null) {
