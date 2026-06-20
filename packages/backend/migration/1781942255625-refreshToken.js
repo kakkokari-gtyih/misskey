@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-export class RefreshToken1777623800403 {
-    name = 'RefreshToken1777623800403'
+export class RefreshToken1781942255625 {
+    name = 'RefreshToken1781942255625'
 
     async up(queryRunner) {
         await queryRunner.query(`ALTER TABLE "signin" ADD "refreshToken" character varying(128)`);
