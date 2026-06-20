@@ -51,10 +51,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 							{{ i18n.ts._2fa.securityKeyNotSupported }}
 						</MkInfo>
 
-						<MkInfo v-else-if="browserSupportsWebAuthn() && !$i.twoFactorEnabled" warn>
-							{{ i18n.ts._2fa.registerTOTPBeforeKey }}
-						</MkInfo>
-
 						<template v-else>
 							<MkButton primary @click="addSecurityKey">{{ i18n.ts._2fa.registerSecurityKey }}</MkButton>
 							<MkFolder v-for="key in $i.securityKeysList!" :key="key.id">

@@ -72,7 +72,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { showSuspendedDialog } from '@/utility/show-suspended-dialog.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
-import { login, updateCurrentAccount, updateCurrentAccountPartial } from '@/accounts.js';
+import { login, updateCurrentAccountPartial } from '@/accounts.js';
 import { $i } from '@/i.js';
 import { authUrl } from '@@/js/config.js';
 
@@ -160,8 +160,6 @@ async function onTotpSubmitted(token: string) {
 		return;
 	} else {
 		await tryLogin({
-			username: userInfo.value.username,
-			password: password.value,
 			token,
 		});
 	}
