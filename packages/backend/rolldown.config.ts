@@ -1,5 +1,6 @@
 import { defineConfig } from 'rolldown';
 import { resolve } from 'path';
+import { version as summalyVersion } from '@misskey-dev/summaly';
 import type { ExternalOption } from 'rolldown';
 
 import { backendDevServerPlugin } from './lib/plugin-dev-server.js';
@@ -42,6 +43,11 @@ export default defineConfig((args) => {
 		'file-type',
 	];
 
+	const define: Record<string, string> = {
+		// Summalyのバージョンを埋め込む
+		'_SUMMALY_VERSION_': JSON.stringify(summalyVersion),
+	};
+
 	if (isE2E) {
 		return {
 			input: './test-server/entry.ts',
@@ -50,6 +56,9 @@ export default defineConfig((args) => {
 			plugins: [
 				esmShim(),
 			],
+			transform: {
+				define,
+			},
 			output: {
 				keepNames: true,
 				sourcemap: true,
@@ -87,6 +96,9 @@ export default defineConfig((args) => {
 					],
 				})),
 			],
+			transform: {
+				define,
+			},
 			output: {
 				keepNames: true,
 				minify: !isWatchMode,
