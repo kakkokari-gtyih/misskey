@@ -202,7 +202,6 @@ export function repackagePlugin(options: PluginOptions): Plugin {
 			await fsp.cp(resolve(import.meta.dirname, '../assets'), resolve(destDir, './assets'), { recursive: true });
 			await fsp.cp(resolve(import.meta.dirname, '../scripts'), resolve(destDir, './scripts'), { recursive: true });
 			await fsp.cp(resolve(import.meta.dirname, '../migration'), resolve(destDir, './migration'), { recursive: true });
-			await fsp.cp(resolve(import.meta.dirname, '../nsfw-model'), resolve(destDir, './nsfw-model'), { recursive: true });
 			await fsp.cp(resolve(import.meta.dirname, '../ormconfig.js'), resolve(destDir, './ormconfig.js'), { recursive: true });
 		},
 	};
