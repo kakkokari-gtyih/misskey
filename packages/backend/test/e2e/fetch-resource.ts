@@ -41,13 +41,19 @@ describe('Webリソース', () => {
 		cookie?: string,
 	};
 	const ok = async (param: Request & {
-		type?: string,
+		type?: string | RegExp,
 	}):Promise<SimpleGetResponse> => {
 		const { path, accept, cookie, type } = param;
 		const res = await simpleGet(path, accept, cookie);
 		assert.strictEqual(res.status, 200);
 		// Header values are case-insensitive
-		assert.strictEqual(res.type?.toLowerCase(), (type ?? HTML).toLowerCase());
+		if (type != null) {
+			if (typeof type === 'string') {
+				assert.strictEqual(res.type?.toLowerCase(), (type ?? HTML).toLowerCase());
+			} else {
+				assert.match(res.type ?? HTML, type);
+			}
+		}
 		return res;
 	};
 
@@ -110,8 +116,8 @@ describe('Webリソース', () => {
 		{ path: '/favicon.ico', type: 'image/x-icon' },
 		{ path: '/opensearch.xml', type: 'application/opensearchdescription+xml' },
 		{ path: '/apple-touch-icon.png', type: 'image/png' },
-		{ path: '/twemoji/2764.svg', type: 'image/svg+xml' },
-		{ path: '/twemoji/2764-fe0f-200d-1f525.svg', type: 'image/svg+xml' },
+		{ path: '/twemoji/2764.svg', type: /^image\/svg\+xml(; charset=utf-8)?$/ },
+		{ path: '/twemoji/2764-fe0f-200d-1f525.svg', type: /^image\/svg\+xml(; charset=utf-8)?$/ },
 		{ path: '/twemoji-badge/2764.png', type: 'image/png' },
 		{ path: '/twemoji-badge/2764-fe0f-200d-1f525.png', type: 'image/png' },
 		{ path: '/fluent-emoji/2764.png', type: 'image/png' },
