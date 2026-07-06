@@ -6,6 +6,7 @@ settings:
 
 overrides:
   '@aiscript-dev/aiscript-languageserver': '-'
+  '@misskey-dev/emoji-data': 17.0.6
   chokidar: 5.0.0
   lodash: 4.18.1
 
@@ -102,11 +103,11 @@ importers:
         specifier: 4.2.13
         version: 4.2.13
       '@misskey-dev/emoji-assets':
-        specifier: 17.0.3
-        version: 17.0.3
+        specifier: 17.0.6
+        version: 17.0.6
       '@misskey-dev/emoji-data':
-        specifier: 17.0.3
-        version: 17.0.3
+        specifier: 17.0.6
+        version: 17.0.6
       '@misskey-dev/sharp-read-bmp':
         specifier: 1.3.1
         version: 1.3.1
@@ -557,8 +558,8 @@ importers:
         specifier: 2024.1.0
         version: 2024.1.0
       '@misskey-dev/emoji-data':
-        specifier: 17.0.3
-        version: 17.0.3
+        specifier: 17.0.6
+        version: 17.0.6
       '@sentry/vue':
         specifier: 10.59.0
         version: 10.59.0(vue@3.5.38(typescript@5.9.3))
@@ -708,8 +709,8 @@ importers:
         version: 5.3.1
     devDependencies:
       '@misskey-dev/emoji-assets':
-        specifier: 17.0.3
-        version: 17.0.3
+        specifier: 17.0.6
+        version: 17.0.6
       '@misskey-dev/summaly':
         specifier: 5.5.1
         version: 5.5.1
@@ -995,8 +996,8 @@ importers:
         version: 3.5.38(typescript@5.9.3)
     devDependencies:
       '@misskey-dev/emoji-assets':
-        specifier: 17.0.3
-        version: 17.0.3
+        specifier: 17.0.6
+        version: 17.0.6
       '@misskey-dev/summaly':
         specifier: 5.5.1
         version: 5.5.1
@@ -1094,8 +1095,8 @@ importers:
   packages/frontend-shared:
     dependencies:
       '@misskey-dev/emoji-data':
-        specifier: 17.0.3
-        version: 17.0.3
+        specifier: 17.0.6
+        version: 17.0.6
       i18n:
         specifier: workspace:*
         version: link:../i18n
@@ -2367,14 +2368,11 @@ packages:
   '@misskey-dev/browser-image-resizer@2024.1.0':
     resolution: {integrity: sha512-4EnO0zLW5NDtng3Gaz5MuT761uiuoOuplwX18wBqgj8w56LTU5BjLn/vbHwDIIe0j2gwqDYhMb7bDjmr1/Fomg==}
 
-  '@misskey-dev/emoji-assets@17.0.3':
-    resolution: {integrity: sha512-Uiy+R4rghBML5k2nZFLr2w4RUwqDrDnTWZ6lXGYtnEr0DRcW41pQyS2RUUm/pFjYr/DjNntcoysdhqinpa9P/Q==}
+  '@misskey-dev/emoji-assets@17.0.6':
+    resolution: {integrity: sha512-OegMVcmQ5PYihWflQYc573GGiht8ZV5RFIEewBiawJXGxvKqdqZ8rpeYOF1UkMPzcsSYhRTRQUONiE+eWj+EmA==}
 
-  '@misskey-dev/emoji-data@17.0.0':
-    resolution: {integrity: sha512-grMnsmTm7VSah5heS1fIfOfoQmIpzo6ZU5AV5yRxCy7ivtWhFU3fpMfXZyKsH9G9/HZiLRsClKtyjHKMlxjt7g==}
-
-  '@misskey-dev/emoji-data@17.0.3':
-    resolution: {integrity: sha512-RmW0C2A1Zxn7DTYVCOhMDyCyyXYJLBc5GIEuhcufaqF0Gxw9+gIwaitCI3OUWnR928XnDwvvaizhJSjvIEF+2Q==}
+  '@misskey-dev/emoji-data@17.0.6':
+    resolution: {integrity: sha512-7evACr455rA46gu20uXGubdjjNqIbcNNTYjlJ9cxAQbrGs9Yp88LbDgWMp3hq78UpXpW3GZ9q3yOqW5C8UQS1A==}
 
   '@misskey-dev/eslint-plugin@2.1.0':
     resolution: {integrity: sha512-f++Vv1r3BQyGqEE0SB5algUZwRoTMZIYfVtpcuQ2fLuYUm0cQ5BBTs/gwAHPajVB2YD8F33gzPIReTKtuJyCwQ==}
@@ -10596,11 +10594,9 @@ snapshots:
 
   '@misskey-dev/browser-image-resizer@2024.1.0': {}
 
-  '@misskey-dev/emoji-assets@17.0.3': {}
+  '@misskey-dev/emoji-assets@17.0.6': {}
 
-  '@misskey-dev/emoji-data@17.0.0': {}
-
-  '@misskey-dev/emoji-data@17.0.3': {}
+  '@misskey-dev/emoji-data@17.0.6': {}
 
   '@misskey-dev/eslint-plugin@2.1.0(@eslint/compat@2.0.5(eslint@9.39.4))(@stylistic/eslint-plugin@5.10.0(eslint@9.39.4))(@typescript-eslint/eslint-plugin@8.61.1(@typescript-eslint/parser@8.61.1(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)(typescript@5.9.3))(@typescript-eslint/parser@8.61.1(eslint@9.39.4)(typescript@5.9.3))(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.61.1(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4))(eslint@9.39.4)(globals@17.6.0)':
     dependencies:
@@ -15345,7 +15341,7 @@ snapshots:
 
   mfm-js@0.26.0:
     dependencies:
-      '@misskey-dev/emoji-data': 17.0.0
+      '@misskey-dev/emoji-data': 17.0.6
 
   micromark-core-commonmark@2.0.3:
     dependencies:
