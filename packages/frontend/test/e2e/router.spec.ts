@@ -18,11 +18,18 @@ test.describe('Router transition', () => {
 		await resetState(request);
 		await registerUser(request, 'admin', 'pass', true);
 		await registerUser(request, 'alice', 'alice1234');
+	});
+
+	test.beforeEach(async ({ page }) => {
 		await signIn(page, 'alice', 'alice1234');
 
-		// 表示に時間がかかるのでデフォルト秒数だとタイムアウトする
-		await page.locator('[data-testid="user-setup-dialog"] [data-testid="modal-window-close"]').click({ timeout: 30000 });
-		await page.getByTestId('modal-dialog-ok').click();
+		// 表示に時間がかかるのでデフォルト秒数だとタイムアウトする。少し待つ
+		await page.waitForTimeout(1000);
+
+		if (await page.getByTestId('user-setup-dialog').isVisible()) {
+			await page.locator('[data-testid="user-setup-dialog"] [data-testid="modal-window-close"]').click();
+			await page.getByTestId('modal-dialog-ok').click();
+		}
 	});
 
 	test.describe('Redirect', () => {
