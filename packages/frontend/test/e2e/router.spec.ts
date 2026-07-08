@@ -8,7 +8,9 @@ import {
 	// const
 	BASE_URL,
 	// utils
-	resetState, registerUser, signIn,
+	resetState, registerUser,
+	// page utils
+	signIn,
 } from './utils.js';
 
 test.describe('Router transition', () => {

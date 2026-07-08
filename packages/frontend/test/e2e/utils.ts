@@ -47,24 +47,6 @@ export async function registerUser(
 	assertOk(response.status(), await response.text(), route);
 	return await response.json() as RegisteredUser;
 }
-
-export async function waitApiResponse(page: Page, path: string): Promise<void> {
-	await page.waitForResponse((response) => {
-		return response.url().endsWith(path) && response.request().method() === 'POST';
-	}, { timeout: 30_000 });
-}
-
-export async function signIn(page: Page, username: string, password: string): Promise<void> {
-	await page.getByTestId('signin').click();
-	await page.getByTestId('signin-page-input').waitFor({ state: 'visible', timeout: 10_000 });
-	await locateMkInput(page, 'signin-username').fill(username);
-	await page.keyboard.press('Enter');
-	await page.getByTestId('signin-page-password').waitFor({ state: 'visible', timeout: 10_000 });
-	await locateMkInput(page, 'signin-password').fill(password);
-	const signinResponse = waitApiResponse(page, '/api/signin-flow');
-	await page.keyboard.press('Enter');
-	await signinResponse;
-}
 //#endregion
 
 //#region Locator Helpers
@@ -85,5 +67,24 @@ export function locateMkSwitch(page: Page, testId: string): Locator {
 export async function visitHome(page: Page): Promise<void> {
 	await page.goto(`${BASE_URL}/`);
 	await page.locator('button').first().waitFor({ state: 'visible', timeout: 30_000 });
+}
+
+export async function waitApiResponse(page: Page, path: string): Promise<void> {
+	await page.waitForResponse((response) => {
+		return response.url().endsWith(path) && response.request().method() === 'POST';
+	}, { timeout: 30_000 });
+}
+
+export async function signIn(page: Page, username: string, password: string): Promise<void> {
+	await visitHome(page);
+	await page.getByTestId('signin').click();
+	await page.getByTestId('signin-page-input').waitFor({ state: 'visible', timeout: 10_000 });
+	await locateMkInput(page, 'signin-username').fill(username);
+	await page.keyboard.press('Enter');
+	await page.getByTestId('signin-page-password').waitFor({ state: 'visible', timeout: 10_000 });
+	await locateMkInput(page, 'signin-password').fill(password);
+	const signinResponse = waitApiResponse(page, '/api/signin-flow');
+	await page.keyboard.press('Enter');
+	await signinResponse;
 }
 //#endregion

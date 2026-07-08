@@ -10,7 +10,9 @@ import {
 	// locator helper
 	locateMkInput, locateMkSwitch, locateMkTextarea,
 	// utils
-	registerUser, waitApiResponse, resetState, visitHome, signIn,
+	registerUser, resetState, visitHome,
+	// page utils
+	waitApiResponse, signIn,
 } from './utils.js';
 import type { RegisteredUser } from './utils.js';
 
