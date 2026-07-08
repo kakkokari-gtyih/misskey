@@ -14,10 +14,11 @@ import {
 } from './utils.js';
 
 test.describe('Router transition', () => {
-	test.beforeAll(async ({ page, request }) => {
-		await resetState(request);
-		await registerUser(request, 'admin', 'pass', true);
-		await registerUser(request, 'alice', 'alice1234');
+	test.beforeAll(async () => {
+		// beforeAllではブラウザのコンテキストがないので、素のfetchでリクエストを送る
+		await resetState(fetch);
+		await registerUser(fetch, 'admin', 'pass', true);
+		await registerUser(fetch, 'alice', 'alice1234');
 	});
 
 	test.beforeEach(async ({ page }) => {

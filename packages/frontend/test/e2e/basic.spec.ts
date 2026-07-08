@@ -18,7 +18,7 @@ import type { RegisteredUser } from './utils.js';
 
 test.describe('Before setup instance', () => {
 	test.beforeEach(async ({ request }) => {
-		await resetState(request);
+		await resetState(request.fetch);
 	});
 
 	test('successfully loads', async ({ page }) => {
@@ -46,8 +46,8 @@ test.describe('Before setup instance', () => {
 
 test.describe('After setup instance', () => {
 	test.beforeEach(async ({ request }) => {
-		await resetState(request);
-		await registerUser(request, 'admin', 'pass', true);
+		await resetState(request.fetch);
+		await registerUser(request.fetch, 'admin', 'pass', true);
 	});
 
 	test('successfully loads', async ({ page }) => {
@@ -80,8 +80,8 @@ test.describe('After setup instance', () => {
 		await signupResponse;
 	});
 
-	test('signup with duplicated username', async ({ page }) => {
-		await registerUser(page.request, 'alice', 'alice1234');
+	test('signup with duplicated username', async ({ page, request }) => {
+		await registerUser(request.fetch, 'alice', 'alice1234');
 		await visitHome(page);
 
 		await page.getByTestId('signup').click();
@@ -102,9 +102,9 @@ test.describe('After user signup', () => {
 	let alice: RegisteredUser;
 
 	test.beforeEach(async ({ request }) => {
-		await resetState(request);
-		admin = await registerUser(request, 'admin', 'pass', true);
-		alice = await registerUser(request, 'alice', 'alice1234');
+		await resetState(request.fetch);
+		admin = await registerUser(request.fetch, 'admin', 'pass', true);
+		alice = await registerUser(request.fetch, 'alice', 'alice1234');
 	});
 
 	test('successfully loads', async ({ page }) => {
@@ -152,9 +152,9 @@ test.describe('After user signup', () => {
 
 test.describe('After user signed in', () => {
 	test.beforeEach(async ({ request, page }) => {
-		await resetState(request);
-		await registerUser(request, 'admin', 'pass', true);
-		await registerUser(request, 'alice', 'alice1234');
+		await resetState(request.fetch);
+		await registerUser(request.fetch, 'admin', 'pass', true);
+		await registerUser(request.fetch, 'alice', 'alice1234');
 		await signIn(page, 'alice', 'alice1234');
 	});
 
@@ -188,9 +188,9 @@ test.describe('After user signed in', () => {
 
 test.describe('After user setup', () => {
 	test.beforeEach(async ({ request, page }) => {
-		await resetState(request);
-		await registerUser(request, 'admin', 'pass', true);
-		await registerUser(request, 'alice', 'alice1234');
+		await resetState(request.fetch);
+		await registerUser(request.fetch, 'admin', 'pass', true);
+		await registerUser(request.fetch, 'alice', 'alice1234');
 		await signIn(page, 'alice', 'alice1234');
 
 		// 表示に時間がかかるのでデフォルト秒数だとタイムアウトする
