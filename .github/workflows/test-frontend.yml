@@ -87,7 +87,8 @@ jobs:
     - name: Build
       run: pnpm build
     - name: Playwright install
-      run: pnpm dlx playwright install --with-deps chromium
+      working-directory: packages/frontend
+      run: pnpm exec playwright install --with-deps chromium
     - name: Vitest Browser E2E run
       run: pnpm start-server-and-test start:test http://localhost:61812 "pnpm --filter frontend test:e2e"
       timeout-minutes: 15
