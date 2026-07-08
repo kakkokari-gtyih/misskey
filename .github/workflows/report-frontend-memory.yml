@@ -1,0 +1,69 @@
+name: Report frontend e2e memory
+
+on:
+  workflow_run:
+    types:
+      - completed
+    workflows:
+      - Test (frontend)
+
+jobs:
+  report-memory:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.3
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: frontend-e2e-memory-artifact-*
+          path: artifacts
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Check artifacts
+        run: ls -lh artifacts/
+
+      - name: Load PR Number
+        id: load-pr-num
+        run: |
+          if [ -s artifacts/pr_number ]; then
+            echo "pr-number=$(cat artifacts/pr_number)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build memory report
+        run: |
+          if [ -s artifacts/memory-per-test.json ]; then
+            node .github/scripts/frontend-e2e-memory-report.mts ./artifacts/memory-per-test.json ./output.md
+          else
+            cat <<'EOF' > ./output.md
+            ## Frontend E2E Memory Report
+
+            Memory report JSON was not found. Playwright may have failed before tests started.
+            EOF
+          fi
+
+      - uses: thollander/actions-comment-pull-request@v3
+        if: ${{ steps.load-pr-num.outputs.pr-number }}
+        with:
+          pr-number: ${{ steps.load-pr-num.outputs.pr-number }}
+          comment-tag: frontend_e2e_memory_report
+          file-path: ./output.md
+
+      - name: Tell error to PR
+        uses: thollander/actions-comment-pull-request@v3
+        if: ${{ failure() && steps.load-pr-num.outputs.pr-number }}
+        with:
+          pr-number: ${{ steps.load-pr-num.outputs.pr-number }}
+          comment-tag: frontend_e2e_memory_report_error
+          message: |
+            An error occurred while generating frontend e2e memory report. See [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.

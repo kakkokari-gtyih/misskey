@@ -12,8 +12,9 @@ on:
       # for e2e
       - packages/backend/**
       - .github/workflows/test-frontend.yml
+      - .github/workflows/report-frontend-memory.yml
       - .github/misskey/test.yml
-      - .github/scripts/frontend-e2e-memory-report.mts
+      - .github/scripts/frontend-memory-report.mts
   pull_request:
     paths:
       - packages/frontend/**
@@ -22,8 +23,9 @@ on:
       # for e2e
       - packages/backend/**
       - .github/workflows/test-frontend.yml
+      - .github/workflows/report-frontend-memory.yml
       - .github/misskey/test.yml
-      - .github/scripts/frontend-e2e-memory-report.mts
+      - .github/scripts/frontend-memory-report.mts
 jobs:
   vitest:
     name: Unit tests (frontend)
@@ -60,7 +62,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
 
     services:
       postgres:
@@ -103,30 +104,27 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: playwright-e2e-memory-report
+        name: frontend-e2e-memory-artifact-results
         path: packages/frontend/test/e2e/artifacts/memory-per-test.json
         if-no-files-found: warn
         retention-days: 7
-    - name: Build memory report comment
-      if: always() && github.event_name == 'pull_request'
-      run: |
-        if [ -s packages/frontend/test/e2e/artifacts/memory-per-test.json ]; then
-          node .github/scripts/frontend-e2e-memory-report.mts packages/frontend/test/e2e/artifacts/memory-per-test.json ./playwright-e2e-memory-report.md
-        else
-          cat <<'EOF' > ./playwright-e2e-memory-report.md
-          ## Frontend E2E Memory Report
-
-          Memory report JSON was not found. Playwright may have failed before tests started.
-          EOF
-        fi
-    - name: Comment memory report to PR
-      if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
-      uses: thollander/actions-comment-pull-request@v3
-      with:
-        comment-tag: frontend_e2e_memory_report
-        file-path: ./playwright-e2e-memory-report.md
     - uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: playwright-e2e-artifacts
         path: packages/frontend/test/e2e/artifacts
+
+  save-pr-number:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions: {}
+    steps:
+      - name: Save PR number
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          echo "$PR_NUMBER" > ./pr_number
+      - uses: actions/upload-artifact@v7
+        with:
+          name: frontend-e2e-memory-artifact-pr-number
+          path: pr_number

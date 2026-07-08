@@ -17,7 +17,7 @@ import {
 import type { RegisteredUser } from './utils.js';
 
 test.describe('Before setup instance', () => {
-	test.beforeEach(async ({ request }) => {
+	test.beforeEach(async () => {
 		await resetState();
 	});
 
