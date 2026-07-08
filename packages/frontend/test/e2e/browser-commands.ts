@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { APIRequestContext, Page } from 'playwright';
+import type { APIRequestContext, Page, Locator } from 'playwright';
 import type { BrowserCommand } from 'vitest/node';
 import '@vitest/browser-playwright';
 
@@ -23,6 +23,18 @@ async function assertOk(status: number, body: string, route: string): Promise<vo
 async function resetState(request: APIRequestContext): Promise<void> {
 	const response = await request.post(`${BASE_URL}/api/reset-db`);
 	await assertOk(response.status(), await response.text(), '/api/reset-db');
+}
+
+function locateMkInput(page: Page, testId: string): Locator {
+	return page.locator(`[data-testid="${testId}"] input`);
+}
+
+function locateMkTextarea(page: Page, testId: string): Locator {
+	return page.locator(`[data-testid="${testId}"] textarea`);
+}
+
+function locateMkSwitch(page: Page, testId: string): Locator {
+	return page.locator(`[data-testid="${testId}"] [data-testid="switch-toggle"]`);
 }
 
 async function registerUser(
@@ -57,17 +69,17 @@ async function visitHome(page: Page): Promise<void> {
 async function signInFromTopPage(page: Page, username: string, password: string): Promise<void> {
 	await page.getByTestId('signin').click();
 	await page.getByTestId('signin-page-input').waitFor({ state: 'visible', timeout: 10_000 });
-	await page.locator('[data-cy-signin-username] input').fill(username);
+	await locateMkInput(page, 'signin-username').fill(username);
 	await page.keyboard.press('Enter');
 	await page.getByTestId('signin-page-password').waitFor({ state: 'visible', timeout: 10_000 });
-	await page.locator('[data-cy-signin-password] input').fill(password);
+	await locateMkInput(page, 'signin-password').fill(password);
 	const signinResponse = waitApiResponse(page, '/api/signin-flow');
 	await page.keyboard.press('Enter');
 	await signinResponse;
 }
 
 async function dismissAccountSetupWizard(page: Page): Promise<void> {
-	await page.locator('[data-cy-user-setup] [data-cy-modal-window-close]').click({ timeout: 30_000 });
+	await page.locator('[data-testid="user-setup-dialog"] [data-testid="modal-window-close"]').click({ timeout: 30_000 });
 	await page.getByTestId('modal-dialog-ok').click();
 }
 
@@ -99,15 +111,15 @@ async function runBeforeSetupLoads(page: Page): Promise<void> {
 async function runSetupInstance(page: Page): Promise<void> {
 	await visitHome(page);
 
-	await page.locator('[data-cy-admin-initial-password] input').fill(ADMIN_SETUP_PASSWORD);
-	await page.locator('[data-cy-admin-username] input').fill('admin');
-	await page.locator('[data-cy-admin-password] input').fill('admin1234');
+	await locateMkInput(page, 'admin-initial-password').fill(ADMIN_SETUP_PASSWORD);
+	await locateMkInput(page, 'admin-username').fill('admin');
+	await locateMkInput(page, 'admin-password').fill('admin1234');
 	const signupResponse = waitApiResponse(page, '/api/admin/accounts/create');
 	await page.getByTestId('admin-ok').click();
 	await signupResponse;
 
 	await page.getByTestId('next').click();
-	await page.locator('[data-cy-server-name] input').fill('Testskey');
+	await locateMkInput(page, 'server-setup-server-name').fill('Testskey');
 	const updateMetaResponse = waitApiResponse(page, '/api/admin/update-meta');
 	await page.getByTestId('server-setup-wizard-apply').click();
 	await updateMetaResponse;
@@ -127,14 +139,14 @@ async function runSignup(page: Page, request: APIRequestContext): Promise<void> 
 	if (!await page.getByTestId('signup-rules-continue').isDisabled()) {
 		throw new Error('signup-rules-continue should be disabled before agreement');
 	}
-	await page.locator('[data-cy-signup-rules-notes-agree] [data-cy-switch-toggle]').click();
+	await locateMkSwitch(page, 'signup-rules-notes-agree').click();
 	await page.getByTestId('modal-dialog-ok').click();
 	await page.getByTestId('signup-rules-continue').click();
 
-	await page.locator('[data-cy-signup-username] input').fill('alice');
-	await page.locator('[data-cy-signup-password] input').fill('alice1234');
-	await page.locator('[data-cy-signup-password-retype] input').fill('alice1234');
-	await page.locator('[data-cy-signup-invitation-code] input').fill('test-invitation-code');
+	await locateMkInput(page, 'signup-username').fill('alice');
+	await locateMkInput(page, 'signup-password').fill('alice1234');
+	await locateMkInput(page, 'signup-password-retype').fill('alice1234');
+	await locateMkInput(page, 'signup-invitation-code').fill('test-invitation-code');
 	const signupResponse = waitApiResponse(page, '/api/signup');
 	await page.getByTestId('signup-submit').click();
 	await signupResponse;
@@ -146,12 +158,12 @@ async function runSignupDuplicated(page: Page, request: APIRequestContext): Prom
 	await visitHome(page);
 
 	await page.getByTestId('signup').click();
-	await page.locator('[data-cy-signup-rules-notes-agree] [data-cy-switch-toggle]').click();
+	await locateMkSwitch(page, 'signup-rules-notes-agree').click();
 	await page.getByTestId('modal-dialog-ok').click();
 	await page.getByTestId('signup-rules-continue').click();
-	await page.locator('[data-cy-signup-username] input').fill('alice');
-	await page.locator('[data-cy-signup-password] input').fill('alice1234');
-	await page.locator('[data-cy-signup-password-retype] input').fill('alice1234');
+	await locateMkInput(page, 'signup-username').fill('alice');
+	await locateMkInput(page, 'signup-password').fill('alice1234');
+	await locateMkInput(page, 'signup-password-retype').fill('alice1234');
 	if (!await page.getByTestId('signup-submit').isDisabled()) {
 		throw new Error('signup-submit should stay disabled for duplicated username');
 	}
@@ -178,7 +190,7 @@ async function runSuspend(page: Page, request: APIRequestContext): Promise<void>
 	await visitHome(page);
 	await page.getByTestId('signin').click();
 	await page.getByTestId('signin-page-input').waitFor({ state: 'visible', timeout: 10_000 });
-	await page.locator('[data-cy-signin-username] input').fill('alice');
+	await locateMkInput(page, 'signin-username').fill('alice');
 	await page.keyboard.press('Enter');
 	await page.getByText(/アカウントが凍結されています|This account has been suspended due to/).waitFor({ timeout: 10_000 });
 }
@@ -191,8 +203,8 @@ async function runAfterSignedInLoads(page: Page, request: APIRequestContext): Pr
 async function runAccountSetupWizard(page: Page, request: APIRequestContext): Promise<void> {
 	await prepareAfterSignedIn(page, request);
 	await page.getByTestId('user-setup-continue').click({ timeout: 30_000 });
-	await page.locator('[data-cy-user-setup-user-name] input').fill('ありす');
-	await page.locator('[data-cy-user-setup-user-description] textarea').fill('ほげ');
+	await locateMkInput(page, 'user-setup-user-name').fill('ありす');
+	await locateMkTextarea(page, 'user-setup-user-description').fill('ほげ');
 	await page.getByTestId('user-setup-continue').click();
 	await page.getByTestId('user-setup-continue').click();
 	await page.getByTestId('user-setup-continue').click();
@@ -205,20 +217,14 @@ async function runCreateNote(page: Page, request: APIRequestContext): Promise<vo
 	await page.getByTestId('open-post-form').waitFor({ state: 'visible' });
 	await page.getByTestId('open-post-form').click();
 	await page.getByTestId('post-form-text').fill('Hello, Misskey!');
-	await page.getByTestId('open-post-form-submit').click();
+	await page.getByTestId('post-form-submit').click();
 	await page.getByText('Hello, Misskey!').waitFor({ timeout: 15_000 });
 }
 
 async function runOpenNoteFormWithHotkey(page: Page, request: APIRequestContext): Promise<void> {
 	await prepareAfterUserSetup(page, request);
 	await page.getByTestId('open-post-form').waitFor({ state: 'visible' });
-	await page.evaluate(() => {
-		document.dispatchEvent(new KeyboardEvent('keydown', {
-			key: 'n',
-			code: 'KeyL',
-			bubbles: true,
-		}));
-	});
+	await page.keyboard.press('KeyN');
 	await page.getByTestId('post-form-text').waitFor({ state: 'visible' });
 	await page.keyboard.press('Escape');
 	await page.getByTestId('post-form-text').waitFor({ state: 'hidden' });
