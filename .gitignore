@@ -23,9 +23,8 @@ packages/sw/.yarn/cache
 # pnpm
 .pnpm-store
 
-# Cypress
-cypress/screenshots
-cypress/videos
+# Vitest Browser Mode
+packages/frontend/test/e2e/screenshots
 
 # Coverage
 coverage
