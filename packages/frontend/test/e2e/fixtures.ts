@@ -6,8 +6,7 @@
 import { test as base, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, resolve, relative } from 'node:path';
 import { IGNORABLE_ERROR_MESSAGES, isIgnorableErrorMessage } from './ignorable-errors.js';
 
 type MemorySnapshot = {
@@ -31,9 +30,13 @@ type MemoryRecord = {
 		after: MemorySnapshot;
 		delta: MemorySnapshot;
 	};
+	raw: {
+		before: Record<string, unknown>;
+		after: Record<string, unknown>;
+	};
 };
 
-const defaultMemoryReportPath = fileURLToPath(new URL('./artifacts/memory-per-test.json', import.meta.url));
+const defaultMemoryReportPath = resolve(import.meta.dirname, './artifacts/memory-per-test.json');
 const memoryReportPath = process.env.PLAYWRIGHT_E2E_MEMORY_REPORT_PATH ?? defaultMemoryReportPath;
 
 function getMetricValue(metrics: Array<{ name: string; value: number }>, name: string): number | null {
@@ -42,7 +45,10 @@ function getMetricValue(metrics: Array<{ name: string; value: number }>, name: s
 	return metric.value;
 }
 
-async function getMemorySnapshot(page: Page): Promise<MemorySnapshot> {
+async function getMetrics(page: Page): Promise<{
+	memory: MemorySnapshot;
+	raw: Record<string, unknown>;
+}> {
 	const cdpSession = await page.context().newCDPSession(page);
 
 	try {
@@ -51,13 +57,19 @@ async function getMemorySnapshot(page: Page): Promise<MemorySnapshot> {
 
 		const metrics = result.metrics ?? [];
 		return {
-			jsHeapUsedSize: getMetricValue(metrics, 'JSHeapUsedSize'),
-			jsHeapTotalSize: getMetricValue(metrics, 'JSHeapTotalSize'),
+			memory: {
+				jsHeapUsedSize: getMetricValue(metrics, 'JSHeapUsedSize'),
+				jsHeapTotalSize: getMetricValue(metrics, 'JSHeapTotalSize'),
+			},
+			raw: Object.fromEntries(metrics.map((item) => [item.name, item.value])),
 		};
 	} catch {
 		return {
-			jsHeapUsedSize: null,
-			jsHeapTotalSize: null,
+			memory: {
+				jsHeapUsedSize: null,
+				jsHeapTotalSize: null,
+			},
+			raw: {},
 		};
 	} finally {
 		await cdpSession.detach().catch(() => undefined);
@@ -93,13 +105,11 @@ async function appendMemoryRecord(record: MemoryRecord): Promise<void> {
 
 	records.push(record);
 
-	console.log(`Writing memory report to ${memoryReportPath} (total records: ${records.length})`);
-
 	await writeFile(memoryReportPath, `${JSON.stringify({
 		generatedAt: new Date().toISOString(),
 		reportPath: memoryReportPath,
 		records,
-	}, null, 2)}\n`);
+	})}\n`);
 }
 
 /** 通常のtestの代わりにこちらを使用する */
@@ -136,14 +146,15 @@ export const test = base.extend<{ _installIgnorableErrorHandlers: void; _recordM
 		await use();
 	}, { auto: true }],
 	_recordMemoryUsage: [async ({ page }, use, testInfo) => {
-		const before = await getMemorySnapshot(page);
+		const before = await getMetrics(page);
 		const startedAt = Date.now();
 
 		await use();
 
-		const after = await getMemorySnapshot(page);
+		const after = await getMetrics(page);
 		const durationMs = Date.now() - startedAt;
-		const displayTitle = `${testInfo.file} > ${testInfo.title}`;
+		const relativeFileName = relative(import.meta.dirname, testInfo.file);
+		const displayTitle = `${relativeFileName} > ${testInfo.title}`;
 
 		await appendMemoryRecord({
 			test: {
@@ -157,9 +168,13 @@ export const test = base.extend<{ _installIgnorableErrorHandlers: void; _recordM
 			},
 			timestamp: new Date().toISOString(),
 			memory: {
-				before,
-				after,
-				delta: getDelta(before, after),
+				before: before.memory,
+				after: after.memory,
+				delta: getDelta(before.memory, after.memory),
+			},
+			raw: {
+				before: before.raw,
+				after: after.raw,
 			},
 		});
 	}, { auto: true }],
