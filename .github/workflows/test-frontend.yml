@@ -96,22 +96,20 @@ jobs:
       working-directory: packages/frontend
       run: pnpm exec playwright install --with-deps chromium
     - name: Test
-      env:
-        PLAYWRIGHT_E2E_MEMORY_REPORT_PATH: packages/frontend/test/e2e/artifacts/memory-per-test.json
       run: pnpm start-server-and-test start:test http://localhost:61812 "pnpm --filter frontend test:e2e"
       timeout-minutes: 15
     - name: Upload memory report artifact
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: frontend-e2e-memory-artifact-results
+        name: frontend-memory-artifact-results
         path: packages/frontend/test/e2e/artifacts/memory-per-test.json
         if-no-files-found: warn
         retention-days: 7
     - uses: actions/upload-artifact@v7
       if: failure()
       with:
-        name: playwright-e2e-artifacts
+        name: playwright-artifacts
         path: packages/frontend/test/e2e/artifacts
 
   save-pr-number:
@@ -126,5 +124,5 @@ jobs:
           echo "$PR_NUMBER" > ./pr_number
       - uses: actions/upload-artifact@v7
         with:
-          name: frontend-e2e-memory-artifact-pr-number
+          name: frontend-memory-artifact-pr-number
           path: pr_number

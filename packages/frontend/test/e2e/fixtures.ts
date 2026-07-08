@@ -47,9 +47,7 @@ async function getMemorySnapshot(page: Page): Promise<MemorySnapshot> {
 
 	try {
 		await cdpSession.send('Performance.enable');
-		const result = await cdpSession.send('Performance.getMetrics') as {
-			metrics: Array<{ name: string; value: number }>;
-		};
+		const result = await cdpSession.send('Performance.getMetrics');
 
 		const metrics = result.metrics ?? [];
 		return {

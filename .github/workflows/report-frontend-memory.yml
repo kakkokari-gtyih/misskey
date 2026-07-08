@@ -23,7 +23,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
-          pattern: frontend-e2e-memory-artifact-*
+          pattern: frontend-memory-artifact-*
           path: artifacts
           merge-multiple: true
           github-token: ${{ github.token }}
@@ -43,7 +43,7 @@ jobs:
       - name: Build memory report
         run: |
           if [ -s artifacts/memory-per-test.json ]; then
-            node .github/scripts/frontend-e2e-memory-report.mts ./artifacts/memory-per-test.json ./output.md
+            node .github/scripts/frontend-memory-report.mts ./artifacts/memory-per-test.json ./output.md
           else
             cat <<'EOF' > ./output.md
             ## Frontend E2E Memory Report

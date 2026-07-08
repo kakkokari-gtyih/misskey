@@ -146,7 +146,7 @@ function buildMarkdown(report: MemoryReport): string {
 
 async function main() {
 	if (reportFileArg == null || outputFileArg == null) {
-		throw new Error('Usage: node .github/scripts/frontend-e2e-memory-report.mts <memory-report.json> <output.md>');
+		throw new Error('Usage: node .github/scripts/frontend-memory-report.mts <memory-report.json> <output.md>');
 	}
 
 	const reportJson = await readFile(reportFileArg, 'utf8');
