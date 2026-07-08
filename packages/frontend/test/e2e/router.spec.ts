@@ -15,10 +15,9 @@ import {
 
 test.describe('Router transition', () => {
 	test.beforeAll(async () => {
-		// beforeAllではブラウザのコンテキストがないので、素のfetchでリクエストを送る
-		await resetState(fetch);
-		await registerUser(fetch, 'admin', 'pass', true);
-		await registerUser(fetch, 'alice', 'alice1234');
+		await resetState();
+		await registerUser('admin', 'pass', true);
+		await registerUser('alice', 'alice1234');
 	});
 
 	test.beforeEach(async ({ page }) => {

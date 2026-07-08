@@ -20,37 +20,35 @@ export function assertOk(status: number, body: string, route: string): void {
 	}
 }
 
-type FetchFunction = typeof fetch | APIRequestContext['fetch'];
-
-export async function resetState(fetchFn: FetchFunction): Promise<void> {
-	const response = await fetchFn(`${BASE_URL}/api/reset-db`, {
+export async function resetState(): Promise<void> {
+	const response = await fetch(`${BASE_URL}/api/reset-db`, {
 		method: 'POST',
-		data: '{}',
+		body: '{}',
 		headers: {
 			'Content-Type': 'application/json',
 		},
 	});
-	const status = typeof response.status === 'function' ? response.status() : response.status;
-	assertOk(status, await response.text(), '/api/reset-db');
+	assertOk(response.status, await response.text(), '/api/reset-db');
 }
 
 export async function registerUser(
-	fetchFn: FetchFunction,
 	username: string,
 	password: string,
 	isAdmin = false,
 ): Promise<RegisteredUser> {
 	const route = isAdmin ? '/api/admin/accounts/create' : '/api/signup';
-	const response = await fetchFn(`${BASE_URL}${route}`, {
+	const response = await fetch(`${BASE_URL}${route}`, {
 		method: 'POST',
-		data: {
+		body: JSON.stringify({
 			username,
 			password,
 			...(isAdmin ? { setupPassword: ADMIN_SETUP_PASSWORD } : {}),
+		}),
+		headers: {
+			'Content-Type': 'application/json',
 		},
 	});
-	const status = typeof response.status === 'function' ? response.status() : response.status;
-	assertOk(status, await response.text(), route);
+	assertOk(response.status, await response.text(), route);
 	return await response.json() as RegisteredUser;
 }
 //#endregion
