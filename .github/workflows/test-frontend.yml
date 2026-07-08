@@ -13,6 +13,7 @@ on:
       - packages/backend/**
       - .github/workflows/test-frontend.yml
       - .github/misskey/test.yml
+      - .github/scripts/frontend-e2e-memory-report.mts
   pull_request:
     paths:
       - packages/frontend/**
@@ -22,6 +23,7 @@ on:
       - packages/backend/**
       - .github/workflows/test-frontend.yml
       - .github/misskey/test.yml
+      - .github/scripts/frontend-e2e-memory-report.mts
 jobs:
   vitest:
     name: Unit tests (frontend)
@@ -56,6 +58,9 @@ jobs:
   e2e:
     name: E2E tests (frontend)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     services:
       postgres:
@@ -90,8 +95,36 @@ jobs:
       working-directory: packages/frontend
       run: pnpm exec playwright install --with-deps chromium
     - name: Test
+      env:
+        PLAYWRIGHT_E2E_MEMORY_REPORT_PATH: packages/frontend/test/e2e/artifacts/memory-per-test.json
       run: pnpm start-server-and-test start:test http://localhost:61812 "pnpm --filter frontend test:e2e"
       timeout-minutes: 15
+    - name: Upload memory report artifact
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: playwright-e2e-memory-report
+        path: packages/frontend/test/e2e/artifacts/memory-per-test.json
+        if-no-files-found: warn
+        retention-days: 7
+    - name: Build memory report comment
+      if: always() && github.event_name == 'pull_request'
+      run: |
+        if [ -s packages/frontend/test/e2e/artifacts/memory-per-test.json ]; then
+          node .github/scripts/frontend-e2e-memory-report.mts packages/frontend/test/e2e/artifacts/memory-per-test.json ./playwright-e2e-memory-report.md
+        else
+          cat <<'EOF' > ./playwright-e2e-memory-report.md
+          ## Frontend E2E Memory Report
+
+          Memory report JSON was not found. Playwright may have failed before tests started.
+          EOF
+        fi
+    - name: Comment memory report to PR
+      if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+      uses: thollander/actions-comment-pull-request@v3
+      with:
+        comment-tag: frontend_e2e_memory_report
+        file-path: ./playwright-e2e-memory-report.md
     - uses: actions/upload-artifact@v7
       if: failure()
       with:
