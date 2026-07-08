@@ -21,7 +21,12 @@ async function assertOk(status: number, body: string, route: string): Promise<vo
 }
 
 async function resetState(request: APIRequestContext): Promise<void> {
-	const response = await request.post(`${BASE_URL}/api/reset-db`);
+	const response = await request.post(`${BASE_URL}/api/reset-db`, {
+		data: '{}',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+	});
 	await assertOk(response.status(), await response.text(), '/api/reset-db');
 }
 
