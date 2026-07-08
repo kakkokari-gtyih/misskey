@@ -14,9 +14,9 @@ export interface RegisteredUser {
 }
 
 //#region Misc
-export function assertOk(status: number, body: string, route: string): void {
+export function assertOk(status: number, route: string): void {
 	if (status < 200 || status >= 300) {
-		throw new Error(`${route} failed: status=${status} body=${body}`);
+		throw new Error(`${route} failed: status=${status}`);
 	}
 }
 
@@ -28,7 +28,7 @@ export async function resetState(): Promise<void> {
 			'Content-Type': 'application/json',
 		},
 	});
-	assertOk(response.status, await response.text(), '/api/reset-db');
+	assertOk(response.status, '/api/reset-db');
 }
 
 export async function registerUser(
@@ -48,7 +48,7 @@ export async function registerUser(
 			'Content-Type': 'application/json',
 		},
 	});
-	assertOk(response.status, await response.text(), route);
+	assertOk(response.status, route);
 	return await response.json() as RegisteredUser;
 }
 //#endregion
