@@ -37,7 +37,7 @@
 		"@typescript-eslint/eslint-plugin": "8.62.0",
 		"@typescript-eslint/parser": "8.62.0",
 		"@vitest/coverage-v8": "4.1.9",
-		"@vizejs/vite-plugin": "0.240.0",
+		"@vizejs/vite-plugin": "0.290.0",
 		"@vitejs/plugin-vue": "6.0.7",
 		"@vue/runtime-core": "3.5.39",
 		"eslint-plugin-import": "2.32.0",
