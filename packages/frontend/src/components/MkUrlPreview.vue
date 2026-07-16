@@ -83,7 +83,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, defineAsyncComponent, onDeactivated, onUnmounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onDeactivated, onUnmounted, ref, watch } from 'vue';
+import * as Misskey from 'misskey-js';
 import { url as local } from '@@/js/config.js';
 import { versatileLang } from '@@/js/intl-const.js';
 import type { SummalyResult } from '@misskey-dev/summaly';
@@ -97,7 +98,7 @@ import { prefer } from '@/preferences.js';
 import { maybeMakeRelative } from '@@/js/url.js';
 
 const props = withDefaults(defineProps<{
-	url: string;
+	url: string | SummalyResult | NonNullable<Misskey.entities.Note['urlPreviews']>[number];
 	detail?: boolean;
 	compact?: boolean;
 	showActions?: boolean;
@@ -110,12 +111,24 @@ const props = withDefaults(defineProps<{
 const MOBILE_THRESHOLD = 500;
 const isMobile = ref(deviceKind === 'smartphone' || window.innerWidth <= MOBILE_THRESHOLD);
 
-const maybeRelativeUrl = maybeMakeRelative(props.url, local);
-const self = maybeRelativeUrl !== props.url;
-const attr = self ? 'to' : 'href';
-const target = self ? null : '_blank';
+const maybeRelativeUrl = computed(() => summalyResult.value?.url ? maybeMakeRelative(summalyResult.value.url, local) : null);
+const self = computed(() => maybeRelativeUrl.value !== summalyResult.value?.url);
+const attr = computed(() => self.value ? 'to' : 'href');
+const target = computed(() => self.value ? null : '_blank');
 const fetching = ref(true);
+const unknownUrl = ref(false);
 const summalyResult = ref<SummalyResult | null>(null);
+const requestUrl = computed(() => {
+	let _url: URL;
+	if (typeof props.url === 'string') {
+		_url = new URL(props.url, window.location.href);
+	} else {
+		_url = new URL(props.url.url, window.location.href);
+	}
+
+	_url.hash = '';
+	return _url;
+});
 const title = computed(() => summalyResult.value?.title ?? null);
 const description = computed(() => summalyResult.value?.description ?? null);
 const thumbnail = computed(() => summalyResult.value?.thumbnail ?? null);
@@ -128,49 +141,10 @@ const tweetId = ref<string | null>(null);
 const tweetExpanded = ref(props.detail);
 const embedId = `embed${Math.random().toString().replace(/\D/, '')}`;
 const tweetHeight = ref(150);
-const unknownUrl = ref(false);
 
 onDeactivated(() => {
 	playerEnabled.value = false;
 });
-
-const requestUrl = new URL(props.url, window.location.href);
-if (!['http:', 'https:'].includes(requestUrl.protocol)) throw new Error('invalid url');
-
-if (requestUrl.hostname === 'twitter.com' || requestUrl.hostname === 'mobile.twitter.com' || requestUrl.hostname === 'x.com' || requestUrl.hostname === 'mobile.x.com') {
-	const m = requestUrl.pathname.match(/^\/.+\/status(?:es)?\/(\d+)/);
-	if (m) tweetId.value = m[1];
-}
-
-if (requestUrl.hostname === 'music.youtube.com' && requestUrl.pathname.match('^/(?:watch|channel)')) {
-	requestUrl.hostname = 'www.youtube.com';
-}
-
-requestUrl.hash = '';
-
-window.fetch(`/url?url=${encodeURIComponent(requestUrl.href)}&lang=${versatileLang}`)
-	.then(res => {
-		if (!res.ok) {
-			if (_DEV_) {
-				console.warn(`[HTTP${res.status}] Failed to fetch url preview`);
-			}
-			return null;
-		}
-
-		return res.json();
-	})
-	.then((info: SummalyResult | null) => {
-		if (!info || info.url == null) {
-			fetching.value = false;
-			unknownUrl.value = true;
-			return;
-		}
-
-		fetching.value = false;
-		unknownUrl.value = false;
-
-		summalyResult.value = info;
-	});
 
 function adjustTweetHeight(message: MessageEvent) {
 	if (message.origin !== 'https://platform.twitter.com') return;
@@ -192,6 +166,54 @@ function openPlayer(): void {
 		},
 	});
 }
+
+watch(() => props.url, async (to) => {
+	if (typeof to === 'string') {
+		fetching.value = true;
+
+		if (!['http:', 'https:'].includes(requestUrl.value.protocol)) {
+			summalyResult.value = null;
+			fetching.value = false;
+			unknownUrl.value = true;
+			return;
+		}
+
+		const res = await window.fetch(`/url?url=${encodeURIComponent(requestUrl.value.href)}&lang=${versatileLang}`);
+		if (!res.ok) {
+			if (_DEV_) {
+				console.warn(`[HTTP${res.status}] Failed to fetch url preview`);
+			}
+			summalyResult.value = null;
+			fetching.value = false;
+			unknownUrl.value = true;
+			return;
+		}
+
+		const info: SummalyResult | null = await res.json();
+		if (!info || info.url == null) {
+			summalyResult.value = null;
+			fetching.value = false;
+			unknownUrl.value = true;
+			return;
+		}
+
+		summalyResult.value = info;
+	} else {
+		summalyResult.value = to as SummalyResult;
+	}
+
+	if (requestUrl.value.hostname === 'twitter.com' || requestUrl.value.hostname === 'mobile.twitter.com' || requestUrl.value.hostname === 'x.com' || requestUrl.value.hostname === 'mobile.x.com') {
+		const m = requestUrl.value.pathname.match(/^\/.+\/status(?:es)?\/(\d+)/);
+		if (m) tweetId.value = m[1];
+	}
+
+	if (requestUrl.value.hostname === 'music.youtube.com' && requestUrl.value.pathname.match('^/(?:watch|channel)')) {
+		requestUrl.value.hostname = 'www.youtube.com';
+	}
+
+	unknownUrl.value = false;
+	fetching.value = false;
+}, { immediate: true });
 
 window.addEventListener('message', adjustTweetHeight);
 
