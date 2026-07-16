@@ -265,5 +265,13 @@ export const packedNoteSchema = {
 			type: 'string',
 			optional: true, nullable: true,
 		},
+		urlPreviews: {
+			type: 'array',
+			optional: true, nullable: false,
+			items: {
+				type: 'object',
+				optional: false, nullable: false,
+			},
+		},
 	},
 } as const;

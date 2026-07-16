@@ -15,9 +15,7 @@ import { MemoryKVCache } from '@/misc/cache.js';
 import { LoggerService } from '@/core/LoggerService.js';
 import { UtilityService } from '@/core/UtilityService.js';
 import { bindThis } from '@/decorators.js';
-import { ApiError } from '@/server/api/error.js';
 import { MiMeta } from '@/models/Meta.js';
-import type { FastifyRequest, FastifyReply } from 'fastify';
 
 @Injectable()
 export class UrlPreviewService implements OnApplicationShutdown {
@@ -37,7 +35,7 @@ export class UrlPreviewService implements OnApplicationShutdown {
 		private loggerService: LoggerService,
 	) {
 		this.logger = this.loggerService.getLogger('url-preview');
-		this.summaryCache = new MemoryKVCache<SummalyResult>(1000 * 60 * 60, 100); // 1h, 100件
+		this.summaryCache = new MemoryKVCache<SummalyResult>(1000 * 60 * 60, 200); // 1h, 100件
 		this.summalyDefaultUserAgent = `SummalyBot/${_SUMMALY_VERSION_} (${this.config.url}; +https://github.com/misskey-dev/summaly/blob/master/README.md)`;
 	}
 
@@ -52,31 +50,9 @@ export class UrlPreviewService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async handle(
-		request: FastifyRequest<{ Querystring: { url: string; lang?: string; } }>,
-		reply: FastifyReply,
-	): Promise<object | undefined> {
-		const url = request.query.url;
-		if (typeof url !== 'string') {
-			reply.code(400);
-			return;
-		}
-
-		const lang = request.query.lang;
-		if (Array.isArray(lang)) {
-			reply.code(400);
-			return;
-		}
-
+	public async getPreview(url: string, lang?: string): Promise<SummalyResult | null> {
 		if (!this.meta.urlPreviewEnabled) {
-			reply.code(403);
-			return {
-				error: new ApiError({
-					message: 'URL preview is disabled',
-					code: 'URL_PREVIEW_DISABLED',
-					id: '58b36e13-d2f5-0323-b0c6-76aa9dabefb8',
-				}),
-			};
+			return null;
 		}
 
 		this.logger.info(this.meta.urlPreviewSummaryProxyUrl
@@ -117,22 +93,11 @@ export class UrlPreviewService implements OnApplicationShutdown {
 				summary.sensitive = this.utilityService.isKeyWordIncluded(summary.url, this.meta.urlPreviewSensitiveList);
 			}
 
-			// Cache 1day
-			reply.header('Cache-Control', 'max-age=86400, immutable');
-
 			return summary;
 		} catch (err) {
 			this.logger.warn(`Failed to get preview of ${url}: ${err}`);
 
-			reply.code(422);
-			reply.header('Cache-Control', 'max-age=86400, immutable');
-			return {
-				error: new ApiError({
-					message: 'Failed to get preview',
-					code: 'URL_PREVIEW_FAILED',
-					id: '09d01cb5-53b9-4856-82e5-38a50c290a3b',
-				}),
-			};
+			return null;
 		}
 	}
 

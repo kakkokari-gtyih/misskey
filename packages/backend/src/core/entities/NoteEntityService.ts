@@ -18,6 +18,8 @@ import { IdService } from '@/core/IdService.js';
 import { shouldHideNoteByTime } from '@/misc/should-hide-note-by-time.js';
 import { ReactionsBufferingService } from '@/core/ReactionsBufferingService.js';
 import { CacheService } from '@/core/CacheService.js';
+import { UrlPreviewService } from '@/core/UrlPreviewService.js';
+import type { SummalyResult } from '@misskey-dev/summaly';
 import type { OnModuleInit } from '@nestjs/common';
 import type { CustomEmojiService } from '../CustomEmojiService.js';
 import type { ReactionService } from '../ReactionService.js';
@@ -68,6 +70,7 @@ export class NoteEntityService implements OnModuleInit {
 	private reactionsBufferingService: ReactionsBufferingService;
 	private idService: IdService;
 	private cacheService: CacheService;
+	private urlPreviewService: UrlPreviewService;
 	private noteLoader = new DebounceLoader(this.findNoteOrFail);
 
 	constructor(
@@ -115,6 +118,7 @@ export class NoteEntityService implements OnModuleInit {
 		this.reactionsBufferingService = this.moduleRef.get('ReactionsBufferingService');
 		this.idService = this.moduleRef.get('IdService');
 		this.cacheService = this.moduleRef.get('CacheService');
+		this.urlPreviewService = this.moduleRef.get('UrlPreviewService');
 	}
 
 	@bindThis
@@ -457,6 +461,20 @@ export class NoteEntityService implements OnModuleInit {
 						reactionAndUserPairCache: reactionAndUserPairCache,
 					}, meId, options?._hint_),
 				} : {}),
+
+				urlPreviews: this.cacheService.noteUrlsCache.fetch(note.id).then(async (urls) => {
+					if (urls.size === 0) return [];
+					const urlsArray = Array.from(urls);
+					const previews: SummalyResult[] = [];
+					for (const url of urlsArray) {
+						const preview = await this.urlPreviewService.getPreview(url);
+						if (preview) {
+							previews.push(preview);
+						}
+						if (previews.length >= 5) break;
+					}
+					return previews;
+				}),
 			} : {}),
 		});
 

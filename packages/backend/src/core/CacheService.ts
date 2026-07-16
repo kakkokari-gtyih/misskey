@@ -5,7 +5,9 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import * as Redis from 'ioredis';
-import type { BlockingsRepository, FollowingsRepository, MutingsRepository, RenoteMutingsRepository, MiUserProfile, UserProfilesRepository, UsersRepository, MiFollowing } from '@/models/_.js';
+import * as mfm from 'mfm-js';
+import { extractUrlFromMfm } from '@/misc/extract-url.js';
+import type { BlockingsRepository, FollowingsRepository, MutingsRepository, RenoteMutingsRepository, MiUserProfile, NotesRepository, UserProfilesRepository, UsersRepository, MiFollowing } from '@/models/_.js';
 import { MemoryKVCache, RedisKVCache } from '@/misc/cache.js';
 import type { MiLocalUser, MiUser } from '@/models/User.js';
 import { DI } from '@/di-symbols.js';
@@ -26,6 +28,7 @@ export class CacheService implements OnApplicationShutdown {
 	public userBlockedCache: RedisKVCache<Set<string>>; // NOTE: 「被」Blockキャッシュ
 	public renoteMutingsCache: RedisKVCache<Set<string>>;
 	public userFollowingsCache: RedisKVCache<Record<string, Pick<MiFollowing, 'withReplies'> | undefined>>;
+	public noteUrlsCache: RedisKVCache<Set<string>>;
 
 	constructor(
 		@Inject(DI.redis)
@@ -51,6 +54,9 @@ export class CacheService implements OnApplicationShutdown {
 
 		@Inject(DI.followingsRepository)
 		private followingsRepository: FollowingsRepository,
+
+		@Inject(DI.notesRepository)
+		private notesRepository: NotesRepository,
 
 		private userEntityService: UserEntityService,
 	) {
@@ -128,6 +134,18 @@ export class CacheService implements OnApplicationShutdown {
 			}),
 			toRedisConverter: (value) => JSON.stringify(value),
 			fromRedisConverter: (value) => JSON.parse(value),
+		});
+
+		this.noteUrlsCache = new RedisKVCache<Set<string>>(this.redisClient, 'noteUrls', {
+			lifetime: 1000 * 60 * 30, // 30m
+			memoryCacheLifetime: 1000 * 60, // 1m
+			fetcher: (key) => this.notesRepository.findOneByOrFail({ id: key }).then(note => {
+				if (note.text == null) return new Set<string>();
+				const nodes = mfm.parse(note.text);
+				return new Set(extractUrlFromMfm(nodes));
+			}),
+			toRedisConverter: (value) => JSON.stringify(Array.from(value)),
+			fromRedisConverter: (value) => new Set(JSON.parse(value)),
 		});
 
 		// NOTE: チャンネルのフォロー状況キャッシュはChannelFollowingServiceで行っている

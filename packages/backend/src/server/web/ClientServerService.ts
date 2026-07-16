@@ -42,7 +42,7 @@ import { FlashEntityService } from '@/core/entities/FlashEntityService.js';
 import { ReversiGameEntityService } from '@/core/entities/ReversiGameEntityService.js';
 import { AnnouncementEntityService } from '@/core/entities/AnnouncementEntityService.js';
 import { FeedService } from './FeedService.js';
-import { UrlPreviewService } from './UrlPreviewService.js';
+import { UrlPreviewServerService } from './UrlPreviewServerService.js';
 import { ClientLoggerService } from './ClientLoggerService.js';
 import { HtmlTemplateService } from './HtmlTemplateService.js';
 
@@ -123,7 +123,7 @@ export class ClientServerService {
 		private channelEntityService: ChannelEntityService,
 		private reversiGameEntityService: ReversiGameEntityService,
 		private announcementEntityService: AnnouncementEntityService,
-		private urlPreviewService: UrlPreviewService,
+		private urlPreviewServerService: UrlPreviewServerService,
 		private feedService: FeedService,
 		private htmlTemplateService: HtmlTemplateService,
 		private clientLoggerService: ClientLoggerService,
@@ -447,7 +447,7 @@ export class ClientServerService {
 		};
 
 		// URL preview endpoint
-		fastify.get<{ Querystring: { url: string; lang: string; } }>('/url', (request, reply) => this.urlPreviewService.handle(request, reply));
+		fastify.get<{ Querystring: { url: string; lang: string; } }>('/url', (request, reply) => this.urlPreviewServerService.handle(request, reply));
 
 		const getFeed = async (acct: string) => {
 			const { username, host } = Acct.parse(acct);
