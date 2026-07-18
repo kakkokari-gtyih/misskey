@@ -31,10 +31,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</MkDraggable>
 	<p
 		:class="[$style.remain, {
-			[$style.exceeded]: props.modelValue.length > $i.policies.noteFilesLimit,
+			[$style.exceeded]: props.modelValue.length > props.noteFilesLimit,
 		}]"
 	>
-		{{ props.modelValue.length }}/{{ $i.policies.noteFilesLimit }}
+		{{ props.modelValue.length }}/{{ props.noteFilesLimit }}
 	</p>
 </div>
 </template>
@@ -43,7 +43,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { inject } from 'vue';
 import * as Misskey from 'misskey-js';
 import type { MenuItem } from '@/types/menu';
-import { ensureSignin } from '@/i.js';
 import { copyToClipboard } from '@/utility/copy-to-clipboard';
 import MkDriveFileThumbnail from '@/components/MkDriveFileThumbnail.vue';
 import MkDraggable from '@/components/MkDraggable.vue';
@@ -54,10 +53,10 @@ import { prefer } from '@/preferences.js';
 import { DI } from '@/di.js';
 import { globalEvents } from '@/events.js';
 
-const $i = ensureSignin();
-
 const props = defineProps<{
 	modelValue: Misskey.entities.DriveFile[];
+	/** 投稿に使用するアカウントのポリシー由来の添付上限 */
+	noteFilesLimit: number;
 	detachMediaFn?: (id: string) => void;
 }>();
 

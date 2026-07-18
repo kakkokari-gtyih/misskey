@@ -2727,7 +2727,7 @@ _postForm:
   showHowToUse: "フォームの説明を表示"
   thisNoteCannotBePostedTitle: "このノートは投稿できません"
   thisNoteCannotBePostedDescription: "ファイルのアップロードなどによりアカウントの制限を超えた可能性があります。内容を再度お確かめください。"
-  _noteCreateErors:
+  _noteCreateErrors:
     genericTitle: "ノートの投稿に失敗しました"
     genericDescription: "時間を置いてからもう一度試してください。"
     rolePolicyDeniedDescription: "お使いのアカウントにはノートを投稿する権限がありません。"

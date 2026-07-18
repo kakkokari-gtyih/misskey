@@ -694,7 +694,9 @@ export function getRenoteMenu(props: {
 				}
 
 				const configuredVisibility = prefer.s.rememberNoteVisibility ? store.s.visibility : prefer.s.defaultNoteVisibility;
-				const localOnly = prefer.s.rememberNoteVisibility ? store.s.localOnly : prefer.s.defaultNoteLocalOnly;
+				const configuredLocalOnly = prefer.s.rememberNoteVisibility ? store.s.localOnly : prefer.s.defaultNoteLocalOnly;
+				// 連合が許可されていないなら、設定に関わらずローカルのみにする
+				const localOnly = $i?.policies.canFederateNote === false ? true : configuredLocalOnly;
 
 				let visibility = appearNote.visibility;
 				visibility = smallerVisibility(visibility, configuredVisibility);

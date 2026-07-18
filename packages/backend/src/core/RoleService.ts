@@ -473,7 +473,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			renotePolicy: calc('renotePolicy', aggregateRenotePolicy),
 			canCreateSpecifiedNote: calc('canCreateSpecifiedNote', vs => vs.some(v => v === true)),
 			canFederateNote: calc('canFederateNote', vs => vs.some(v => v === true)),
-			noteFilesLimit: calc('noteFilesLimit', vs => Math.min(Math.max(...vs), MAX_NOTE_ATTACHMENTS)),
+			noteFilesLimit: calc('noteFilesLimit', vs => Math.min(Math.max(...vs, 0), MAX_NOTE_ATTACHMENTS)),
 		};
 	}
 

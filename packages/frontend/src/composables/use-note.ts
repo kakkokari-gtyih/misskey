@@ -237,6 +237,8 @@ export function useNote(
 		if (props.mock) return;
 		const isLoggedIn = await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
 		if (!isLoggedIn) return;
+		// ボタン経由・キーボードショートカット経由のどちらからも呼ばれるため、ここで権限を判定する
+		if (!canReply.value) return;
 		os.post({
 			reply: appearNote,
 			channel: appearNote.channel,

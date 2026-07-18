@@ -535,12 +535,12 @@ export class NoteCreateService implements OnApplicationShutdown {
 		const isRenote = this.isRenote(data);
 		const isQuote = isRenote ? this.isQuote(data) : false;
 
-		if (isRenote && userPolicies.renotePolicy === 'disallow') {
-			throw new IdentifiableError('d35d80dc-02ba-4c9b-b9b8-905d306dcb67', 'You are not allowed to renote');
-		}
-
 		if (isQuote && (userPolicies.renotePolicy === 'disallow' || userPolicies.renotePolicy === 'renoteOnly')) {
 			throw new IdentifiableError('3a97010b-c338-4cdf-a567-24c54b67726e', 'You are not allowed to quote');
+		}
+
+		if (isRenote && !isQuote && userPolicies.renotePolicy === 'disallow') {
+			throw new IdentifiableError('d35d80dc-02ba-4c9b-b9b8-905d306dcb67', 'You are not allowed to renote');
 		}
 
 		// Check blocking
@@ -629,7 +629,10 @@ export class NoteCreateService implements OnApplicationShutdown {
 			if (!userPolicies.canFederateNote && data.visibleUsers.some(u => this.userEntityService.isRemoteUser(u))) {
 				throw new IdentifiableError('5bbfae8d-097c-4c58-93f4-bc242d600529', 'You are not allowed to send direct notes to remote users');
 			}
-		} else if (!userPolicies.canFederateNote) {
+		}
+
+		// 連合が許可されていないならローカルのみにする (宛先がローカルユーザーのみでも、メンション経由でリモートに配送されうるため)
+		if (!userPolicies.canFederateNote) {
 			data.localOnly = true;
 		}
 

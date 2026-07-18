@@ -30,7 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<span :class="$style.itemDescription">{{ i18n.ts._visibility.followersDescription }}</span>
 			</div>
 		</button>
-		<button key="specified" :disabled="!$i.policies.canCreateSpecifiedNote" class="_button" :class="[$style.item, { [$style.active]: v === 'specified' }]" data-index="4" @click="choose('specified')">
+		<button key="specified" :disabled="!props.canCreateSpecifiedNote" class="_button" :class="[$style.item, { [$style.active]: v === 'specified' }]" data-index="4" @click="choose('specified')">
 			<div :class="$style.icon"><i class="ti ti-mail"></i></div>
 			<div :class="$style.body">
 				<span :class="$style.itemTitle">{{ i18n.ts._visibility.specified }}</span>
@@ -44,17 +44,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { nextTick, useTemplateRef, ref } from 'vue';
 import * as Misskey from 'misskey-js';
-import { ensureSignin } from '@/i.js';
 import MkModal from '@/components/MkModal.vue';
 import { i18n } from '@/i18n.js';
-
-const $i = ensureSignin();
 
 const modal = useTemplateRef('modal');
 
 const props = withDefaults(defineProps<{
 	currentVisibility: typeof Misskey.noteVisibilities[number];
 	isSilenced: boolean;
+	/** 投稿に使用するアカウントのポリシー由来の、指定投稿の可否 */
+	canCreateSpecifiedNote: boolean;
 	anchorElement?: HTMLElement | null;
 	isReplyVisibilitySpecified?: boolean;
 }>(), {

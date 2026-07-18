@@ -10350,7 +10350,7 @@ export interface Locale extends ILocale {
          * ファイルのアップロードなどによりアカウントの制限を超えた可能性があります。内容を再度お確かめください。
          */
         "thisNoteCannotBePostedDescription": string;
-        "_noteCreateErors": {
+        "_noteCreateErrors": {
             /**
              * ノートの投稿に失敗しました
              */
