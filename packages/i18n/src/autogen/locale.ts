@@ -6360,6 +6360,60 @@ export interface Locale extends ILocale {
          */
         "forceBackup": string;
     };
+    "_primaryAccount": {
+        /**
+         * 設定のクラウド同期とバックアップは、ここで選んだアカウントに保存されます。操作するアカウントを切り替えても保存先は変わりません。
+         */
+        "description": string;
+        /**
+         * 設定の保存先にする
+         */
+        "setAsPrimary": string;
+        /**
+         * 設定の保存先
+         */
+        "thisAccountIsPrimary": string;
+        /**
+         * 設定の保存先を変更しますか？
+         */
+        "changeConfirmTitle": string;
+        /**
+         * これまでの設定のバックアップは変更前のアカウントに残ります。これ以降のバックアップと同期は、新しい保存先のアカウントに保存されます。
+         */
+        "changeConfirmDescription": string;
+        /**
+         * このアカウントは再ログインが必要なため、設定の保存先にできません。
+         */
+        "cannotSelectAccountWithoutToken": string;
+        /**
+         * 設定の保存先アカウントがありません
+         */
+        "unavailableTitle": string;
+        /**
+         * 設定のクラウド同期とバックアップを使うには、「アカウント」設定で保存先のアカウントを選んでください。
+         */
+        "unavailableDescription": string;
+        /**
+         * 設定の同期を一時停止しました
+         */
+        "suspendedTitle": string;
+        /**
+         * 設定の保存先アカウントの認証が無効になっているため、クラウド同期とバックアップを一時停止しました。そのアカウントにログインし直すか、別のアカウントを保存先に選んでください。
+         */
+        "suspendedDescription": string;
+        /**
+         * 設定の保存先アカウントの認証が無効になっているため、クラウド同期とバックアップを一時停止しています。
+         */
+        "suspendedIndicator": string;
+        /**
+         * 設定の保存先アカウントからログアウトします
+         */
+        "chooseNextOnLogoutTitle": string;
+        /**
+         * このアカウントは設定のクラウド同期とバックアップの保存先です。ログアウト後に使う保存先のアカウントを選んでください。これまでのバックアップはログアウトするアカウントに残ります。
+         */
+        "chooseNextOnLogoutDescription": string;
+    };
     "_accountSettings": {
         /**
          * コンテンツの表示にログインを必須にする

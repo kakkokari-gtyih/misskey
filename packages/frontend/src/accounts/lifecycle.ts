@@ -16,14 +16,16 @@
 
 import { apiUrl, host as localHost } from '@@/js/config.js';
 import type { AccountKey } from '@/lib/storage/keys.js';
+import type { LedgerEntry } from '@/accounts/ledger.js';
 import { accountKeyOf } from '@/lib/storage/keys.js';
 import { eraseAccountData, wipeDevice } from '@/accounts/erasure.js';
 import { pickNextAccountToken, shouldPromoteToFullLogout } from '@/accounts/logout-policy.js';
-import { keyOfEntry, listEntries, getEntry } from '@/accounts/ledger.js';
+import { keyOfEntry, listEntries, getEntry, getPrimaryAccountKey, setPrimaryAccountKey } from '@/accounts/ledger.js';
 import { cloudBackup } from '@/preferences/utility.js';
+import { i18n } from '@/i18n.js';
 import { login } from '@/accounts.js';
 import { store } from '@/store.js';
-import { waiting } from '@/os.js';
+import { waiting, select } from '@/os.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { $i } from '@/i.js';
 
@@ -74,9 +76,43 @@ async function unregisterServiceWorkers(): Promise<void> {
 //#endregion
 
 async function backupIfEnabled(): Promise<void> {
-	if (store.s.enablePreferencesAutoCloudBackup) {
+	if (!store.s.enablePreferencesAutoCloudBackup) return;
+
+	try {
 		await cloudBackup();
+	} catch (err) {
+		// 保存先(プライマリアカウント)が無い・失効している・通信に失敗した、など。
+		// バックアップが取れないことを理由にログアウト自体を止めてはいけない
+		console.error('failed to back up preferences before logging out', err);
 	}
+}
+
+/**
+ * プライマリ（＝設定の同期・バックアップ先）をログアウトしようとしている場合に、
+ * 新しい保存先を利用者に選ばせる。
+ *
+ * 選ばせずに自動で繰り上げることもできる（台帳の`choosePrimaryAccountKey`が先頭を選ぶ）が、
+ * それだと「設定がどのアカウントに入っているか」が利用者の与り知らぬところで変わってしまう。
+ *
+ * @returns 選ばれた新しいプライマリ。キャンセル時はnull（＝台帳の自動選択に委ねる）
+ */
+async function askNextPrimaryAccount(remaining: readonly LedgerEntry[]): Promise<AccountKey | null> {
+	// tokenを持たないエントリ（プロファイル復元直後などのロースターのみの行）は保存先にできない
+	const candidates = remaining.filter(e => e.token != null);
+	if (candidates.length === 0) return null;
+
+	const { canceled, result } = await select({
+		title: i18n.ts._primaryAccount.chooseNextOnLogoutTitle,
+		text: i18n.ts._primaryAccount.chooseNextOnLogoutDescription,
+		items: candidates.map(e => ({
+			label: `@${e.username || e.id}@${e.host}`,
+			value: keyOfEntry(e),
+		})),
+		default: keyOfEntry(candidates[0]),
+	});
+	if (canceled || result == null) return null;
+
+	return result;
 }
 
 /**
@@ -100,6 +136,12 @@ export async function logoutAccount(account?: AccountKey): Promise<void> {
 		return;
 	}
 
+	// 消去より前に尋ねる（消去後だと、選ばせる対象の一覧が既に動いてしまっている）。
+	// waiting()より前でもある必要がある: waiting()は画面をinertにするのでダイアログを操作できない
+	const nextPrimary = getPrimaryAccountKey() === target
+		? await askNextPrimaryAccount(remaining)
+		: null;
+
 	if (isCurrentAccount) waiting();
 
 	await backupIfEnabled();
@@ -110,6 +152,12 @@ export async function logoutAccount(account?: AccountKey): Promise<void> {
 	if (token != null) await unsubscribePush([token]);
 
 	await eraseAccountData(target);
+
+	// 消去の時点で台帳が自動的に先頭を繰り上げているので、利用者が選んだ場合だけ上書きする。
+	// (旧プライマリのtoken失効による一時停止は、tokenが変わった時点で輸送層が自動的に解除する)
+	if (nextPrimary != null) {
+		await setPrimaryAccountKey(nextPrimary);
+	}
 
 	if (!isCurrentAccount) {
 		// 現在のセッションには影響しないのでリロード不要

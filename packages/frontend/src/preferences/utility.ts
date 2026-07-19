@@ -13,17 +13,37 @@ import { prefer } from '@/preferences.js';
 import * as os from '@/os.js';
 import { store } from '@/store.js';
 import { $i } from '@/i.js';
-import { misskeyApi } from '@/utility/misskey-api.js';
+import { preferencesTransport } from '@/preferences/transport.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 
 function canAutoBackup() {
 	return prefer.profile.name != null && prefer.profile.name.trim() !== '';
 }
 
+/**
+ * バックアップの保存先(プライマリアカウント)が使えるか確かめ、駄目なら理由を説明する。
+ * 利用者が明示的に操作したときだけ呼ぶこと（定期バックアップでは黙って見送る）。
+ */
+async function warnIfNoBackupDestination(): Promise<boolean> {
+	const availability = await preferencesTransport.getAvailability();
+	if (availability.available) return true;
+
+	os.alert({
+		type: 'warning',
+		title: availability.reason === 'suspended'
+			? i18n.ts._primaryAccount.suspendedTitle
+			: i18n.ts._primaryAccount.unavailableTitle,
+		text: availability.reason === 'suspended'
+			? i18n.ts._primaryAccount.suspendedDescription
+			: i18n.ts._primaryAccount.unavailableDescription,
+	});
+	return false;
+}
+
 export function getPreferencesProfileMenu(): MenuItem[] {
 	const autoBackupEnabled = ref(store.s.enablePreferencesAutoCloudBackup);
 
-	watch(autoBackupEnabled, () => {
+	watch(autoBackupEnabled, async () => {
 		if (autoBackupEnabled.value) {
 			if (!canAutoBackup()) {
 				autoBackupEnabled.value = false;
@@ -34,9 +54,17 @@ export function getPreferencesProfileMenu(): MenuItem[] {
 				return;
 			}
 
+			// 保存先が無いまま有効化しても、以後ずっと黙って失敗し続けるだけになる
+			if (!await warnIfNoBackupDestination()) {
+				autoBackupEnabled.value = false;
+				return;
+			}
+
 			store.set('enablePreferencesAutoCloudBackup', true);
 
-			cloudBackup();
+			cloudBackup().catch(err => {
+				console.error('failed to take the initial cloud backup', err);
+			});
 		} else {
 			store.set('enablePreferencesAutoCloudBackup', false);
 		}
@@ -139,13 +167,16 @@ function importProfile() {
 	input.click();
 }
 
+/**
+ * バックアップの置き場もプライマリアカウントのregistry固定。
+ * 保存先が無い場合は現在のアカウントへフォールバックせず失敗させる（理由は @/preferences/transport.js）。
+ */
 export async function cloudBackup() {
-	if ($i == null) return;
 	if (!canAutoBackup()) {
 		throw new Error('cannot auto backup for this profile');
 	}
 
-	await misskeyApi('i/registry/set', {
+	await preferencesTransport.request('i/registry/set', {
 		scope: ['client', 'preferences', 'backups'],
 		key: prefer.profile.name,
 		value: prefer.profile,
@@ -153,7 +184,7 @@ export async function cloudBackup() {
 }
 
 export async function listCloudBackups() {
-	const keys = await misskeyApi('i/registry/keys', {
+	const keys = await preferencesTransport.request('i/registry/keys', {
 		scope: ['client', 'preferences', 'backups'],
 	});
 
@@ -163,14 +194,14 @@ export async function listCloudBackups() {
 }
 
 export async function deleteCloudBackup(key: string) {
-	await os.apiWithDialog('i/registry/remove', {
+	await os.promiseDialog(preferencesTransport.request('i/registry/remove', {
 		scope: ['client', 'preferences', 'backups'],
 		key,
-	});
+	}));
 }
 
 export async function restoreFromCloudBackup() {
-	if ($i == null) return;
+	if (!await warnIfNoBackupDestination()) return;
 
 	// TODO: 更新日時でソートしたい
 	const backups = await listCloudBackups();
@@ -195,7 +226,7 @@ export async function restoreFromCloudBackup() {
 	if (select.canceled) return;
 	if (select.result == null) return;
 
-	const profile = await misskeyApi('i/registry/get', {
+	const profile = await preferencesTransport.request('i/registry/get', {
 		scope: ['client', 'preferences', 'backups'],
 		key: select.result,
 	});
@@ -218,6 +249,8 @@ export async function enableAutoBackup() {
 		return;
 	}
 
+	if (!await warnIfNoBackupDestination()) return;
+
 	store.set('enablePreferencesAutoCloudBackup', true);
 }
 
@@ -228,14 +261,16 @@ if ($i != null) {
 		miLocalStorage.setItem('hidePreferencesRestoreSuggestion', 'true');
 	} else {
 		if (miLocalStorage.getItem('hidePreferencesRestoreSuggestion') !== 'true') {
-			misskeyApi('i/registry/keys', {
-				scope: ['client', 'preferences', 'backups'],
-			}).then(keys => {
-				if (keys.length === 0) {
+			// 保存先が無い場合は「バックアップが0件」ではなく「まだ判断できない」なので、
+			// hidePreferencesRestoreSuggestionを立てずに黙って見送る（次回起動でまた試す）
+			listCloudBackups().then(backups => {
+				if (backups.length === 0) {
 					miLocalStorage.setItem('hidePreferencesRestoreSuggestion', 'true');
 				} else {
 					shouldSuggestRestoreBackup.value = true;
 				}
+			}, () => {
+				// 同期先が無い / 通信失敗。提案しないだけで何も壊れない
 			});
 		}
 	}

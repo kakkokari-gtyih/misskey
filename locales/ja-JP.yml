@@ -1604,6 +1604,21 @@ _preferencesBackup:
   backupFound: "設定のバックアップが見つかりました"
   forceBackup: "設定の強制バックアップ"
 
+_primaryAccount:
+  description: "設定のクラウド同期とバックアップは、ここで選んだアカウントに保存されます。操作するアカウントを切り替えても保存先は変わりません。"
+  setAsPrimary: "設定の保存先にする"
+  thisAccountIsPrimary: "設定の保存先"
+  changeConfirmTitle: "設定の保存先を変更しますか？"
+  changeConfirmDescription: "これまでの設定のバックアップは変更前のアカウントに残ります。これ以降のバックアップと同期は、新しい保存先のアカウントに保存されます。"
+  cannotSelectAccountWithoutToken: "このアカウントは再ログインが必要なため、設定の保存先にできません。"
+  unavailableTitle: "設定の保存先アカウントがありません"
+  unavailableDescription: "設定のクラウド同期とバックアップを使うには、「アカウント」設定で保存先のアカウントを選んでください。"
+  suspendedTitle: "設定の同期を一時停止しました"
+  suspendedDescription: "設定の保存先アカウントの認証が無効になっているため、クラウド同期とバックアップを一時停止しました。そのアカウントにログインし直すか、別のアカウントを保存先に選んでください。"
+  suspendedIndicator: "設定の保存先アカウントの認証が無効になっているため、クラウド同期とバックアップを一時停止しています。"
+  chooseNextOnLogoutTitle: "設定の保存先アカウントからログアウトします"
+  chooseNextOnLogoutDescription: "このアカウントは設定のクラウド同期とバックアップの保存先です。ログアウト後に使う保存先のアカウントを選んでください。これまでのバックアップはログアウトするアカウントに残ります。"
+
 _accountSettings:
   requireSigninToViewContents: "コンテンツの表示にログインを必須にする"
   requireSigninToViewContentsDescription1: "あなたが作成した全てのノートなどのコンテンツを表示するのにログインを必須にします。クローラーに情報が収集されるのを防ぐ効果が期待できます。"

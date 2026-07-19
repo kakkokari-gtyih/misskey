@@ -89,9 +89,26 @@ export type PossiblyNonNormalizedPreferencesProfile = Omit<PreferencesProfile, '
 	preferences: Record<string, [scope: Scope, value: any, meta: ValueMeta][]>;
 };
 
+/**
+ * クラウド同期の可否。
+ *
+ * 設定の保存先はプライマリアカウント固定なので、「プライマリが未設定」「tokenが失効した」
+ * といった理由で同期そのものが行えないことがある。これは通信失敗とは意味が違い、
+ * 利用者に伝えるべき状態なので、値の読み書きとは別に問い合わせられるようにしてある。
+ * (このマネージャ自身はアカウントの概念を持たない = 判断は StorageProvider 側に委ねる)
+ */
+export type CloudAvailability = {
+	available: true;
+} | {
+	available: false;
+	reason: 'noPrimaryAccount' | 'suspended';
+};
+
 export type StorageProvider = {
 	load: () => PossiblyNonNormalizedPreferencesProfile | null;
 	save: (ctx: { profile: PreferencesProfile; }) => void;
+	/** 省略時は常に利用可能とみなす */
+	cloudAvailability?: () => Promise<CloudAvailability>;
 	cloudGetBulk: <K extends keyof PREF>(ctx: { needs: { key: K; scope: Scope; }[] }) => Promise<Partial<Record<K, ValueOf<K>>>>;
 	cloudGet: <K extends keyof PREF>(ctx: { key: K; scope: Scope; }) => Promise<{ value: ValueOf<K>; } | null>;
 	cloudSet: <K extends keyof PREF>(ctx: { key: K; scope: Scope; value: ValueOf<K>; }) => Promise<void>;
@@ -307,7 +324,11 @@ export class PreferencesManager extends EventEmitter<PreferencesManagerEvents> {
 		if (record[2].sync) {
 			// awaitの必要なし
 			// TODO: リクエストを間引く
-			this.io.cloudSet({ key, scope: record[0], value: record[1] });
+			// 同期先が無い/一時停止中の場合はここで棄却される。commitはローカルには成功しているので、
+			// 送信の失敗でcommitごと倒さない(未処理のPromise拒否にもしない)
+			this.io.cloudSet({ key, scope: record[0], value: record[1] }).catch(err => {
+				if (_DEV_) console.warn('prefer:cloudSet failed', key, err);
+			});
 		}
 	}
 
@@ -481,6 +502,22 @@ export class PreferencesManager extends EventEmitter<PreferencesManagerEvents> {
 
 	public async enableSync<K extends keyof PREF>(key: K): Promise<{ enabled: boolean; } | null> {
 		if (this.isSyncEnabled(key)) return Promise.resolve(null);
+
+		// 同期先が無いまま値の突き合わせに進むと、クラウド側が空に見えてローカルの値を
+		// 「クラウドには無い」と誤解しかねない。先に保存先の有無を確かめて理由を伝える
+		const availability = this.io.cloudAvailability != null ? await this.io.cloudAvailability() : { available: true } as const;
+		if (!availability.available) {
+			os.alert({
+				type: 'warning',
+				title: availability.reason === 'suspended'
+					? i18n.ts._primaryAccount.suspendedTitle
+					: i18n.ts._primaryAccount.unavailableTitle,
+				text: availability.reason === 'suspended'
+					? i18n.ts._primaryAccount.suspendedDescription
+					: i18n.ts._primaryAccount.unavailableDescription,
+			});
+			return { enabled: false };
+		}
 
 		// undefined ... cancel
 		async function resolveConflict(local: ValueOf<K>, remote: ValueOf<K>): Promise<ValueOf<K> | undefined> {

@@ -12,16 +12,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkButton danger @click="logoutFromAll"><i class="ti ti-power"></i> {{ i18n.ts.logoutFromAll }}</MkButton>
 		</div>
 
+		<MkInfo v-if="syncSuspended" warn role="status">{{ i18n.ts._primaryAccount.suspendedIndicator }}</MkInfo>
+		<MkInfo v-else-if="primaryAccountKey == null" warn role="status">{{ i18n.ts._primaryAccount.unavailableDescription }}</MkInfo>
+		<MkInfo v-else>{{ i18n.ts._primaryAccount.description }}</MkInfo>
+
 		<template v-for="x in accounts" :key="x.host + x.id">
 			<MkUserCardMini v-if="x.user" :user="x.user" :class="$style.user" @click.prevent="showMenu(x, $event)">
 				<template #nameSuffix>
 					<span v-if="x.id === $i?.id" :class="$style.currentAccountTag">{{ i18n.ts.loggingIn }}</span>
+					<span v-if="isPrimary(x)" :class="$style.primaryAccountTag">{{ i18n.ts._primaryAccount.thisAccountIsPrimary }}</span>
 				</template>
 			</MkUserCardMini>
 			<button v-else v-panel class="_button" :class="$style.unknownUser" @click="showMenu(x, $event)">
 				<div :class="$style.unknownUserAvatarMock"><i class="ti ti-user-question"></i></div>
 				<div>
-					<div :class="$style.unknownUserTitle">{{ i18n.ts.unknown }}<span v-if="x.id === $i?.id" :class="$style.currentAccountTag">{{ i18n.ts.loggingIn }}</span></div>
+					<div :class="$style.unknownUserTitle">
+						{{ i18n.ts.unknown }}
+						<span v-if="x.id === $i?.id" :class="$style.currentAccountTag">{{ i18n.ts.loggingIn }}</span>
+						<span v-if="isPrimary(x)" :class="$style.primaryAccountTag">{{ i18n.ts._primaryAccount.thisAccountIsPrimary }}</span>
+					</div>
 					<div :class="$style.unknownUserSub">ID: <span class="_monospace">{{ x.id }}</span></div>
 				</div>
 			</button>
@@ -34,7 +43,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed } from 'vue';
 import { host as local } from '@@/js/config.js';
 import type { MenuItem } from '@/types/menu.js';
+import type { AccountKey } from '@/lib/storage/keys.js';
 import MkButton from '@/components/MkButton.vue';
+import MkInfo from '@/components/MkInfo.vue';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
 import { switchAccount, getAccountWithSigninDialog, getAccountWithSignupDialog, getAccounts, refreshAccounts } from '@/accounts.js';
@@ -45,22 +56,75 @@ import MkUserCardMini from '@/components/MkUserCardMini.vue';
 import { signout } from '@/signout.js';
 import { logoutAccount } from '@/accounts/lifecycle.js';
 import { accountKeyOf } from '@/lib/storage/keys.js';
+import { getPrimaryAccountKey, setPrimaryAccountKey, ledgerReady } from '@/accounts/ledger.js';
+import { preferencesTransport } from '@/preferences/transport.js';
 
 const accounts = ref<AccountData[]>([]);
 
-getAccounts().then((res) => {
-	accounts.value = res;
+/**
+ * 設定の同期・バックアップの保存先。操作アカウントとは独立していて、
+ * アカウントを切り替えても動かない（詳細は @/preferences/transport.js）
+ */
+const primaryAccountKey = ref<AccountKey | null>(null);
+const syncSuspended = preferencesTransport.suspended;
+
+async function reload() {
+	await ledgerReady;
+	accounts.value = await getAccounts();
+	primaryAccountKey.value = getPrimaryAccountKey();
+}
+
+reload().catch(err => {
+	console.error('failed to load the account list', err);
 });
+
+function isPrimary(a: AccountData): boolean {
+	return primaryAccountKey.value === accountKeyOf(a.host, a.id);
+}
+
+async function makePrimary(a: AccountData) {
+	if (a.token == null) {
+		os.alert({
+			type: 'warning',
+			title: i18n.ts._primaryAccount.cannotSelectAccountWithoutToken,
+		});
+		return;
+	}
+
+	const { canceled } = await os.confirm({
+		type: 'question',
+		title: i18n.ts._primaryAccount.changeConfirmTitle,
+		// 「移送しない」ことは利用者からは見えないので、必ず言葉で伝える
+		text: i18n.ts._primaryAccount.changeConfirmDescription,
+	});
+	if (canceled) return;
+
+	// 旧プライマリのtoken失効による一時停止は、tokenが変わった時点で輸送層が自動的に解除する
+	await setPrimaryAccountKey(accountKeyOf(a.host, a.id));
+	await reload();
+}
 
 function refreshAllAccounts() {
 	os.promiseDialog((async () => {
 		await refreshAccounts();
-		accounts.value = await getAccounts();
+		await reload();
 	})());
 }
 
 function showMenu(a: AccountData, ev: PointerEvent) {
 	const menu: MenuItem[] = [];
+
+	// tokenを持たないアカウントでも項目自体は出す。黙って消えると理由が伝わらないので、
+	// 選べない理由はmakePrimary側のダイアログで説明する
+	if (!isPrimary(a)) {
+		menu.push({
+			text: i18n.ts._primaryAccount.setAsPrimary,
+			icon: 'ti ti-cloud-cog',
+			action: () => makePrimary(a),
+		}, {
+			type: 'divider',
+		});
+	}
 
 	if ($i != null && $i.id === a.id && ($i.host ?? local) === a.host) {
 		menu.push({
@@ -97,7 +161,7 @@ function showMenu(a: AccountData, ev: PointerEvent) {
 					// 現在のアカウントではないのでリロードは起きない。
 					// プッシュ購読の解除まで面倒を見てくれるのでlogoutAccountを通す
 					await logoutAccount(accountKeyOf(a.host, a.id));
-					accounts.value = await getAccounts();
+					await reload();
 				})());
 			},
 		});
@@ -157,14 +221,26 @@ definePage(() => ({
 	cursor: pointer;
 }
 
-.currentAccountTag {
+%tag {
 	display: inline-block;
 	margin-left: 8px;
 	padding: 0 6px;
 	font-size: 0.8em;
+	border-radius: calc(var(--MI-radius) / 2);
+}
+
+.currentAccountTag {
+	@extend %tag;
+
 	background: var(--MI_THEME-accentedBg);
 	color: var(--MI_THEME-accent);
-	border-radius: calc(var(--MI-radius) / 2);
+}
+
+.primaryAccountTag {
+	@extend %tag;
+
+	background: color-mix(in srgb, var(--MI_THEME-fg), transparent 90%);
+	color: color-mix(in srgb, var(--MI_THEME-fg), transparent 25%);
 }
 
 .unknownUser {

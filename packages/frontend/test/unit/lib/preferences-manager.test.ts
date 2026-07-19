@@ -205,6 +205,24 @@ describe('PreferencesManager', () => {
 			expect(onCommitted.mock.calls[0][0].value).toBe('reload');
 		});
 
+		test('同期先が無くcloudSetが失敗してもローカルのcommitは成立する', async () => {
+			const { io } = memoryIo(profileWith({
+				// syncフラグが立った状態のレコード
+				serverDisconnectedBehavior: [[{}, 'quiet', { sync: true }]],
+			}));
+			io.cloudSet = vi.fn(async () => { throw new Error('no primary account'); });
+			const prefer = new PreferencesManager(io, null);
+
+			prefer.commit('serverDisconnectedBehavior', 'reload');
+
+			// 送信は試みるが、その失敗でcommitを巻き戻したり例外を漏らしたりしない
+			expect(io.cloudSet).toHaveBeenCalledTimes(1);
+			expect(prefer.s.serverDisconnectedBehavior).toBe('reload');
+
+			// 未処理のPromise拒否になっていないこと
+			await new Promise(resolve => setTimeout(resolve, 0));
+		});
+
 		test('model()経由のsetがcommitを通る', () => {
 			const { io } = memoryIo(null);
 			const prefer = new PreferencesManager(io, null);
