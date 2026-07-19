@@ -38,7 +38,6 @@ export const localStorageManifest = {
 	neverShowDonationInfo: { category: 'state', erasure: 'persistent' },
 	neverShowLocalOnlyInfo: { category: 'state', erasure: 'persistent' },
 	modifiedVersionMustProminentlyOfferInAgplV3Section13Read: { category: 'state', erasure: 'persistent' },
-	hidePreferencesRestoreSuggestion: { category: 'state', erasure: 'persistent' },
 	lang: { category: 'state', erasure: 'persistent' },
 	colorScheme: { category: 'state', erasure: 'persistent' },
 	useSystemFont: { category: 'state', erasure: 'persistent' },
@@ -52,6 +51,10 @@ export const localStorageManifest = {
 	// ただし現状これらはアカウントに紐付いていないため、単体アカウントのログアウトでは
 	// 消しようがない（消すと他アカウントの下書きまで巻き込む）という既知の限界がある。
 	// アカウント単位のキー空間へ移すのは後続マイルストーンの課題。
+	// 全ログアウトでは`preferences`（プロファイル本体）が消えるので、抑止フラグだけ残ると
+	// 「バックアップはあるのに復元提案が二度と出ない」状態になる。フラグも一緒に消す。
+	hidePreferencesRestoreSuggestion: { category: 'state', erasure: 'deviceWipe' },
+
 	drafts: { category: 'state', erasure: 'deviceWipe' },
 	chatMessageDrafts: { category: 'state', erasure: 'deviceWipe' },
 	scratchpad: { category: 'state', erasure: 'deviceWipe' },

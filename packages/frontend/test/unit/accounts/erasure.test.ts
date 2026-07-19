@@ -12,6 +12,7 @@ import {
 	eraseAccountData,
 	sensitiveNamesOf,
 	shouldEraseLocalStorageKeyOnDeviceWipe,
+	shouldEraseRawIdbKeyOnDeviceWipe,
 	shouldKeepManagedKeyOnDeviceWipe,
 	splitAccountKey,
 	stripSensitiveFromDeviceBlob,
@@ -29,6 +30,7 @@ const DEVICE_BASE = buildKey({ category: 'state', owner: { kind: 'device' }, nam
 function memoryKv(initial: Record<string, any> = {}) {
 	const store = new Map<string, any>(Object.entries(initial));
 	const kv: ErasureKv = {
+		listRawKeys: async () => [...store.keys()],
 		listManagedKeys: async () => {
 			const out: ParsedStorageKey[] = [];
 			for (const raw of store.keys()) {
@@ -90,7 +92,7 @@ describe('splitAccountKey', () => {
 
 describe('shouldEraseLocalStorageKeyOnDeviceWipe', () => {
 	test('persistent分類は残す', () => {
-		for (const key of ['lang', 'colorScheme', 'neverShowDonationInfo', 'latestDonationInfoShownAt', 'neverShowLocalOnlyInfo', 'modifiedVersionMustProminentlyOfferInAgplV3Section13Read', 'hidePreferencesRestoreSuggestion', 'ui:folder:foo']) {
+		for (const key of ['lang', 'colorScheme', 'neverShowDonationInfo', 'latestDonationInfoShownAt', 'neverShowLocalOnlyInfo', 'modifiedVersionMustProminentlyOfferInAgplV3Section13Read', 'ui:folder:foo']) {
 			expect(shouldEraseLocalStorageKeyOnDeviceWipe(key), key).toBe(false);
 		}
 	});
@@ -99,6 +101,10 @@ describe('shouldEraseLocalStorageKeyOnDeviceWipe', () => {
 		for (const key of ['account', 'preferences', 'drafts', 'instance', 'theme', 'miux:foo', 'aiscript:bar']) {
 			expect(shouldEraseLocalStorageKeyOnDeviceWipe(key), key).toBe(true);
 		}
+	});
+
+	test('hidePreferencesRestoreSuggestionは消す（preferences本体が消えるので抑止フラグだけ残さない）', () => {
+		expect(shouldEraseLocalStorageKeyOnDeviceWipe('hidePreferencesRestoreSuggestion')).toBe(true);
 	});
 
 	test('未知のキーは保守的に消す', () => {
@@ -126,6 +132,31 @@ describe('shouldKeepManagedKeyOnDeviceWipe', () => {
 		expect(keep(buildKey({ category: 'cache', owner: { kind: 'device' }, name: 'x' }))).toBe(false);
 		expect(keep(buildKey({ category: 'cache', owner: { kind: 'account', account: ALICE }, name: 'registry-base' }))).toBe(false);
 		expect(keep(buildKey({ category: 'credentials', owner: { kind: 'device' }, name: 'accounts' }))).toBe(false);
+	});
+});
+
+describe('shouldEraseRawIdbKeyOnDeviceWipe', () => {
+	test('state/deviceの生キーだけ残す', () => {
+		expect(shouldEraseRawIdbKeyOnDeviceWipe(DEVICE_BASE)).toBe(false);
+		expect(shouldEraseRawIdbKeyOnDeviceWipe(buildKey({ category: 'state', owner: { kind: 'device' }, name: 'meta-migration' }))).toBe(false);
+	});
+
+	test('管理下でも state/account・cache・credentials は消す', () => {
+		expect(shouldEraseRawIdbKeyOnDeviceWipe(buildKey({ category: 'state', owner: { kind: 'account', account: ALICE }, name: 'base' }))).toBe(true);
+		expect(shouldEraseRawIdbKeyOnDeviceWipe(buildKey({ category: 'cache', owner: { kind: 'device' }, name: 'x' }))).toBe(true);
+		expect(shouldEraseRawIdbKeyOnDeviceWipe(buildKey({ category: 'credentials', owner: { kind: 'device' }, name: 'accounts' }))).toBe(true);
+	});
+
+	test('`mk::`管理外の未知キーは消す（token残留の退行を防ぐ）', () => {
+		// 旧StateStoreのblob。accountTokens / accountInfos = 全アカウントのtokenを抱えている
+		expect(shouldEraseRawIdbKeyOnDeviceWipe('pizzax::base')).toBe(true);
+		expect(shouldEraseRawIdbKeyOnDeviceWipe('pizzax::base::someUserId')).toBe(true);
+		// 超旧世代の `{ token, id }[]`
+		expect(shouldEraseRawIdbKeyOnDeviceWipe('accounts')).toBe(true);
+		expect(shouldEraseRawIdbKeyOnDeviceWipe('emojis')).toBe(true);
+		expect(shouldEraseRawIdbKeyOnDeviceWipe('lastEmojisFetchedAt')).toBe(true);
+		// 文法違反の`mk::`キーも管理外扱い
+		expect(shouldEraseRawIdbKeyOnDeviceWipe('mk::bogus::device::x')).toBe(true);
 	});
 });
 
@@ -231,6 +262,23 @@ describe('wipeDevice', () => {
 			DEVICE_BASE,
 			buildKey({ category: 'state', owner: { kind: 'device' }, name: 'other' }),
 		].sort());
+	});
+
+	test('`mk::`管理外の旧キーも消える（develop の idb clear() からの退行を防ぐ）', async () => {
+		const { kv, store } = memoryKv({
+			[DEVICE_BASE]: { tips: { a: true } },
+			// 旧StateStoreのblob。全アカウントのtokenを含む
+			'pizzax::base': { accountTokens: { [ALICE]: 'tok-a', [BOB]: 'tok-b' }, accountInfos: {} },
+			'pizzax::base::alice': { visibility: 'home' },
+			// 超旧世代の台帳。これもtokenを含む
+			accounts: [{ token: 'tok-a', id: 'alice' }],
+			emojis: [],
+			lastEmojisFetchedAt: 0,
+		});
+
+		await wipeDevice(makeDeps({ kv }));
+
+		expect([...store.keys()]).toEqual([DEVICE_BASE]);
 	});
 
 	test('#16713: ヒントの既読(tips)がログアウト後も残る', async () => {

@@ -26,7 +26,7 @@
 
 import type { AccountKey, ParsedStorageKey } from '@/lib/storage/keys.js';
 import type { StateDef } from '@/lib/state-store.js';
-import { buildKey, FALLBACK_PREFIX } from '@/lib/storage/keys.js';
+import { buildKey, parseKey, FALLBACK_PREFIX } from '@/lib/storage/keys.js';
 import { classifyLocalStorageKey } from '@/lib/storage/local-storage-manifest.js';
 
 //#region 判定規則（純関数）
@@ -54,6 +54,27 @@ export function shouldEraseLocalStorageKeyOnDeviceWipe(key: string): boolean {
  */
 export function shouldKeepManagedKeyOnDeviceWipe(k: ParsedStorageKey): boolean {
 	return k.category === 'state' && k.owner.kind === 'device';
+}
+
+/**
+ * 全ログアウト時、このkv(idb)の**生キー**を消すか？
+ *
+ * localStorage側 (`shouldEraseLocalStorageKeyOnDeviceWipe`) と同じ非対称性を採る:
+ * **残してよいと明示的に判定できたものだけを残し、それ以外は消す**。
+ *
+ * `mk::`文法に載らないキーを消す側へ倒すのが肝。ここを「管理下のキーだけ消す」にすると、
+ * `pizzax::base`（旧StateStoreのblob。移行後も残置され、**全アカウントのtoken**を含む
+ * accountTokens / accountInfos を抱えている）や `accounts`（超旧世代の`{token, id}[]`）が
+ * 全ログアウト後も端末に残り続ける。develop の `idb-keyval.clear()` に対する退行になるため、
+ * 未知のキーは保守的に消す（消しすぎは再取得で回復できるが、消し漏れは回復できない）。
+ *
+ * フォールバック環境（idb不可）でも、kv層が`idbfallback::`を剥がした生キーを返すので
+ * この判定はそのまま通用する。localStorage側で`idbfallback::`に触らない方針と対になっている。
+ */
+export function shouldEraseRawIdbKeyOnDeviceWipe(raw: string): boolean {
+	const parsed = parseKey(raw);
+	if (parsed == null) return true;
+	return !shouldKeepManagedKeyOnDeviceWipe(parsed);
 }
 
 /**
@@ -125,6 +146,8 @@ export function _setAccountErasureHooksForTesting(next: readonly AccountErasureH
 //#region 依存の注入
 
 export type ErasureKv = {
+	/** 実体に載っている生キーの全列挙。`mk::`管理外のキーも含む（全ログアウトの掃除対象判定に要る） */
+	listRawKeys: () => Promise<string[]>;
 	listManagedKeys: () => Promise<ParsedStorageKey[]>;
 	delMany: (keys: string[]) => Promise<void>;
 	get: (key: string) => Promise<any>;
@@ -154,6 +177,7 @@ export type ErasureDeps = {
 function defaultDeps(): ErasureDeps {
 	return {
 		kv: {
+			listRawKeys: async () => (await import('@/lib/storage/kv.js')).listRawKeys(),
 			listManagedKeys: async () => (await import('@/lib/storage/kv.js')).listManagedKeys(),
 			delMany: async (keys) => (await import('@/lib/storage/kv.js')).delMany(keys),
 			get: async (key) => (await import('@/lib/storage/kv.js')).get(key),
@@ -251,8 +275,8 @@ export async function wipeDevice(deps: ErasureDeps = defaultDeps()): Promise<voi
 	//#endregion
 
 	//#region idb(kv): clear()せずキー文法に基づいて選別する
-	const managed = await deps.kv.listManagedKeys();
-	const kvTargets = managed.filter(k => !shouldKeepManagedKeyOnDeviceWipe(k)).map(buildKey);
+	// 生キーを列挙する（管理外の旧キーも掃除対象に含めるため。詳細は shouldEraseRawIdbKeyOnDeviceWipe）
+	const kvTargets = (await deps.kv.listRawKeys()).filter(shouldEraseRawIdbKeyOnDeviceWipe);
 	if (kvTargets.length > 0) {
 		await deps.kv.delMany(kvTargets);
 	}

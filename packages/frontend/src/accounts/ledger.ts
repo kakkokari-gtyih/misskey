@@ -51,6 +51,9 @@ export type LedgerKv = {
 	set: (key: string, val: any) => Promise<void>;
 };
 
+/** 現在操作中のアカウントキーの解決。同期・非同期どちらでもよい */
+export type CurrentAccountKeyResolver = () => AccountKey | null | Promise<AccountKey | null>;
+
 /** 旧台帳との橋渡し。移行期間中のみ存在する（@/accounts/legacy-ledger.js を参照） */
 export type LegacyLedgerBridge = {
 	read: () => Promise<{ accountTokens: Record<string, string>; accountInfos: Record<string, Misskey.entities.MeDetailed> }>;
@@ -177,13 +180,21 @@ export class AccountLedger {
 	private ledger: Ledger = { entries: [], primaryAccountKey: null };
 	private kv: LedgerKv;
 	private legacy: LegacyLedgerBridge | null;
+	private currentAccountKey: CurrentAccountKeyResolver;
 
 	// 書き込みを直列化する（read-modify-writeの取りこぼしを防ぐ）
 	private writeQueue: Promise<unknown> = Promise.resolve();
 
-	constructor(kv: LedgerKv, legacy: LegacyLedgerBridge | null = null) {
+	/**
+	 * @param currentAccountKey 現在操作中のアカウント。移行時のプライマリ選択にのみ使う。
+	 *   ここを（遅延解決できる）関数で受けるのは、解決に要る `@/i.js` / `@@/js/config.js` が
+	 *   循環参照やモジュールトップレベルのDOMアクセスを持ち込むため
+	 *   （シングルトン構築側で必要になった瞬間だけ解決する）。
+	 */
+	constructor(kv: LedgerKv, legacy: LegacyLedgerBridge | null = null, currentAccountKey: CurrentAccountKeyResolver = () => null) {
 		this.kv = kv;
 		this.legacy = legacy;
+		this.currentAccountKey = currentAccountKey;
 		this.ready = this.init();
 	}
 
@@ -225,9 +236,14 @@ export class AccountLedger {
 		// 新規ユーザー（移行元が空）なら何も書かない
 		if (entries.length === 0) return;
 
+		// 移行時のプライマリは**現在操作中のアカウント**。develop では同期・バックアップ先が常に
+		// 現在のアカウントだったので、その挙動をそのまま引き継ぐ。
+		// ここを`null`（=台帳の先頭 = 最初に追加したアカウント）にすると、今使っていないアカウントが
+		// プライマリになり、`listCloudBackups()`が0件を返して復元導線が恒久的に消える事故になる。
+		// 現在のアカウントが台帳に居なければ choosePrimaryAccountKey が先頭へフォールバックする。
 		this.ledger = {
 			entries,
-			primaryAccountKey: choosePrimaryAccountKey(entries, null),
+			primaryAccountKey: choosePrimaryAccountKey(entries, await this.currentAccountKey()),
 		};
 
 		try {
@@ -303,6 +319,33 @@ const lazyKv: LedgerKv & LegacyLedgerKv = {
 	set: async (key, val) => (await import('@/lib/storage/kv.js')).set(key, val),
 };
 
+/**
+ * 現在操作中のアカウントキーを、循環importを作らずに取る。
+ *
+ * `@/i.js` は `@/accounts.js` 経由でこのモジュールへ戻ってくる依存の環に居るので使えない。
+ * `$i` の実体は `miLocalStorage.getItem('account')` のJSONそのものなので、
+ * ここではそれを直接読んで id だけを取り出す（@/i.js と同じ情報源）。
+ *
+ * `@@/js/config.js` はモジュールのトップレベルでDOMを触るため、静的importすると
+ * このモジュールをimportするだけの単体テストが壊れる。他の依存と同様に遅延解決する。
+ */
+async function readCurrentAccountKey(): Promise<AccountKey | null> {
+	try {
+		const { miLocalStorage } = await import('@/local-storage.js');
+		const raw = miLocalStorage.getItem('account');
+		if (raw == null) return null;
+
+		const parsed: unknown = JSON.parse(raw);
+		if (!isPlainObject(parsed) || typeof parsed.id !== 'string' || parsed.id.length === 0) return null;
+
+		const { host } = await import('@@/js/config.js');
+		return accountKeyOf(host, parsed.id);
+	} catch {
+		// 壊れていたら「現在のアカウント不明」として扱う（移行は先頭フォールバックで続行する）
+		return null;
+	}
+}
+
 const instance = new AccountLedger(lazyKv, {
 	// 旧台帳は `mk::state::device::base` に載っているが、そのキー自体がキー空間移行
 	// (`pizzax::base` => `mk::*`) によって初めて作られる。移行の完了を待たずに読むと
@@ -312,7 +355,7 @@ const instance = new AccountLedger(lazyKv, {
 		return readLegacyLedger(lazyKv);
 	},
 	write: (entries) => writeLegacyLedger(lazyKv, entries),
-});
+}, readCurrentAccountKey);
 
 /**
  * 初回ロード完了。`store.ready` と同様にboot時に待つこと。

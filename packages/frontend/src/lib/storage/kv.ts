@@ -4,11 +4,11 @@
  */
 
 import { keys as ikeys } from 'idb-keyval';
-import type { AccountKey, ParsedStorageKey } from '@/lib/storage/keys.js';
-import { get, set, del, delMany, isIdbAvailable, FALLBACK_PREFIX } from '@/utility/idb-proxy.js';
-import { buildKey, parseKey } from '@/lib/storage/keys.js';
+import type { ParsedStorageKey } from '@/lib/storage/keys.js';
+import { get, set, delMany, isIdbAvailable, FALLBACK_PREFIX } from '@/utility/idb-proxy.js';
+import { parseKey } from '@/lib/storage/keys.js';
 
-export { get, set, del, delMany, isIdbAvailable };
+export { get, set, delMany, isIdbAvailable };
 
 /**
  * ストレージ実体のキーを全て列挙する。
@@ -39,15 +39,4 @@ export async function listManagedKeys(): Promise<ParsedStorageKey[]> {
 		if (parsed != null) result.push(parsed);
 	}
 	return result;
-}
-
-export async function deleteWhere(pred: (k: ParsedStorageKey) => boolean): Promise<void> {
-	const targets = (await listManagedKeys()).filter(pred);
-	if (targets.length === 0) return;
-	await delMany(targets.map(buildKey));
-}
-
-/** あるアカウントに紐づくエントリをこのデバイスから消す（ログアウト・アカウント削除時） */
-export async function eraseAccountEntries(account: AccountKey): Promise<void> {
-	await deleteWhere(k => k.owner.kind === 'account' && k.owner.account === account);
 }

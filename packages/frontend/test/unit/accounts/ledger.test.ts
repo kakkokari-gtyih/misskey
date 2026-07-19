@@ -14,7 +14,14 @@ import {
 	normalizeLedger,
 	upsertIntoEntries,
 } from '@/accounts/ledger.js';
-import { buildLegacyLedger, extractLegacyLedger } from '@/accounts/legacy-ledger.js';
+import {
+	LEGACY_ROLLBACK_KEY,
+	LEGACY_STORE_KEY,
+	buildLegacyLedger,
+	extractLegacyLedger,
+	readLegacyLedger,
+	writeLegacyLedger,
+} from '@/accounts/legacy-ledger.js';
 
 const HOST = 'example.com';
 
@@ -278,6 +285,34 @@ describe('AccountLedger', () => {
 		expect(ledger.listEntries().map(e => e.token)).toEqual(['token-a']);
 	});
 
+	test('移行時のプライマリは現在操作中のアカウントになる', async () => {
+		const kv = memoryKv();
+		// aを先に追加してあるが、今操作しているのはb
+		const legacy = legacyBridge({
+			accountTokens: { [`${HOST}/a`]: 'token-a', [`${HOST}/b`]: 'token-b' },
+			accountInfos: {},
+		});
+
+		const ledger = new AccountLedger(kv, legacy, () => `${HOST}/b`);
+		await ledger.ready;
+
+		expect(ledger.getPrimaryAccountKey()).toBe(`${HOST}/b`);
+		expect(kv.dump()[LEDGER_KEY].primaryAccountKey).toBe(`${HOST}/b`);
+	});
+
+	test('移行時、現在のアカウントが台帳に居なければ先頭へフォールバックする', async () => {
+		const legacy = legacyBridge({ accountTokens: { [`${HOST}/a`]: 'token-a', [`${HOST}/b`]: 'token-b' }, accountInfos: {} });
+
+		const gone = new AccountLedger(memoryKv(), legacy, () => `${HOST}/zzz`);
+		await gone.ready;
+		expect(gone.getPrimaryAccountKey()).toBe(`${HOST}/a`);
+
+		// 現在のアカウントが取れない（未ログイン / localStorageが壊れている）場合も同様
+		const unknown = new AccountLedger(memoryKv(), legacy, () => null);
+		await unknown.ready;
+		expect(unknown.getPrimaryAccountKey()).toBe(`${HOST}/a`);
+	});
+
 	test('旧台帳が読めなくてもbootを止めない', async () => {
 		const legacy: LegacyLedgerBridge = {
 			read: async () => { throw new Error('broken'); },
@@ -318,6 +353,59 @@ describe('legacy-ledger', () => {
 		])).toEqual({
 			accountTokens: { [`${HOST}/a`]: 'token-a' },
 			accountInfos: { [`${HOST}/a`]: userOf('a', 'alice') },
+		});
+	});
+
+	test('dual-writeの書き込み先はロールバック先が読む旧文法の生キー`pizzax::base`', async () => {
+		expect(LEGACY_ROLLBACK_KEY).toBe('pizzax::base');
+
+		const kv = memoryKv();
+		await writeLegacyLedger(kv, [{ host: HOST, id: 'a', token: 'token-a', user: userOf('a', 'alice') }]);
+
+		expect(kv.dump()[LEGACY_ROLLBACK_KEY]).toEqual({
+			accountTokens: { [`${HOST}/a`]: 'token-a' },
+			accountInfos: { [`${HOST}/a`]: userOf('a', 'alice') },
+		});
+		// 移行でコピー済みのblob側も同時に更新する（単体ログアウトしたtokenを残さないため）
+		expect(kv.dump()[LEGACY_STORE_KEY].accountTokens).toEqual({ [`${HOST}/a`]: 'token-a' });
+	});
+
+	test('dual-writeは同居する他の状態を壊さない', async () => {
+		const kv = memoryKv({
+			[LEGACY_ROLLBACK_KEY]: { tips: { x: true }, accountTokens: { [`${HOST}/old`]: 'stale' } },
+		});
+		await writeLegacyLedger(kv, [{ host: HOST, id: 'a', token: 'token-a', user: null }]);
+
+		expect(kv.dump()[LEGACY_ROLLBACK_KEY]).toEqual({
+			tips: { x: true },
+			accountTokens: { [`${HOST}/a`]: 'token-a' },
+			accountInfos: {},
+		});
+	});
+
+	test('単体ログアウト相当の書き戻しで、残ったエントリだけが旧blobに残る', async () => {
+		const kv = memoryKv();
+		await writeLegacyLedger(kv, [
+			{ host: HOST, id: 'a', token: 'token-a', user: null },
+			{ host: HOST, id: 'b', token: 'token-b', user: null },
+		]);
+		await writeLegacyLedger(kv, [{ host: HOST, id: 'b', token: 'token-b', user: null }]);
+
+		for (const key of [LEGACY_ROLLBACK_KEY, LEGACY_STORE_KEY]) {
+			expect(kv.dump()[key].accountTokens, key).toEqual({ [`${HOST}/b`]: 'token-b' });
+		}
+	});
+
+	test('移行元として読むのは新キー空間側(`mk::state::device::base`)', async () => {
+		// フォールバック環境では migrateLegacyKeys(dropLegacy=true) が `pizzax::base` を消すので、
+		// 移行の完了を待った時点で確実に存在するのはコピー先だけ
+		const kv = memoryKv({
+			[LEGACY_STORE_KEY]: { accountTokens: { [`${HOST}/a`]: 'token-a' }, accountInfos: {} },
+		});
+
+		expect(await readLegacyLedger(kv)).toEqual({
+			accountTokens: { [`${HOST}/a`]: 'token-a' },
+			accountInfos: {},
 		});
 	});
 });

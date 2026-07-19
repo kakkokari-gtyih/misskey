@@ -20,7 +20,7 @@ import type { LedgerEntry } from '@/accounts/ledger.js';
 import { accountKeyOf } from '@/lib/storage/keys.js';
 import { eraseAccountData, wipeDevice } from '@/accounts/erasure.js';
 import { pickNextAccountToken, shouldPromoteToFullLogout } from '@/accounts/logout-policy.js';
-import { keyOfEntry, listEntries, getEntry, getPrimaryAccountKey, setPrimaryAccountKey } from '@/accounts/ledger.js';
+import { keyOfEntry, ledgerReady, listEntries, getEntry, getPrimaryAccountKey, setPrimaryAccountKey } from '@/accounts/ledger.js';
 import { cloudBackup } from '@/preferences/utility.js';
 import { i18n } from '@/i18n.js';
 import { login } from '@/accounts.js';
@@ -124,6 +124,12 @@ async function askNextPrimaryAccount(remaining: readonly LedgerEntry[]): Promise
  * @param account 省略時は現在ログイン中のアカウント
  */
 export async function logoutAccount(account?: AccountKey): Promise<void> {
+	// 台帳の初回ロードを必ず待つ。待たずに listEntries() を読むと空配列が返り、
+	// shouldPromoteToFullLogout が真になって**単体ログアウトが端末ワイプに化ける**。
+	// boot/common.ts が mount 前に待っているので現状は到達しないが、
+	// 防御をbootの暗黙の順序だけに依存させない（getAccounts() / switchAccount() と同様）。
+	await ledgerReady;
+
 	const target = account ?? ($i != null ? accountKeyOf(localHost, $i.id) : null);
 	if (target == null) return;
 
@@ -183,6 +189,10 @@ export async function logoutAccount(account?: AccountKey): Promise<void> {
  * @/accounts/erasure.js の `wipeDevice` を参照。
  */
 export async function logoutAllAccounts(): Promise<void> {
+	// こちらは台帳が空でも動作自体は正しい（消す対象が無いだけ）が、待たないと
+	// プッシュ購読の解除対象tokenを取りこぼす。
+	await ledgerReady;
+
 	waiting();
 
 	await backupIfEnabled();
