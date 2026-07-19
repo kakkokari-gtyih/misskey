@@ -999,6 +999,8 @@ numberOfPageCacheDescription: "多くすると利便性が向上しますが、�
 logoutConfirm: "ログアウトしますか？"
 logoutWillClearClientData: "ログアウトするとクライアントの設定情報がブラウザから消去されます。再ログイン時に設定情報を復元できるようにするためには、設定の自動バックアップを有効にしてください。"
 logoutFromOtherAccountConfirm: "{username}からログアウトしますか？"
+logoutFromThisAccountWillClearAccountData: "このアカウントに関する設定と状態がこのブラウザから消去されます。他のアカウントのデータはそのまま残ります。再ログイン時に設定情報を復元できるようにするためには、設定の自動バックアップを有効にしてください。"
+logoutFromAllWillClearClientData: "すべてのアカウントの情報と設定がこのブラウザから消去されます。再ログイン時に設定情報を復元できるようにするためには、設定の自動バックアップを有効にしてください。"
 lastActiveDate: "最終利用日時"
 statusbar: "ステータスバー"
 pleaseSelect: "選択してください"

@@ -24,7 +24,6 @@ import { updateDeviceKind } from '@/utility/device-kind.js';
 import { reloadChannel } from '@/utility/unison-reload.js';
 import { getUrlWithoutLoginId } from '@/utility/login-id.js';
 import { getAccountFromId } from '@/utility/get-account-from-id.js';
-import { deckStore } from '@/ui/deck/deck-store.js';
 import { analytics, initAnalytics } from '@/analytics.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { fetchCustomEmojis } from '@/custom-emojis.js';
@@ -117,7 +116,6 @@ export async function common(createVue: () => Promise<App<Element>>) {
 	//#endregion
 
 	await store.ready;
-	await deckStore.ready;
 	await ledgerReady;
 
 	const fetchInstanceMetaPromise = fetchInstance();

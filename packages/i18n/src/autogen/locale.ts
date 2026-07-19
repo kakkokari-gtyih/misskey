@@ -4009,6 +4009,14 @@ export interface Locale extends ILocale {
      */
     "logoutFromOtherAccountConfirm": ParameterizedString<"username">;
     /**
+     * このアカウントに関する設定と状態がこのブラウザから消去されます。他のアカウントのデータはそのまま残ります。再ログイン時に設定情報を復元できるようにするためには、設定の自動バックアップを有効にしてください。
+     */
+    "logoutFromThisAccountWillClearAccountData": string;
+    /**
+     * すべてのアカウントの情報と設定がこのブラウザから消去されます。再ログイン時に設定情報を復元できるようにするためには、設定の自動バックアップを有効にしてください。
+     */
+    "logoutFromAllWillClearClientData": string;
+    /**
      * 最終利用日時
      */
     "lastActiveDate": string;

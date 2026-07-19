@@ -37,12 +37,14 @@ import type { MenuItem } from '@/types/menu.js';
 import MkButton from '@/components/MkButton.vue';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
-import { switchAccount, removeAccount, removeAccountAssociatedData, getAccountWithSigninDialog, getAccountWithSignupDialog, getAccounts, refreshAccounts } from '@/accounts.js';
+import { switchAccount, getAccountWithSigninDialog, getAccountWithSignupDialog, getAccounts, refreshAccounts } from '@/accounts.js';
 import type { AccountData } from '@/accounts.js';
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
 import MkUserCardMini from '@/components/MkUserCardMini.vue';
 import { signout } from '@/signout.js';
+import { logoutAccount } from '@/accounts/lifecycle.js';
+import { accountKeyOf } from '@/lib/storage/keys.js';
 
 const accounts = ref<AccountData[]>([]);
 
@@ -69,7 +71,7 @@ function showMenu(a: AccountData, ev: PointerEvent) {
 				const { canceled } = await os.confirm({
 					type: 'warning',
 					title: i18n.ts.logoutConfirm,
-					text: i18n.ts.logoutWillClearClientData,
+					text: i18n.ts.logoutFromThisAccountWillClearAccountData,
 				});
 				if (canceled) return;
 				signout();
@@ -88,12 +90,13 @@ function showMenu(a: AccountData, ev: PointerEvent) {
 				const { canceled } = await os.confirm({
 					type: 'warning',
 					title: i18n.tsx.logoutFromOtherAccountConfirm({ username: `<plain>@${a.username}</plain>` }),
-					text: i18n.ts.logoutWillClearClientData,
+					text: i18n.ts.logoutFromThisAccountWillClearAccountData,
 				});
 				if (canceled) return;
 				await os.promiseDialog((async () => {
-					await removeAccount(a.host, a.id);
-					await removeAccountAssociatedData(a.host, a.id);
+					// 現在のアカウントではないのでリロードは起きない。
+					// プッシュ購読の解除まで面倒を見てくれるのでlogoutAccountを通す
+					await logoutAccount(accountKeyOf(a.host, a.id));
 					accounts.value = await getAccounts();
 				})());
 			},
@@ -132,8 +135,8 @@ async function createAccount() {
 async function logoutFromAll() {
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		title: i18n.ts.logoutConfirm,
-		text: i18n.ts.logoutWillClearClientData,
+		title: i18n.ts.logoutFromAll,
+		text: i18n.ts.logoutFromAllWillClearClientData,
 	});
 	if (canceled) return;
 	signout(true);

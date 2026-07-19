@@ -13,8 +13,7 @@ import {
 	clear as iclear,
 } from 'idb-keyval';
 import { miLocalStorage } from '@/local-storage.js';
-
-const PREFIX = 'idbfallback::';
+import { FALLBACK_PREFIX as PREFIX } from '@/lib/storage/keys.js';
 
 let idbAvailable = typeof window !== 'undefined' ? !!(window.indexedDB && typeof window.indexedDB.open === 'function') : true;
 
@@ -34,8 +33,8 @@ export function isIdbAvailable(): boolean {
 	return idbAvailable;
 }
 
-/** localStorageフォールバック時に実体キーへ付くプレフィックス */
-export const FALLBACK_PREFIX = PREFIX;
+/** localStorageフォールバック時に実体キーへ付くプレフィックス（定義は @/lib/storage/keys.js） */
+export { PREFIX as FALLBACK_PREFIX };
 
 export async function get(key: string) {
 	if (idbAvailable) return iget(key);

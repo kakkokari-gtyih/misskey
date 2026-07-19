@@ -13,11 +13,11 @@ import { miLocalStorage } from '@/local-storage.js';
 import { waiting, popup, popupMenu, success, alert } from '@/os.js';
 import { unisonReload, reloadChannel } from '@/utility/unison-reload.js';
 import { prefer } from '@/preferences.js';
-import { store } from '@/store.js';
 import { $i } from '@/i.js';
 import { signout } from '@/signout.js';
 import { accountKeyOf } from '@/lib/storage/keys.js';
-import { getEntry, ledgerReady, listEntries, removeEntry, upsertEntry } from '@/accounts/ledger.js';
+import { getEntry, ledgerReady, listEntries, upsertEntry } from '@/accounts/ledger.js';
+import { eraseAccountData } from '@/accounts/erasure.js';
 
 type AccountWithToken = Misskey.entities.MeDetailed & { token: string };
 
@@ -90,15 +90,24 @@ async function addAccount(host: string, user: Misskey.entities.MeDetailed, token
 	}
 }
 
+/**
+ * アカウントを端末から取り除く。
+ *
+ * 台帳・ロースターからの除去だけでなく、そのアカウントに紐づく状態・キャッシュも
+ * キー空間の列挙によってまとめて消す(@/accounts/erasure.js)。
+ * 「台帳からは消えたが `mk::state::acct:*::*` が残る」という消し漏れを構造的に防ぐため、
+ * 消去はこの1経路に集約してある。
+ */
 export async function removeAccount(host: string, id: AccountWithToken['id']) {
-	await removeEntry(accountKeyOf(host, id));
-	prefer.commit('accounts', prefer.s.accounts.filter(x => x[0] !== host || x[1].id !== id));
+	await eraseAccountData(accountKeyOf(host, id));
 }
 
+/**
+ * @deprecated `removeAccount()` が消去まで行うようになったため不要。
+ * 呼び出し箇所の互換のために残してある（冪等なので二重に呼んでも安全）。
+ */
 export async function removeAccountAssociatedData(host: string, id: AccountWithToken['id']) {
-	// 設定・状態を削除
-	prefer.clearAccountSettingsFromDevice(host, id);
-	await store.clearAccountDataFromDevice(id, host);
+	await eraseAccountData(accountKeyOf(host, id));
 }
 
 const isAccountDeleted = Symbol('isAccountDeleted');
@@ -224,8 +233,8 @@ export async function refreshAccounts() {
 				});
 			} catch (e) {
 				if (e === isAccountDeleted) {
+					// removeAccountが関連データの消去まで行うので、別途の消去呼び出しは不要
 					await removeAccount(account.host, account.id);
-					await removeAccountAssociatedData(account.host, account.id);
 				}
 			}
 		}

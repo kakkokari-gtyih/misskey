@@ -187,8 +187,8 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 			async function signoutWithConfirm(all?: boolean) {
 				const { canceled } = await os.confirm({
 					type: 'warning',
-					title: i18n.ts.logoutConfirm,
-					text: i18n.ts.logoutWillClearClientData,
+					title: all ? i18n.ts.logoutFromAll : i18n.ts.logoutConfirm,
+					text: all ? i18n.ts.logoutFromAllWillClearClientData : i18n.ts.logoutFromThisAccountWillClearAccountData,
 				});
 				if (canceled) return;
 				signout(all);
@@ -196,7 +196,9 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 
 			const accounts = await getAccounts();
 			if (accounts.length <= 1) {
-				await signoutWithConfirm();
+				// 最後の1アカウントのログアウトは実質的に全ログアウト(端末のワイプ)になるので、
+				// 文言もそちらに合わせる
+				await signoutWithConfirm(true);
 				return;
 			} else {
 				os.popupMenu([{

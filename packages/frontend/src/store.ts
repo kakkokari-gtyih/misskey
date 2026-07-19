@@ -71,10 +71,13 @@ export const store = markRaw(new Pizzax('base', {
 	},
 	recentlyUsedEmojis: {
 		where: 'device',
+		// 嗜好情報ではあるが「誰と関わったか」のような痕跡性は無いので、全ログアウトでも残す
 		default: [] as string[],
 	},
 	recentlyUsedUsers: {
 		where: 'device',
+		// 「誰と関わったか」がそのまま残るため、全ログアウトでは端末から消す
+		sensitive: true,
 		default: [] as string[],
 	},
 	menuDisplay: {
@@ -87,10 +90,14 @@ export const store = markRaw(new Pizzax('base', {
 	},
 	postFormHashtags: {
 		where: 'device',
+		// 利用者が書いた文字列がそのまま残るため消す。localStorageの`hashtags`をdeviceWipeに
+		// 分類しているのと同じ判断(@/lib/storage/local-storage-manifest.js)
+		sensitive: true,
 		default: '',
 	},
 	additionalUnicodeEmojiIndexes: {
 		where: 'device',
+		// 絵文字の索引付けという嗜好情報に留まり痕跡性は低いので、全ログアウトでも残す
 		default: {} as Record<string, Record<string, string[]>>,
 	},
 	pluginTokens: {

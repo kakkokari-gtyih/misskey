@@ -18,6 +18,15 @@
 const PREFIX = 'mk::';
 const SEP = '::';
 
+/**
+ * idbが使えない環境でlocalStorageへフォールバックする際、実体キーに付くプレフィックス。
+ *
+ * 実装は @/utility/idb-proxy.js だが、あちらはモジュールのトップレベルでidbを触るため
+ * importするだけで副作用が走る。この定数だけを参照したい層（消去エンジン等）が
+ * それを引きずり込まずに済むよう、文字列の定義はこの純粋なキー文法レイヤに置く。
+ */
+export const FALLBACK_PREFIX = 'idbfallback::';
+
 /** `host + '/' + userId`。既存のアカウント台帳の識別子表記と同一形式 */
 export type AccountKey = `${string}/${string}`;
 
