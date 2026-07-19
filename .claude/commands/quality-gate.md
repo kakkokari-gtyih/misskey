@@ -21,7 +21,7 @@ note: 元 ECC 版は言語自動判定 + format/lint/type のジェネリック�
 
 `/quality-gate [scope]`
 
-完了前の **軽量** 品質チェック。重い E2E / 連合テスト (test:e2e / test:fed / Cypress) は CI 側で実行されるため、本コマンドには含めない。
+完了前の **軽量** 品質チェック。重い E2E / 連合テスト (test:e2e / test:fed / Playwright) は CI 側で実行されるため、本コマンドには含めない。
 
 ## Scope
 
@@ -112,11 +112,12 @@ Frontend ut: PASS  (87/87)
 
 ## 関連 skill / コマンド
 
-- `/check-misskey-js` コマンド — API 変更時の misskey-js 再生成
-- [AGENTS.md §必須コマンド](../../AGENTS.md#必須コマンド) — pnpm コマンド一覧の正典
+- [`shipping-misskey-change` スキル](../skills/shipping-misskey-change/SKILL.md) — commit / PR 直前の最終チェックリスト (misskey-js 再生成 / SPDX / CHANGELOG 等)
+- [`shipping-misskey-change/references/tasks/regenerate-misskey-js.md`](../skills/shipping-misskey-change/references/tasks/regenerate-misskey-js.md) — API 変更時の `pnpm build-misskey-js-with-types` 実行手順
+- [.github/copilot-instructions.md §Validation コマンド](../../.github/copilot-instructions.md) — pnpm コマンド一覧 (Copilot / Codex 向けに再掲)
 
 ## 元 ECC 版との差分
 
 - ジェネリックな言語自動判定を排除し、Misskey 固定 pipeline に。
 - formatter フェーズなし (Misskey は ESLint --fix のみ採用)。
-- e2e / federation / Cypress は重いため除外し CI 側に委譲。
+- e2e / federation / Playwright は重いため除外し CI 側に委譲。
