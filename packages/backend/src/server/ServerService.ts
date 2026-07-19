@@ -21,6 +21,7 @@ import { genIdenticon } from '@/misc/gen-identicon.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { LoggerService } from '@/core/LoggerService.js';
 import { bindThis } from '@/decorators.js';
+import { envOption } from '@/env.js';
 import { ActivityPubServerService } from './ActivityPubServerService.js';
 import { NodeinfoServerService } from './NodeinfoServerService.js';
 import { ApiServerService } from './api/ApiServerService.js';
@@ -32,6 +33,9 @@ import { ClientServerService } from './web/ClientServerService.js';
 import { OpenApiServerService } from './api/openapi/OpenApiServerService.js';
 import { OAuth2ProviderService } from './oauth/OAuth2ProviderService.js';
 import { ApiEnv } from './api/ApiServerTypes.js';
+import { registerHttpServerInstrumentation } from './http-server-instrumentation.js';
+
+const _dirname = fileURLToPath(new URL('.', import.meta.url));
 
 @Injectable()
 export class ServerService implements OnApplicationShutdown {
@@ -83,6 +87,7 @@ export class ServerService implements OnApplicationShutdown {
 			}
 			await next();
 		});
+		await registerHttpServerInstrumentation(hono, this.config);
 
 		if (this.config.url.startsWith('https') && !this.config.disableHsts) {
 			hono.use(async (ctx, next) => {
@@ -91,6 +96,20 @@ export class ServerService implements OnApplicationShutdown {
 			});
 		}
 
+		// for test
+		if (envOption.enableCrossOriginIsolation) {
+			hono.use(async (ctx, next) => {
+				ctx.header('Cross-Origin-Opener-Policy', 'same-origin');
+				ctx.header('Cross-Origin-Embedder-Policy', 'credentialless');
+				await next();
+			});
+		}
+
+		// if the requester looks like to be performing an ActivityPub object lookup, reject all external redirects
+		//
+		// this will break lookup that involve copying a URL from a third-party server, like trying to lookup http://charlie.example.com/@alice@alice.com
+		//
+		// this is not required by standard but protect us from peers that did not validate final URL.
 		if (!this.meta.allowExternalApRedirect) {
 			const maybeApLookupRegex = /application\/activity\+json|application\/ld\+json.+activitystreams/i;
 			hono.use(async (ctx, next) => {
