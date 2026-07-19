@@ -17,6 +17,7 @@ import { themeManager } from '@/theme.js';
 import { isDeviceDarkmode } from '@/utility/is-device-darkmode.js';
 import { i18n } from '@/i18n.js';
 import { refreshCurrentAccount, login } from '@/accounts.js';
+import { ledgerReady } from '@/accounts/ledger.js';
 import { store } from '@/store.js';
 import { fetchInstance, instance } from '@/instance.js';
 import { updateDeviceKind } from '@/utility/device-kind.js';
@@ -117,6 +118,7 @@ export async function common(createVue: () => Promise<App<Element>>) {
 
 	await store.ready;
 	await deckStore.ready;
+	await ledgerReady;
 
 	const fetchInstanceMetaPromise = fetchInstance();
 

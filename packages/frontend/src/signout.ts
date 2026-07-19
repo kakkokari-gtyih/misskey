@@ -6,6 +6,7 @@
 import { apiUrl } from '@@/js/config.js';
 import { cloudBackup } from '@/preferences/utility.js';
 import { removeAccount, login } from '@/accounts.js';
+import { listEntries } from '@/accounts/ledger.js';
 import { host } from '@@/js/config.js';
 import { store } from '@/store.js';
 import { prefer } from '@/preferences.js';
@@ -109,10 +110,9 @@ export async function signout(all = false) {
 		await removeAccount(host, $i.id);
 
 		// アカウント切り替え
-		const nextAccountToken = Object.entries(store.s.accountTokens).find(([key, _]) => {
-			const [accountHost, userId] = key.split('/');
-			return accountHost === host && userId !== currentAccountId;
-		})?.[1];
+		const nextAccountToken = listEntries().find(entry => {
+			return entry.host === host && entry.id !== currentAccountId && entry.token != null;
+		})?.token;
 
 		if (nextAccountToken != null) {
 			// ログインの際の遷移の挙動はlogin関数内で行うのでここではunisonReloadを呼ばず終了

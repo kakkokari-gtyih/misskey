@@ -97,14 +97,9 @@ export const store = markRaw(new Pizzax('base', {
 		where: 'deviceAccount',
 		default: {} as Record<string, string>, // plugin id, token
 	},
-	accountTokens: {
-		where: 'device',
-		default: {} as Record<`${string}/${string}`, string>, // host/userId, token
-	},
-	accountInfos: {
-		where: 'device',
-		default: {} as Record<`${string}/${string}`, Misskey.entities.MeDetailed>, // host/userId, user
-	},
+	// NOTE: accountTokens / accountInfos は資格情報の台帳(@/accounts/ledger.js)へ移設済み。
+	// 移行期間中は旧キー(`mk::state::device::base`)にもdual-writeされるが、
+	// storeの定義としては持たない（@/accounts/legacy-ledger.js が直接読み書きする）。
 
 	enablePreferencesAutoCloudBackup: {
 		where: 'device',

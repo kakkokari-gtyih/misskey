@@ -16,6 +16,8 @@ import { prefer } from '@/preferences.js';
 import { store } from '@/store.js';
 import { $i } from '@/i.js';
 import { signout } from '@/signout.js';
+import { accountKeyOf } from '@/lib/storage/keys.js';
+import { getEntry, ledgerReady, listEntries, removeEntry, upsertEntry } from '@/accounts/ledger.js';
 
 type AccountWithToken = Misskey.entities.MeDetailed & { token: string };
 
@@ -27,34 +29,69 @@ export type AccountData = {
 	token: string | null;
 };
 
+/** ロースター(`prefer.s.accounts`)からusernameを引く。台帳側にusernameが無い場合の補完用 */
+function rosterUsernameOf(host: string, id: string): string | null {
+	return prefer.s.accounts.find(x => x[0] === host && x[1].id === id)?.[1].username ?? null;
+}
+
+/**
+ * 真実の源は資格情報台帳(@/accounts/ledger.js)。
+ * `prefer.s.accounts` はtokenを持たない可搬性ロースターとして残っているので、
+ * 台帳に載っていないアカウント（設定のプロファイルを復元した直後など）はそちらから補う。
+ */
 export async function getAccounts(): Promise<AccountData[]> {
-	const tokens = store.s.accountTokens;
-	const accountInfos = store.s.accountInfos;
-	const accounts = prefer.s.accounts;
-	return accounts.map(([host, user]) => ({
-		host,
-		id: user.id,
-		username: user.username,
-		user: accountInfos[`${host}/${user.id}`],
-		token: tokens[`${host}/${user.id}`] ?? null,
+	await ledgerReady;
+
+	const accounts: AccountData[] = listEntries().map(entry => ({
+		host: entry.host,
+		id: entry.id,
+		username: entry.username || rosterUsernameOf(entry.host, entry.id) || entry.id,
+		user: entry.user,
+		token: entry.token,
 	}));
+
+	for (const [host, user] of prefer.s.accounts) {
+		if (accounts.some(x => x.host === host && x.id === user.id)) continue;
+		accounts.push({
+			host,
+			id: user.id,
+			username: user.username,
+			user: null,
+			token: null,
+		});
+	}
+
+	return accounts;
+}
+
+/** ログイン等で得たtokenを台帳に記録する。既存のusername・ユーザー情報は失わない */
+async function recordToken(host: string, id: string, token: string) {
+	const existing = getEntry(accountKeyOf(host, id));
+	await upsertEntry({
+		host,
+		id,
+		username: existing?.username ?? rosterUsernameOf(host, id) ?? '',
+		token,
+		user: existing?.user ?? null,
+	});
 }
 
 async function addAccount(host: string, user: Misskey.entities.MeDetailed, token: AccountWithToken['token']) {
+	await upsertEntry({
+		host,
+		id: user.id,
+		username: user.username,
+		token,
+		user,
+	});
+
 	if (!prefer.s.accounts.some(x => x[0] === host && x[1].id === user.id)) {
-		store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + user.id]: token });
-		store.set('accountInfos', { ...store.s.accountInfos, [host + '/' + user.id]: user });
 		prefer.commit('accounts', [...prefer.s.accounts, [host, { id: user.id, username: user.username }]]);
 	}
 }
 
 export async function removeAccount(host: string, id: AccountWithToken['id']) {
-	const tokens = JSON.parse(JSON.stringify(store.s.accountTokens));
-	delete tokens[host + '/' + id];
-	store.set('accountTokens', tokens);
-	const accountInfos = JSON.parse(JSON.stringify(store.s.accountInfos));
-	delete accountInfos[host + '/' + id];
-	store.set('accountInfos', accountInfos);
+	await removeEntry(accountKeyOf(host, id));
 	prefer.commit('accounts', prefer.s.accounts.filter(x => x[0] !== host || x[1].id !== id));
 }
 
@@ -138,7 +175,7 @@ export function updateCurrentAccount(accountData: Misskey.entities.MeDetailed) {
 	for (const [key, value] of Object.entries(accountData)) {
 		($i[key as keyof typeof accountData] as any) = value;
 	}
-	store.set('accountInfos', { ...store.s.accountInfos, [host + '/' + $i.id]: $i });
+	void upsertEntry({ host, id: $i.id, username: $i.username, token, user: { ...$i } });
 	$i.token = token;
 	miLocalStorage.setItem('account', JSON.stringify($i));
 }
@@ -149,7 +186,7 @@ export function updateCurrentAccountPartial(accountData: Partial<Misskey.entitie
 		($i[key as keyof typeof accountData] as any) = value;
 	}
 
-	store.set('accountInfos', { ...store.s.accountInfos, [host + '/' + $i.id]: $i });
+	void upsertEntry({ host, id: $i.id, username: $i.username, token: $i.token, user: { ...$i } });
 
 	miLocalStorage.setItem('account', JSON.stringify($i));
 }
@@ -160,8 +197,9 @@ export async function refreshCurrentAccount() {
 	return fetchAccount($i.token, $i.id).then(updateCurrentAccount).catch(reason => {
 		if (reason === isAccountDeleted) {
 			removeAccount(host, me.id);
-			if (Object.keys(store.s.accountTokens).length > 0) {
-				login(Object.values(store.s.accountTokens)[0]);
+			const fallback = listEntries().find(x => x.token != null);
+			if (fallback?.token != null) {
+				login(fallback.token);
 			} else {
 				signout();
 			}
@@ -177,7 +215,13 @@ export async function refreshAccounts() {
 		} else if (account.token) {
 			try {
 				const user = await fetchAccount(account.token, account.id);
-				store.set('accountInfos', { ...store.s.accountInfos, [account.host + '/' + account.id]: user });
+				await upsertEntry({
+					host: account.host,
+					id: account.id,
+					username: user.username,
+					token: account.token,
+					user,
+				});
 			} catch (e) {
 				if (e === isAccountDeleted) {
 					await removeAccount(account.host, account.id);
@@ -224,13 +268,14 @@ export async function login(token: AccountWithToken['token'], redirect?: string,
 }
 
 export async function switchAccount(host: string, id: string) {
-	const token = store.s.accountTokens[`${host}/${id}`];
+	await ledgerReady;
+	const token = getEntry(accountKeyOf(host, id))?.token;
 	if (token) {
 		login(token);
 	} else {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkSigninDialog.vue')), {}, {
 			done: async (res: Misskey.entities.SigninFlowResponse & { finished: true }) => {
-				store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + res.id]: res.i });
+				await recordToken(host, res.id, res.i);
 				login(res.i);
 			},
 			closed: () => {
@@ -290,7 +335,7 @@ export async function getAccountMenu(opts: {
 						initialUsername: username,
 					}, {
 						done: async (res: Misskey.entities.SigninFlowResponse & { finished: true }) => {
-							store.set('accountTokens', { ...store.s.accountTokens, [host + '/' + res.id]: res.i });
+							await recordToken(host, res.id, res.i);
 
 							if (callback) {
 								fetchAccount(res.i, id).then(account => {
