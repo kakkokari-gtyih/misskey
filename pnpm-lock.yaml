@@ -84,6 +84,9 @@ importers:
       '@hono/node-server':
         specifier: 2.0.6
         version: 2.0.6(hono@4.12.27)
+      '@hono/otel':
+        specifier: 1.1.2
+        version: 1.1.2(hono@4.12.27)
       '@misskey-dev/emoji-assets':
         specifier: 17.0.3
         version: 17.0.3
@@ -1866,6 +1869,11 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
+
+  '@hono/otel@1.1.2':
+    resolution: {integrity: sha512-UaBMKPGaQTj4sjvpGqQ+57eolTwMI2znzxV/QBUF99XxhcmqtqaZX95flXpGgWb+lnlinlCy23Y1sZ8+TzzM9A==}
+    peerDependencies:
+      hono: '>=4.0.0'
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -9912,6 +9920,12 @@ snapshots:
 
   '@hono/node-server@2.0.6(hono@4.12.27)':
     dependencies:
+      hono: 4.12.27
+
+  '@hono/otel@1.1.2(hono@4.12.27)':
+    dependencies:
+      '@opentelemetry/api': 1.9.1
+      '@opentelemetry/semantic-conventions': 1.40.0
       hono: 4.12.27
 
   '@humanfs/core@0.19.2':

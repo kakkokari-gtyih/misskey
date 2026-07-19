@@ -35,8 +35,6 @@ import { OAuth2ProviderService } from './oauth/OAuth2ProviderService.js';
 import { ApiEnv } from './api/ApiServerTypes.js';
 import { registerHttpServerInstrumentation } from './http-server-instrumentation.js';
 
-const _dirname = fileURLToPath(new URL('.', import.meta.url));
-
 @Injectable()
 export class ServerService implements OnApplicationShutdown {
 	private logger: Logger;

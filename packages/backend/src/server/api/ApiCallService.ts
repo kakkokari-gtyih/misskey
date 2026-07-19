@@ -166,9 +166,9 @@ export class ApiCallService implements OnApplicationShutdown {
 		}
 
 		return this.telemetryService.startSpan('API: ' + endpoint.name, () => this.authenticateService.authenticate(token).then(([user, app]) => {
-			const res = await this.call(endpoint, user, app, body, null, ctx);
-				if (request.method === 'GET' && endpoint.meta.cacheSec && !token && !user) {
-					reply.header('Cache-Control', `public, max-age=${endpoint.meta.cacheSec}`);
+			const res = this.call(endpoint, user, app, body, null, ctx).then(res => {
+				if (ctx.req.method === 'GET' && endpoint.meta.cacheSec && !token && !user) {
+					ctx.header('Cache-Control', `public, max-age=${endpoint.meta.cacheSec}`);
 				}
 				if (user) {
 					this.logIp(ctx.var.ip, user);
@@ -177,9 +177,9 @@ export class ApiCallService implements OnApplicationShutdown {
 				return this.#sendApiError(ctx, err);
 			});
 
-			return this.send(reply, res);
+			return this.send(ctx, res);
 		}).catch(err => {
-			this.#sendAuthenticationError(reply, err);
+			return this.#sendAuthenticationError(ctx, err);
 		}));
 	}
 
@@ -216,18 +216,25 @@ export class ApiCallService implements OnApplicationShutdown {
 		}
 
 		return await this.telemetryService.startSpan('API: ' + endpoint.name, () => this.authenticateService.authenticate(token).then(([user, app]) => {
-			const res = await this.call(endpoint, user, app, fields, {
+			const res = this.call(endpoint, user, app, fields, {
 				name: multipartData.filename,
 				path: path,
-			}, ctx);
+			}, ctx).then(res => {
+				return this.send(ctx, res);
+			}).catch((err: ApiError) => {
+				return this.#sendApiError(ctx, err);
+			});
+
 			if (user) {
 				this.logIp(ctx.var.ip, user);
 			}
 
 			return this.send(ctx, res);
 		}).catch(err => {
-			this.#sendAuthenticationError(ctx, err);
-		}));
+			return this.#sendAuthenticationError(ctx, err);
+		})).finally(() => {
+			cleanup();
+		});
 	}
 
 	@bindThis
