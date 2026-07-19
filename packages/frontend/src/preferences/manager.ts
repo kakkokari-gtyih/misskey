@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { customRef, ref, watch, onScopeDispose } from 'vue';
+import { ref, watch } from 'vue';
 import { EventEmitter } from 'eventemitter3';
 import { host, version } from '@@/js/config.js';
 import { PREF_DEF } from './def.js';
 import type { Ref } from 'vue';
+import type { ValueOf as ValueOfDef } from '@/lib/defined-state.js';
 import type { MenuItem } from '@/types/menu.js';
+import { DefinedState } from '@/lib/defined-state.js';
 import { genId } from '@/utility/id.js';
 import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
 import { i18n } from '@/i18n.js';
@@ -23,8 +25,10 @@ import { deepClone } from '@/utility/clone.js';
 //};
 
 type PREF = typeof PREF_DEF;
+// 値型の導出ルールは StateStore と共通なので @/lib/defined-state.js に一本化してある
+// (ここではキー引きで使いたいので薄く包み直しているだけ)
 type DefaultValues = {
-	[K in keyof PREF]: PREF[K]['default'] extends (...args: any) => infer R ? R : PREF[K]['default'];
+	[K in keyof PREF]: ValueOfDef<PREF[K]>;
 };
 type ValueOf<K extends keyof PREF> = DefaultValues[K];
 
@@ -199,17 +203,21 @@ export class PreferencesManager extends EventEmitter<PreferencesManagerEvents> {
 	public profile: PreferencesProfile;
 	public cloudReady: Promise<void>;
 
+	// s / r / model() の実装は StateStore と共通なので DefinedState に委譲する
+	// (永続化モデルが全く異なるため継承ではなくコンポジション)
+	private core: DefinedState<PREF>;
+
 	/**
 	 * static / state の略 (static が予約語のため)
 	 */
-	public s = {} as {
+	public s: {
 		[K in keyof PREF]: ValueOf<K>;
 	};
 
 	/**
 	 * reactive の略
 	 */
-	public r = {} as {
+	public r: {
 		[K in keyof PREF]: Ref<ValueOf<K>>;
 	};
 
@@ -225,13 +233,17 @@ export class PreferencesManager extends EventEmitter<PreferencesManagerEvents> {
 			preferences: normalizePreferences(loadedProfile.preferences, currentAccount),
 		};
 
-		const states = this.genStates();
-
-		// apply states
-		for (const key in states) {
-			(this.s[key as keyof PREF] as any) = states[key as keyof PREF];
-			(this.r[key as keyof PREF] as Ref<any>) = ref(this.s[key as keyof PREF]);
-		}
+		// 初期値はdefaultではなくプロファイルのレコード解決結果 (アカウント > サーバー > デフォルト) を使う。
+		// レコード内の値と参照を共有する必要があるためcloneしないこと。
+		this.core = new DefinedState<PREF>(
+			PREF_DEF,
+			(key, value) => {
+				this.commit(key, value as ValueOf<typeof key>);
+			},
+			(key) => this.getMatchedRecordOf(key)[1],
+		);
+		this.s = this.core.s;
+		this.r = this.core.r;
 
 		// normalizeの結果変わっていたら保存
 		if (!deepEqual(loadedProfile, this.profile)) {
@@ -244,8 +256,7 @@ export class PreferencesManager extends EventEmitter<PreferencesManagerEvents> {
 	}
 
 	private rewriteRawState<K extends keyof PREF>(key: K, value: ValueOf<K>) {
-		const v = JSON.parse(JSON.stringify(value)); // deep copy 兼 vueのプロキシ解除
-		this.r[key].value = this.s[key] = v;
+		this.core.rewrite(key, value);
 	}
 
 	// TODO: desync対策 cloudの値のfetchが正常に完了していない状態でcommitすると多分値が上書きされる
@@ -318,26 +329,8 @@ export class PreferencesManager extends EventEmitter<PreferencesManagerEvents> {
 		getter?: (v: ValueOf<K>) => V,
 		setter?: (v: V) => ValueOf<K>,
 	): Ref<V> {
-		return customRef<V>((track, trigger) => {
-			const watchStop = watch(this.r[key], () => {
-				trigger();
-			});
-
-			onScopeDispose(() => {
-				watchStop();
-			}, true);
-
-			return {
-				get: () => {
-					track();
-					return (getter != null ? getter(this.s[key]) : this.s[key]) as V;
-				},
-				set: (value) => {
-					const val = setter != null ? setter(value) : value;
-					this.commit(key, val as ValueOf<K>);
-				},
-			};
-		});
+		// 実装はDefinedStateに委譲する（オーバーロードの解決だけこちらで行うためcastする）
+		return (this.core.model as (...args: unknown[]) => Ref<V>)(key, getter, setter);
 	}
 
 	private genStates() {
