@@ -29,6 +29,14 @@ if (idbAvailable) {
 	console.error('indexedDB is unavailable. It will use localStorage.');
 }
 
+/** idbが使えずlocalStorageフォールバックで動作しているかどうか（容量制約の判断等に使う） */
+export function isIdbAvailable(): boolean {
+	return idbAvailable;
+}
+
+/** localStorageフォールバック時に実体キーへ付くプレフィックス */
+export const FALLBACK_PREFIX = PREFIX;
+
 export async function get(key: string) {
 	if (idbAvailable) return iget(key);
 	return miLocalStorage.getItemAsJson(`${PREFIX}${key}`);

@@ -61,7 +61,7 @@ export async function removeAccount(host: string, id: AccountWithToken['id']) {
 export async function removeAccountAssociatedData(host: string, id: AccountWithToken['id']) {
 	// 設定・状態を削除
 	prefer.clearAccountSettingsFromDevice(host, id);
-	await store.clearAccountDataFromDevice(id);
+	await store.clearAccountDataFromDevice(id, host);
 }
 
 const isAccountDeleted = Symbol('isAccountDeleted');

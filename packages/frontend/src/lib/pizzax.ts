@@ -9,10 +9,13 @@
 
 import { customRef, ref, watch, onScopeDispose } from 'vue';
 import { BroadcastChannel } from 'broadcast-channel';
+import { host as selfHost } from '@@/js/config.js';
 import type { Ref } from 'vue';
 import { $i } from '@/i.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { get, set, delMany } from '@/utility/idb-proxy.js';
+import { buildKey, accountKeyOf } from '@/lib/storage/keys.js';
+import { migrateLegacyKeys } from '@/lib/storage/migrate.js';
 import { store } from '@/store.js';
 import { deepClone } from '@/utility/clone.js';
 import { deepMerge } from '@/utility/merge.js';
@@ -39,9 +42,9 @@ export class Pizzax<T extends StateDef> {
 	public readonly loaded: Promise<void>;
 
 	public readonly key: string;
-	public readonly deviceStateKeyName: `pizzax::${this['key']}`;
-	public readonly deviceAccountStateKeyName: `pizzax::${this['key']}::${string}` | '';
-	public readonly registryCacheKeyName: `pizzax::${this['key']}::cache::${string}` | '';
+	public readonly deviceStateKeyName: string;
+	public readonly deviceAccountStateKeyName: string;
+	public readonly registryCacheKeyName: string;
 
 	public readonly def: T;
 
@@ -71,9 +74,9 @@ export class Pizzax<T extends StateDef> {
 
 	constructor(key: string, def: T) {
 		this.key = key;
-		this.deviceStateKeyName = `pizzax::${key}`;
-		this.deviceAccountStateKeyName = $i ? `pizzax::${key}::${$i.id}` : '';
-		this.registryCacheKeyName = $i ? `pizzax::${key}::cache::${$i.id}` : '';
+		this.deviceStateKeyName = buildKey({ category: 'state', owner: { kind: 'device' }, name: key });
+		this.deviceAccountStateKeyName = $i ? Pizzax.buildDeviceAccountStateKeyName(key, selfHost, $i.id) : '';
+		this.registryCacheKeyName = $i ? Pizzax.buildRegistryCacheKeyName(key, selfHost, $i.id) : '';
 		this.def = def;
 
 		this.pizzaxChannel = new BroadcastChannel(`pizzax::${key}`);
@@ -107,8 +110,20 @@ export class Pizzax<T extends StateDef> {
 		return value;
 	}
 
+	private static buildDeviceAccountStateKeyName(key: string, host: string, userId: string): string {
+		return buildKey({ category: 'state', owner: { kind: 'account', account: accountKeyOf(host, userId) }, name: key });
+	}
+
+	private static buildRegistryCacheKeyName(key: string, host: string, userId: string): string {
+		return buildKey({ category: 'cache', owner: { kind: 'account', account: accountKeyOf(host, userId) }, name: `registry-${key}` });
+	}
+
 	private async init(): Promise<void> {
+		// 超旧バージョンからの直行アップグレードに備え、localStorage => idb を先に通してから
+		// 旧pizzaxキー => 新mkキー空間の移行を行う（移行チェーンの順序を崩さないこと）
 		await this.migrate();
+		await migrateLegacyKeys();
+		await this.adoptOwnLegacyKeys();
 
 		const deviceState: State<T> = await get(this.deviceStateKeyName) || {};
 		const deviceAccountState = $i ? await get(this.deviceAccountStateKeyName) || {} : {};
@@ -228,12 +243,12 @@ export class Pizzax<T extends StateDef> {
 		return defaultValue;
 	}
 
-	/** 現在のアカウントに紐づくデータをデバイスから削除します */
-	public async clearAccountDataFromDevice(id = $i?.id) {
+	/** 指定アカウントに紐づくデータをデバイスから削除します */
+	public async clearAccountDataFromDevice(id = $i?.id, host = selfHost) {
 		if (id == null) return;
 
-		const deviceAccountStateKey = `pizzax::${this.key}::${id}` satisfies typeof this.deviceAccountStateKeyName;
-		const registryCacheKey = `pizzax::${this.key}::cache::${id}` satisfies typeof this.registryCacheKeyName;
+		const deviceAccountStateKey = Pizzax.buildDeviceAccountStateKeyName(this.key, host, id);
+		const registryCacheKey = Pizzax.buildRegistryCacheKeyName(this.key, host, id);
 
 		await this.addIdbSetJob(async () => {
 			await delMany([deviceAccountStateKey, registryCacheKey]);
@@ -281,23 +296,56 @@ export class Pizzax<T extends StateDef> {
 	}
 
 	// localStorage => indexedDBのマイグレーション
+	// 対象は旧文法(`pizzax::*`)のキーのまま。ここでidbへ載せたものを、後段のmigrateLegacyKeys()が
+	// 新文法へ移す二段構えになっている
 	private async migrate() {
-		const deviceState = localStorage.getItem(this.deviceStateKeyName);
+		const { legacyDeviceStateKey, legacyDeviceAccountStateKey, legacyRegistryCacheKey } = this.legacyKeyNames();
+
+		const deviceState = localStorage.getItem(legacyDeviceStateKey);
 		if (deviceState) {
-			await set(this.deviceStateKeyName, JSON.parse(deviceState));
-			localStorage.removeItem(this.deviceStateKeyName);
+			await set(legacyDeviceStateKey, JSON.parse(deviceState));
+			localStorage.removeItem(legacyDeviceStateKey);
 		}
 
-		const deviceAccountState = $i && localStorage.getItem(this.deviceAccountStateKeyName);
+		const deviceAccountState = $i && localStorage.getItem(legacyDeviceAccountStateKey);
 		if ($i && deviceAccountState) {
-			await set(this.deviceAccountStateKeyName, JSON.parse(deviceAccountState));
-			localStorage.removeItem(this.deviceAccountStateKeyName);
+			await set(legacyDeviceAccountStateKey, JSON.parse(deviceAccountState));
+			localStorage.removeItem(legacyDeviceAccountStateKey);
 		}
 
-		const registryCache = $i && localStorage.getItem(this.registryCacheKeyName);
+		const registryCache = $i && localStorage.getItem(legacyRegistryCacheKey);
 		if ($i && registryCache) {
-			await set(this.registryCacheKeyName, JSON.parse(registryCache));
-			localStorage.removeItem(this.registryCacheKeyName);
+			await set(legacyRegistryCacheKey, JSON.parse(registryCache));
+			localStorage.removeItem(legacyRegistryCacheKey);
+		}
+	}
+
+	private legacyKeyNames() {
+		return {
+			legacyDeviceStateKey: `pizzax::${this.key}`,
+			legacyDeviceAccountStateKey: $i ? `pizzax::${this.key}::${$i.id}` : '',
+			legacyRegistryCacheKey: $i ? `pizzax::${this.key}::cache::${$i.id}` : '',
+		};
+	}
+
+	/**
+	 * migrateLegacyKeys()はboot中に一度しか走らないので、それより後に生成されたインスタンスの
+	 * migrate()が掘り起こした旧キーを取りこぼす。自分の分だけはここで拾い直す（copy-if-absent）。
+	 */
+	private async adoptOwnLegacyKeys(): Promise<void> {
+		const { legacyDeviceStateKey, legacyDeviceAccountStateKey, legacyRegistryCacheKey } = this.legacyKeyNames();
+
+		const pairs: [string, string][] = [[legacyDeviceStateKey, this.deviceStateKeyName]];
+		if ($i) {
+			pairs.push([legacyDeviceAccountStateKey, this.deviceAccountStateKeyName]);
+			pairs.push([legacyRegistryCacheKey, this.registryCacheKeyName]);
+		}
+
+		for (const [from, to] of pairs) {
+			if (await get(to) !== undefined) continue;
+			const value = await get(from);
+			if (value === undefined) continue;
+			await set(to, value);
 		}
 	}
 }
