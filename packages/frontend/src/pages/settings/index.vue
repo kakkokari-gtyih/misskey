@@ -184,6 +184,9 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		icon: 'ti ti-power',
 		text: i18n.ts.logout,
 		action: async (ev) => {
+			// currentTargetはイベントのディスパッチ完了時にnullへ戻るので、awaitを挟む前に退避しておく
+			const anchor = ev.currentTarget ?? ev.target;
+
 			async function signoutWithConfirm(all?: boolean) {
 				const { canceled } = await os.confirm({
 					type: 'warning',
@@ -214,7 +217,7 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 					action: async () => {
 						await signoutWithConfirm(true);
 					},
-				}], ev.currentTarget ?? ev.target);
+				}], anchor);
 			}
 		},
 		danger: true,

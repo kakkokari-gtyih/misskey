@@ -19,7 +19,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<template v-for="x in accounts" :key="x.host + x.id">
 			<MkUserCardMini v-if="x.user" :user="x.user" :class="$style.user" @click.prevent="showMenu(x, $event)">
 				<template #nameSuffix>
-					<span v-if="x.id === $i?.id" :class="$style.currentAccountTag">{{ i18n.ts.loggingIn }}</span>
+					<span v-if="isCurrent(x)" :class="$style.currentAccountTag">{{ i18n.ts.loggingIn }}</span>
 					<span v-if="isPrimary(x)" :class="$style.primaryAccountTag">{{ i18n.ts._primaryAccount.thisAccountIsPrimary }}</span>
 				</template>
 			</MkUserCardMini>
@@ -28,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div>
 					<div :class="$style.unknownUserTitle">
 						{{ i18n.ts.unknown }}
-						<span v-if="x.id === $i?.id" :class="$style.currentAccountTag">{{ i18n.ts.loggingIn }}</span>
+						<span v-if="isCurrent(x)" :class="$style.currentAccountTag">{{ i18n.ts.loggingIn }}</span>
 						<span v-if="isPrimary(x)" :class="$style.primaryAccountTag">{{ i18n.ts._primaryAccount.thisAccountIsPrimary }}</span>
 					</div>
 					<div :class="$style.unknownUserSub">ID: <span class="_monospace">{{ x.id }}</span></div>
@@ -44,12 +44,12 @@ import { ref, computed } from 'vue';
 import { host as local } from '@@/js/config.js';
 import type { MenuItem } from '@/types/menu.js';
 import type { AccountKey } from '@/lib/storage/keys.js';
+import type { AccountData } from '@/accounts.js';
 import MkButton from '@/components/MkButton.vue';
 import MkInfo from '@/components/MkInfo.vue';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
 import { switchAccount, getAccountWithSigninDialog, getAccountWithSignupDialog, getAccounts, refreshAccounts } from '@/accounts.js';
-import type { AccountData } from '@/accounts.js';
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
 import MkUserCardMini from '@/components/MkUserCardMini.vue';
@@ -80,6 +80,12 @@ reload().catch(err => {
 
 function isPrimary(a: AccountData): boolean {
 	return primaryAccountKey.value === accountKeyOf(a.host, a.id);
+}
+
+/** 現在操作中のアカウントか。別ホストに同じidのアカウントが並びうるのでhostまで見る */
+function isCurrent(a: AccountData): boolean {
+	if ($i == null) return false;
+	return $i.id === a.id && ($i.host ?? local) === a.host;
 }
 
 async function makePrimary(a: AccountData) {
@@ -126,7 +132,7 @@ function showMenu(a: AccountData, ev: PointerEvent) {
 		});
 	}
 
-	if ($i != null && $i.id === a.id && ($i.host ?? local) === a.host) {
+	if (isCurrent(a)) {
 		menu.push({
 			text: i18n.ts.logout,
 			icon: 'ti ti-power',
@@ -185,7 +191,8 @@ async function addExistingAccount() {
 	if (res != null) {
 		os.success();
 	}
-	accounts.value = await getAccounts();
+	// アカウント追加でプライマリが自動採用されることがあるので、リストだけでなく全体を読み直す
+	await reload();
 }
 
 async function createAccount() {
@@ -193,7 +200,8 @@ async function createAccount() {
 	if (res != null) {
 		os.success();
 	}
-	accounts.value = await getAccounts();
+	// アカウント追加でプライマリが自動採用されることがあるので、リストだけでなく全体を読み直す
+	await reload();
 }
 
 async function logoutFromAll() {
@@ -248,7 +256,7 @@ definePage(() => ({
 	align-items: center;
 	text-align: start;
 	padding: 16px;
-	background: var(--MI_THEME-panel);
+	// 背景はv-panelが親に応じて設定するのでここでは指定しない
 	border-radius: 8px;
 	font-size: 0.9em;
 }
