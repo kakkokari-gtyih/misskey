@@ -38,16 +38,29 @@ function setCustomEmojis(emojis: Misskey.entities.EmojiSimple[]) {
 	set('emojis', emojis);
 }
 
+type CustomEmojisMutation = (emojis: Misskey.entities.EmojiSimple[]) => Misskey.entities.EmojiSimple[];
+
+/**
+ * fetchCustomEmojis が絵文字リストを取得している間に届いたストリーム経由の更新を記録しておくバッファ
+ * 取得していない間は null。
+ */
+let mutationsDuringFetch: CustomEmojisMutation[] | null = null;
+
+function mutateCustomEmojis(mutation: CustomEmojisMutation) {
+	mutationsDuringFetch?.push(mutation);
+	setCustomEmojis(mutation(customEmojis.value));
+}
+
 export function addCustomEmoji(emoji: Misskey.entities.EmojiSimple) {
-	setCustomEmojis([emoji, ...customEmojis.value]);
+	mutateCustomEmojis(current => [emoji, ...current]);
 }
 
 export function updateCustomEmojis(emojis: Misskey.entities.EmojiSimple[]) {
-	setCustomEmojis(customEmojis.value.map(item => emojis.find(search => search.name === item.name) ?? item));
+	mutateCustomEmojis(current => current.map(item => emojis.find(search => search.name === item.name) ?? item));
 }
 
 export function removeCustomEmojis(emojis: Misskey.entities.EmojiSimple[]) {
-	setCustomEmojis(customEmojis.value.filter(item => !emojis.some(search => search.name === item.name)));
+	mutateCustomEmojis(current => current.filter(item => !emojis.some(search => search.name === item.name)));
 }
 
 function isSameStats(a: Misskey.entities.EmojisStatsResponse | null | undefined, b: Misskey.entities.EmojisStatsResponse) {
@@ -59,11 +72,21 @@ export async function fetchCustomEmojis(force = false) {
 	const stats = await misskeyApi('emojis/stats');
 	if (!force && isSameStats(await get('emojisStats'), stats)) return;
 
-		// GETだとキャッシュで古いリストが返ってきうるのでPOST
-	const res = await misskeyApi('emojis');
+	// 取得中にストリーム経由で届いた更新
+	const mutations: CustomEmojisMutation[] = [];
+	mutationsDuringFetch = mutations;
 
-	setCustomEmojis(res.emojis);
-	set('emojisStats', stats);
+	try {
+		// GETだとキャッシュで古いリストが返ってきうるのでPOST
+		const res = await misskeyApi('emojis');
+
+		// 取得中に届いた更新は取得結果より新しいので、取得したリストに改めて適用する
+		// そのまま上書きしてしまうと、その間に追加された絵文字が次回起動まで消えてしまう
+		setCustomEmojis(mutations.reduce((emojis, mutation) => mutation(emojis), res.emojis));
+		set('emojisStats', stats);
+	} finally {
+		mutationsDuringFetch = null;
+	}
 }
 
 export function getCustomEmojiTags() {
