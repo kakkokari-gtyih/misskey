@@ -96,6 +96,12 @@ export class CustomEmojiService implements OnApplicationShutdown {
 	}
 
 	@bindThis
+	private refreshLocalEmojiCaches(): void {
+		this.localEmojisCache.refresh();
+		this.localEmojisStatsCache.delete();
+	}
+
+	@bindThis
 	public async add(data: {
 		originalUrl: string;
 		publicUrl: string;
@@ -126,7 +132,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 		});
 
 		if (data.host == null) {
-			this.localEmojisCache.refresh();
+			this.refreshLocalEmojiCaches();
 
 			this.globalEventService.publishBroadcastStream('emojiAdded', {
 				emoji: await this.emojiEntityService.packDetailed(emoji.id),
@@ -188,7 +194,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			roleIdsThatCanBeUsedThisEmojiAsReaction: data.roleIdsThatCanBeUsedThisEmojiAsReaction ?? undefined,
 		});
 
-		this.localEmojisCache.refresh();
+		this.refreshLocalEmojiCaches();
 
 		const packed = await this.emojiEntityService.packDetailed(emoji.id);
 
@@ -230,7 +236,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			});
 		}
 
-		this.localEmojisCache.refresh();
+		this.refreshLocalEmojiCaches();
 
 		this.globalEventService.publishBroadcastStream('emojiUpdated', {
 			emojis: await this.emojiEntityService.packDetailedMany(ids),
@@ -246,7 +252,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			aliases: aliases,
 		});
 
-		this.localEmojisCache.refresh();
+		this.refreshLocalEmojiCaches();
 
 		this.globalEventService.publishBroadcastStream('emojiUpdated', {
 			emojis: await this.emojiEntityService.packDetailedMany(ids),
@@ -266,7 +272,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			});
 		}
 
-		this.localEmojisCache.refresh();
+		this.refreshLocalEmojiCaches();
 
 		this.globalEventService.publishBroadcastStream('emojiUpdated', {
 			emojis: await this.emojiEntityService.packDetailedMany(ids),
@@ -282,7 +288,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			category: category,
 		});
 
-		this.localEmojisCache.refresh();
+		this.refreshLocalEmojiCaches();
 
 		this.globalEventService.publishBroadcastStream('emojiUpdated', {
 			emojis: await this.emojiEntityService.packDetailedMany(ids),
@@ -298,7 +304,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			license: license,
 		});
 
-		this.localEmojisCache.refresh();
+		this.refreshLocalEmojiCaches();
 
 		this.globalEventService.publishBroadcastStream('emojiUpdated', {
 			emojis: await this.emojiEntityService.packDetailedMany(ids),
@@ -311,7 +317,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 
 		await this.emojisRepository.delete(emoji.id);
 
-		this.localEmojisCache.refresh();
+		this.refreshLocalEmojiCaches();
 
 		this.globalEventService.publishBroadcastStream('emojiDeleted', {
 			emojis: [await this.emojiEntityService.packDetailed(emoji)],
@@ -342,7 +348,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			}
 		}
 
-		this.localEmojisCache.refresh();
+		this.refreshLocalEmojiCaches();
 
 		this.globalEventService.publishBroadcastStream('emojiDeleted', {
 			emojis: await this.emojiEntityService.packDetailedMany(emojis),
