@@ -13,7 +13,7 @@ import { ModerationLogService } from '@/core/ModerationLogService.js';
 import { UtilityService } from '@/core/UtilityService.js';
 import { bindThis } from '@/decorators.js';
 import { DI } from '@/di-symbols.js';
-import { MemoryKVCache, RedisSingleCache } from '@/misc/cache.js';
+import { MemoryKVCache, MemorySingleCache, RedisSingleCache } from '@/misc/cache.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import type { EmojisRepository, MiRole, MiUser } from '@/models/_.js';
 import type { MiEmoji } from '@/models/Emoji.js';
@@ -57,9 +57,15 @@ export const fetchEmojisSortKeys = [
 ] as const;
 export type FetchEmojisSortKeys = typeof fetchEmojisSortKeys[number];
 
+export type LocalEmojisStats = {
+	count: number;
+	lastUpdatedAt: Date | null;
+};
+
 @Injectable()
 export class CustomEmojiService implements OnApplicationShutdown {
 	private emojisCache: MemoryKVCache<MiEmoji | null>;
+	private localEmojisStatsCache: MemorySingleCache<LocalEmojisStats>;
 	public localEmojisCache: RedisSingleCache<Map<string, MiEmoji>>;
 
 	constructor(
@@ -74,7 +80,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 		private globalEventService: GlobalEventService,
 	) {
 		this.emojisCache = new MemoryKVCache<MiEmoji | null>(1000 * 60 * 60 * 12); // 12h
-
+		this.localEmojisStatsCache = new MemorySingleCache<LocalEmojisStats>(1000 * 60 * 3); // 3m
 		this.localEmojisCache = new RedisSingleCache<Map<string, MiEmoji>>(this.redisClient, 'localEmojis', {
 			lifetime: 1000 * 60 * 30, // 30m
 			memoryCacheLifetime: 1000 * 60 * 3, // 3m
@@ -599,6 +605,22 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			allCount: count,
 			allPages: Math.ceil(count / limit),
 		};
+	}
+
+	@bindThis
+	public async getLocalEmojisStats(): Promise<LocalEmojisStats> {
+		return this.localEmojisStatsCache.fetch(async () => {
+			const raw = await this.emojisRepository.createQueryBuilder('emoji')
+				.select('COUNT(*)', 'count')
+				.addSelect('MAX(emoji.updatedAt)', 'lastUpdatedAt')
+				.where('emoji.host IS NULL')
+				.getRawOne<{ count: string; lastUpdatedAt: Date | null }>();
+
+			return {
+				count: raw ? Number(raw.count) : 0,
+				lastUpdatedAt: raw?.lastUpdatedAt ?? null,
+			};
+		});
 	}
 
 	@bindThis

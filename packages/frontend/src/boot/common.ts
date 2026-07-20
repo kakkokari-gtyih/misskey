@@ -242,9 +242,7 @@ export async function common(createVue: () => Promise<App<Element>>) {
 	}
 	//#endregion
 
-	try {
-		await fetchCustomEmojis();
-	} catch (err) { /* empty */ }
+	fetchCustomEmojis().catch(() => { /* empty */ });
 
 	// analytics
 	fetchInstanceMetaPromise.then(async () => {
