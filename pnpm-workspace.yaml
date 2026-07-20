@@ -52,7 +52,6 @@ minimumReleaseAgeExclude:
   - slacc-win32-arm64-msvc
   - slacc-win32-x64-msvc
   - '@typescript/native-preview*'
-  - js-yaml # そのうち消す
   - vite # そのうち消す
   # Renovate security update: @opentelemetry/core@2.8.0
   - "@opentelemetry/core@2.8.0"
