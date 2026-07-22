@@ -279,29 +279,32 @@ function putStone(pos: number) {
 	});
 	appliedOps.push(id);
 
-	myTurnTimerRmain.value = game.value.timeLimitForEachTurn;
-	opTurnTimerRmain.value = game.value.timeLimitForEachTurn;
+	resetTurnTimer();
 
 	checkEnd();
 }
 
 const myTurnTimerRmain = ref<number>(game.value.timeLimitForEachTurn);
 const opTurnTimerRmain = ref<number>(game.value.timeLimitForEachTurn);
+let turnTimerDeadline = Date.now() + game.value.timeLimitForEachTurn * 1000;
+
+function resetTurnTimer() {
+	turnTimerDeadline = Date.now() + game.value.timeLimitForEachTurn * 1000;
+	myTurnTimerRmain.value = game.value.timeLimitForEachTurn;
+	opTurnTimerRmain.value = game.value.timeLimitForEachTurn;
+}
 
 const TIMER_INTERVAL_SEC = 3;
 if (!props.game.isEnded) {
 	useInterval(() => {
-		if (myTurnTimerRmain.value > 0) {
-			myTurnTimerRmain.value = Math.max(0, myTurnTimerRmain.value - TIMER_INTERVAL_SEC);
-		}
-		if (opTurnTimerRmain.value > 0) {
-			opTurnTimerRmain.value = Math.max(0, opTurnTimerRmain.value - TIMER_INTERVAL_SEC);
-		}
+		// バックグラウンドではタイマーがスロットリングされて呼び出し間隔が延びるため、
+		// 固定値の減算ではなく期限の絶対時刻との差分で残り時間を計算する
+		const remain = Math.max(0, Math.ceil((turnTimerDeadline - Date.now()) / 1000));
+		myTurnTimerRmain.value = remain;
+		opTurnTimerRmain.value = remain;
 
-		if (iAmPlayer.value) {
-			if ((isMyTurn.value && myTurnTimerRmain.value === 0) || (!isMyTurn.value && opTurnTimerRmain.value === 0)) {
-				props.connection!.send('claimTimeIsUp', {});
-			}
+		if (iAmPlayer.value && remain === 0) {
+			props.connection!.send('claimTimeIsUp', {});
 		}
 	}, TIMER_INTERVAL_SEC * 1000, { immediate: false, afterMounted: true });
 }
@@ -333,8 +336,7 @@ async function onStreamLog(log: Reversi.Serializer.Log & { id: string | null }) 
 				engine.value.putStone(log.pos);
 				triggerRef(engine);
 
-				myTurnTimerRmain.value = game.value.timeLimitForEachTurn;
-				opTurnTimerRmain.value = game.value.timeLimitForEachTurn;
+				resetTurnTimer();
 
 				checkEnd();
 				break;
