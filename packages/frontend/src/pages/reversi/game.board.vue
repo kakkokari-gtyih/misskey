@@ -297,8 +297,6 @@ function resetTurnTimer() {
 const TIMER_INTERVAL_SEC = 3;
 if (!props.game.isEnded) {
 	useInterval(() => {
-		// バックグラウンドではタイマーがスロットリングされて呼び出し間隔が延びるため、
-		// 固定値の減算ではなく期限の絶対時刻との差分で残り時間を計算する
 		const remain = Math.max(0, Math.ceil((turnTimerDeadline - Date.now()) / 1000));
 		myTurnTimerRmain.value = remain;
 		opTurnTimerRmain.value = remain;
