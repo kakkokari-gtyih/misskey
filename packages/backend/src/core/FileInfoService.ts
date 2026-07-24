@@ -307,8 +307,9 @@ export class FileInfoService {
 
 					const index = frameIndex++;
 					if (index !== targetIndex) continue;
+					const following = targetIndex + nextIndex;
 					targetIndex = nextIndex;
-					nextIndex += index; // fibonacci sequence によってフレーム数制限を掛ける
+					nextIndex = Math.max(following, targetIndex + 1);
 
 					frameBuffers.push(await scaler.toPng(measured, {
 						resize: { width: DETECTION_IMAGE_SIZE, height: DETECTION_IMAGE_SIZE },
