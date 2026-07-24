@@ -31,10 +31,7 @@ allowBuilds:
   v-code-diff: true
   vue-demi: true
   exifreader: false
-  # postinstall は ffmpeg CLI バイナリを GitHub からダウンロードするだけ。
-  # Misskey が使う API (Demuxer / Decoder / Scaler) は prebuilt アドオンに
-  # FFmpeg が静的リンクされているため、CLI 無しで動作する
-  node-av: false
+  node-av: false # napiバイナリで足りるため不要
   protobufjs: false
 minimumReleaseAge: 10080 # delay 7days to mitigate supply-chain attack
 minimumReleaseAgeExclude:
