@@ -5,7 +5,8 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import sharp from 'sharp';
-import { AVSEEK_FLAG_BACKWARD, Decoder, Demuxer, Scaler } from 'node-av';
+import { Decoder, Demuxer, Scaler } from 'node-av/api';
+import { AVSEEK_FLAG_BACKWARD } from 'node-av/constants';
 import { DI } from '@/di-symbols.js';
 import type { Config } from '@/config.js';
 import { ImageProcessingService } from '@/core/ImageProcessingService.js';
