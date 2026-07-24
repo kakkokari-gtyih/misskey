@@ -31,6 +31,10 @@ allowBuilds:
   v-code-diff: true
   vue-demi: true
   exifreader: false
+  # postinstall は ffmpeg CLI バイナリを GitHub からダウンロードするだけ。
+  # Misskey が使う API (Demuxer / Decoder / Scaler) は prebuilt アドオンに
+  # FFmpeg が静的リンクされているため、CLI 無しで動作する
+  node-av: false
   protobufjs: false
 minimumReleaseAge: 10080 # delay 7days to mitigate supply-chain attack
 minimumReleaseAgeExclude:
@@ -61,6 +65,9 @@ minimumReleaseAgeExclude:
 overrides:
   '@aiscript-dev/aiscript-languageserver': '-'
   'bullmq>ioredis': 5.11.1
+  # node-av の WebRTC 機能でしか使われない optional dependency。
+  # Misskey は Demuxer / Decoder / Scaler しか使わないので、DTLS/SCTP 一式を丸ごと外す
+  'node-av>werift': '-'
   chokidar: 5.0.0
   lodash: 4.18.1
 engineStrict: true
