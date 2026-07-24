@@ -62,9 +62,7 @@ minimumReleaseAgeExclude:
 overrides:
   '@aiscript-dev/aiscript-languageserver': '-'
   'bullmq>ioredis': 5.11.1
-  # node-av の WebRTC 機能でしか使われない optional dependency。
-  # Misskey は Demuxer / Decoder / Scaler しか使わないので、DTLS/SCTP 一式を丸ごと外す
-  'node-av>werift': '-'
+  'node-av>werift': '-' # node-av の WebRTC でしか使われない optional dependency で使用しないためインストール抑止
   chokidar: 5.0.0
   lodash: 4.18.1
 engineStrict: true
