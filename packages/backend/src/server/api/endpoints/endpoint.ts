@@ -4,6 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import * as v from 'valibot';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { isValibotSchema } from '@/misc/schema/bridge.js';
 
@@ -19,31 +20,17 @@ export const meta = {
 
 	tags: ['meta'],
 
-	res: {
-		type: 'object',
-		nullable: true,
-		properties: {
-			params: {
-				type: 'array',
-				items: {
-					type: 'object',
-					properties: {
-						name: { type: 'string' },
-						type: { type: 'string' },
-					},
-				},
-			},
-		},
-	},
+	res: v.nullable(v.object({
+		params: v.array(v.object({
+			name: v.string(),
+			type: v.string(),
+		})),
+	})),
 } as const;
 
-export const paramDef = {
-	type: 'object',
-	properties: {
-		endpoint: { type: 'string' },
-	},
-	required: ['endpoint'],
-} as const;
+export const paramDef = v.object({
+	endpoint: v.string(),
+});
 
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
