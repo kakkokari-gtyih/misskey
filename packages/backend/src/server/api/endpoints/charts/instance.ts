@@ -4,7 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { getJsonSchema } from '@/core/chart/core.js';
+import { getValibotSchema } from '@/core/chart/core.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import InstanceChart from '@/core/chart/charts/instance.js';
 import { schema } from '@/core/chart/charts/entities/instance.js';
@@ -12,7 +12,7 @@ import { schema } from '@/core/chart/charts/entities/instance.js';
 export const meta = {
 	tags: ['charts'],
 
-	res: getJsonSchema(schema),
+	res: getValibotSchema(schema),
 
 	allowGet: true,
 	cacheSec: 60 * 60,
