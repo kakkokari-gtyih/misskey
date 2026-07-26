@@ -42,7 +42,7 @@ export type { CodePointsMarker, LimitOptions } from './helpers.js';
 
 export {
 	OPENAPI_SKIP,
-	miMeta,
+	schemaMeta,
 	format,
 	example,
 	deprecated,
@@ -54,7 +54,7 @@ export {
 	isSkippedInOpenApi,
 	mergeMetadata,
 } from './metadata.js';
-export type { AllOfPart, EntityName, MiMeta, CollectedMetadata } from './metadata.js';
+export type { AllOfPart, EntityName, SchemaMeta, CollectedMetadata } from './metadata.js';
 
 export {
 	defineEntity,

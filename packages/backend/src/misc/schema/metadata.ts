@@ -32,8 +32,11 @@ export type AllOfPart = EntityName | AnyValibotSchema;
  *
  * NOTE: `interface` ではなく type alias にしているのは、`v.metadata()` の型制約
  * (`TMetadata extends Record<string, unknown>`) を満たすため (interface には implicit index signature が付かない)。
+ *
+ * NOTE: `Mi*` プレフィックスは TypeORM エンティティ (`MiUser` / `MiMeta` = インスタンスメタ等) の
+ * 命名規則なので、ここでは使わない (旧名 `MiMeta` は `models/Meta.js` の entity と衝突していた)。
  */
-export type MiMeta = {
+export type SchemaMeta = {
 	/** OpenAPI `format`。`'misskey:id'` / `'id'` / `'date-time'` / `'url'` など */
 	readonly format?: string;
 	/** OpenAPI `example` */
@@ -64,20 +67,20 @@ export type MiMeta = {
 /**
  * 任意のスキーマの pipe に載せられる Misskey メタデータアクションを作る。
  *
- * NOTE: `TInput` は **呼び出し側の文脈から推論させる** (`v.pipe(v.string(), miMeta(...))` なら
+ * NOTE: `TInput` は **呼び出し側の文脈から推論させる** (`v.pipe(v.string(), schemaMeta(...))` なら
  * `string`)。ここを `any` で固定すると `v.pipe()` の出力型 (= 最後の pipe item の型) が `any` に
  * 潰れてしまい、`misskeyId()` 等の型が失われる。文脈が無い場所では既定の `any` になり、
  * どのスキーマの pipe にも載せられる (メタデータは値を触らないので型安全性は落ちない)。
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function miMeta<TInput = any, const T extends MiMeta = MiMeta>(meta: T): v.MetadataAction<TInput, T> {
+export function schemaMeta<TInput = any, const T extends SchemaMeta = SchemaMeta>(meta: T): v.MetadataAction<TInput, T> {
 	return v.metadata<any, T>(meta) as v.MetadataAction<TInput, T>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 /** OpenAPI `format` を付ける (ランタイム検証はしない) */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function format<TInput = any>(value: string) {
-	return miMeta<TInput, { readonly format: string }>({ format: value });
+	return schemaMeta<TInput, { readonly format: string }>({ format: value });
 }
 
 /**
@@ -89,40 +92,40 @@ export function format<TInput = any>(value: string) {
 export function example<TSchema extends v.GenericSchema>(schema: TSchema, value: unknown): TSchema;
 export function example<TInput = any>(value: unknown): v.MetadataAction<TInput, { readonly example: unknown }>; // eslint-disable-line @typescript-eslint/no-explicit-any
 export function example(a: unknown, ...rest: readonly unknown[]): unknown {
-	if (rest.length === 0) return miMeta({ example: a });
+	if (rest.length === 0) return schemaMeta({ example: a });
 
 	// NOTE: `v.pipe()` の戻り値 (SchemaWithPipe) は元スキーマのメンバーを全て持つので TSchema として扱える
-	return v.pipe(a as v.GenericSchema, miMeta({ example: rest[0] }));
+	return v.pipe(a as v.GenericSchema, schemaMeta({ example: rest[0] }));
 }
 
 /** OpenAPI `deprecated: true` を付ける */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function deprecated<TInput = any>() {
-	return miMeta<TInput, { readonly deprecated: true }>({ deprecated: true });
+	return schemaMeta<TInput, { readonly deprecated: true }>({ deprecated: true });
 }
 
 /** legacy の `selfRef: true` 相当のマーカーを付ける */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function selfRef<TInput = any>() {
-	return miMeta<TInput, { readonly selfRef: true }>({ selfRef: true });
+	return schemaMeta<TInput, { readonly selfRef: true }>({ selfRef: true });
 }
 
 /** `v.union` を `oneOf` として出力させる (判別キーの無い現行 oneOf の互換用) */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function asOneOf<TInput = any>() {
-	return miMeta<TInput, { readonly unionKeyword: 'oneOf' }>({ unionKeyword: 'oneOf' });
+	return schemaMeta<TInput, { readonly unionKeyword: 'oneOf' }>({ unionKeyword: 'oneOf' });
 }
 
 /** 生の OpenAPI キーワードを注入する */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function openApi<TInput = any>(raw: Readonly<Record<string, unknown>>) {
-	return miMeta<TInput, { readonly openApi: Readonly<Record<string, unknown>> }>({ openApi: raw });
+	return schemaMeta<TInput, { readonly openApi: Readonly<Record<string, unknown>> }>({ openApi: raw });
 }
 
 /** 出力から OpenAPI キーワードを削除する */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function omitKeywords<TInput = any>(...keys: readonly string[]) {
-	return miMeta<TInput, { readonly omitKeywords: readonly string[] }>({ omitKeywords: keys });
+	return schemaMeta<TInput, { readonly omitKeywords: readonly string[] }>({ omitKeywords: keys });
 }
 
 /**
@@ -144,7 +147,7 @@ export function isSkippedInOpenApi(action: unknown): boolean {
 }
 
 /** description / title は valibot 標準のメタデータアクションから拾う */
-export type CollectedMetadata = MiMeta & {
+export type CollectedMetadata = SchemaMeta & {
 	readonly description?: string;
 	readonly title?: string;
 };

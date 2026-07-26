@@ -35,7 +35,7 @@ export const meta = {
 			...packedUserListSchema.entries,
 			...userListExtraSchema.entries,
 		}),
-		mi.miMeta({ allOfParts: ['UserList', userListExtraSchema] }),
+		mi.schemaMeta({ allOfParts: ['UserList', userListExtraSchema] }),
 	),
 
 	errors: {

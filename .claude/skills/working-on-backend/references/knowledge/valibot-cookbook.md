@@ -462,7 +462,7 @@ v.pipe(
 )
 ```
 
-どちらの形式でも `format`/`example`/`deprecated` 等の内部表現 (`v.metadata()` の `MiMeta`) は同じで、OpenAPI 変換結果も変わらない。
+どちらの形式でも `format`/`example`/`deprecated` 等の内部表現 (`v.metadata()` の `SchemaMeta`) は同じで、OpenAPI 変換結果も変わらない。
 
 レスポンス (entity 世界) 側でよく使う `format` はメタデータ用ヘルパーに落とす (**ランタイム検証は追加しない** — 現行の `format` も AJV 単体では基本的に注釈用途で、検証を強制していないものが多いため、現行と同等の「注釈のみ」を維持する):
 
@@ -626,7 +626,7 @@ v.pipe(
 | `mi.openApi(raw: Record<string, unknown>)` | `(raw) => MetadataAction` | 生の OpenAPI キーワードを注入するエスケープハッチ | (個別対応) |
 | `mi.omitKeywords(...keys: string[])` | `(...keys) => MetadataAction` | 指定した OpenAPI キーワードを出力から削除するエスケープハッチ | (個別対応) |
 | `mi.skipInOpenApi(action)` | `(action) => action` | 検証アクションを OpenAPI 変換の対象外にする (例: `misskeyId()` の内部 regex) | (内部実装向け。通常の移行作業では使わない) |
-| `mi.miMeta(meta: MiMeta)` | `(meta) => MetadataAction` | 上記メタデータ系ヘルパーが内部で使う低レベル API。通常は個別のヘルパー (`format`/`example`/...) を使い、直接呼ぶのは複数メタデータを同時に付けたい特殊ケースのみ | - |
+| `mi.schemaMeta(meta: SchemaMeta)` | `(meta) => MetadataAction` | 上記メタデータ系ヘルパーが内部で使う低レベル API。通常は個別のヘルパー (`format`/`example`/...) を使い、直接呼ぶのは複数メタデータを同時に付けたい特殊ケースのみ | - |
 
 ### registry.ts
 

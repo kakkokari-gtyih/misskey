@@ -4,7 +4,7 @@
  */
 
 import * as v from 'valibot';
-import { miMeta } from './metadata.js';
+import { schemaMeta } from './metadata.js';
 import { unwrapPipe } from './bridge.js';
 import type { AllOfPart, EntityName } from './metadata.js';
 import type { AnyValibotSchema } from './bridge.js';
@@ -129,7 +129,7 @@ export function composeEntity<
 		Object.assign(merged, entries);
 	}
 
-	const schema = v.pipe(v.object(merged), miMeta({ allOfParts: allOfParts as readonly AllOfPart[] }));
+	const schema = v.pipe(v.object(merged), schemaMeta({ allOfParts: allOfParts as readonly AllOfPart[] }));
 
 	// NOTE: entries を動的にマージしているため v.object の推論は使えない。外向きの型は
 	// ComposedInput / ComposedOutput で表現する (パート同士のキーは互いに素である前提)。

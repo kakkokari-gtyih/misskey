@@ -54,7 +54,7 @@ export const meta = {
 			...packedMeDetailedOnlySchema.entries,
 			...createdAccountTokenSchema.entries,
 		}),
-		mi.miMeta({ allOfParts: ['MeDetailed', createdAccountTokenSchema] }),
+		mi.schemaMeta({ allOfParts: ['MeDetailed', createdAccountTokenSchema] }),
 	),
 } as const;
 

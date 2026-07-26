@@ -4,7 +4,7 @@
  */
 
 import * as v from 'valibot';
-import { miMeta, openApi, skipInOpenApi } from './metadata.js';
+import { schemaMeta, openApi, skipInOpenApi } from './metadata.js';
 
 // #region markers
 
@@ -63,7 +63,7 @@ export function misskeyId() {
 	return v.pipe(
 		v.string(),
 		skipInOpenApi(v.regex(MISSKEY_ID_REGEX)),
-		miMeta({ format: 'misskey:id' }),
+		schemaMeta({ format: 'misskey:id' }),
 	);
 }
 
@@ -102,17 +102,17 @@ export function limit(opts: LimitOptions): v.OptionalSchema<v.GenericSchema<numb
 
 /** res 側の `{ type: 'string', format: 'id' }` 相当 (ランタイム検証なし) */
 export function idString() {
-	return v.pipe(v.string(), miMeta({ format: 'id' }));
+	return v.pipe(v.string(), schemaMeta({ format: 'id' }));
 }
 
 /** res 側の `{ type: 'string', format: 'date-time' }` 相当 (ランタイム検証なし) */
 export function dateTimeString() {
-	return v.pipe(v.string(), miMeta({ format: 'date-time' }));
+	return v.pipe(v.string(), schemaMeta({ format: 'date-time' }));
 }
 
 /** res 側の `{ type: 'string', format: 'url' }` 相当 (ランタイム検証なし) */
 export function urlString() {
-	return v.pipe(v.string(), miMeta({ format: 'url' }));
+	return v.pipe(v.string(), schemaMeta({ format: 'url' }));
 }
 
 /**
@@ -174,7 +174,7 @@ export function nullableEnum<const T extends readonly (string | null)[]>(options
 	// NOTE: picklist の options は string[] としてしか型付けできないので、外向きの型は明示注釈で絞る
 	return v.pipe(
 		v.nullable(v.picklist(values)),
-		miMeta({ openApi: { enum: [...options] } }),
+		schemaMeta({ openApi: { enum: [...options] } }),
 	) as unknown as v.GenericSchema<Extract<T[number], string> | null>;
 }
 
