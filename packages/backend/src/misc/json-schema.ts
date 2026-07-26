@@ -3,10 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { packedFollowingSchema } from '@/models/json-schema/following.js';
-import { packedMutingSchema } from '@/models/json-schema/muting.js';
-import { packedRenoteMutingSchema } from '@/models/json-schema/renote-muting.js';
-import { packedBlockingSchema } from '@/models/json-schema/blocking.js';
 import { packedNoteReactionSchema, packedNoteReactionWithNoteSchema } from '@/models/json-schema/note-reaction.js';
 import { packedInviteCodeSchema } from '@/models/json-schema/invite-code.js';
 import { packedNoteFavoriteSchema } from '@/models/json-schema/note-favorite.js';
@@ -18,27 +14,11 @@ import {
 } from '@/models/json-schema/queue.js';
 import { packedGalleryPostSchema } from '@/models/json-schema/gallery-post.js';
 import { packedFlashSchema } from '@/models/json-schema/flash.js';
-import {
-	packedRoleCondFormulaFollowersOrFollowingOrNotesSchema,
-	packedRoleCondFormulaLogicsSchema,
-	packedRoleCondFormulaValueAssignedRoleSchema,
-	packedRoleCondFormulaValueCreatedSchema,
-	packedRoleCondFormulaValueIsLocalOrRemoteSchema,
-	packedRoleCondFormulaValueNot,
-	packedRoleCondFormulaValueSchema,
-	packedRoleCondFormulaValueUserSettingBooleanSchema,
-	packedRoleLiteSchema,
-	packedRolePoliciesSchema,
-	packedRoleSchema,
-} from '@/models/json-schema/role.js';
+// NOTE: `packedRoleSchema` (Role) のみ未移行のまま残っている (allOf の inline properties 混在パターンが
+// mi.composeEntity() の対応範囲外なため。PR3c-1 でエスカレーション。models/json-schema/role.ts 参照)
+import { packedRoleSchema } from '@/models/json-schema/role.js';
 import { packedReversiGameDetailedSchema, packedReversiGameLiteSchema } from '@/models/json-schema/reversi-game.js';
 import { packedAbuseReportNotificationRecipientSchema } from '@/models/json-schema/abuse-report-notification-recipient.js';
-import { packedChatMessageSchema, packedChatMessageLiteSchema, packedChatMessageLiteForRoomSchema, packedChatMessageLiteFor1on1Schema } from '@/models/json-schema/chat-message.js';
-import { packedChatRoomSchema } from '@/models/json-schema/chat-room.js';
-import { packedChatRoomInvitationSchema } from '@/models/json-schema/chat-room-invitation.js';
-import { packedChatRoomMembershipSchema } from '@/models/json-schema/chat-room-membership.js';
-import { packedAchievementNameSchema, packedAchievementSchema } from '@/models/json-schema/achievement.js';
-import { packedNoteDraftSchema } from '@/models/json-schema/note-draft.js';
 // NOTE: `import type` (下記) は erased されるので、Valibot 化済み entity の defineEntity() 副作用を
 // 確実に実行させるための side-effect import を別途行う (`@/models/schema/` 配下は
 // endpoint 経由の実 import が無いと `components.schemas` から漏れるため)。
@@ -46,16 +26,9 @@ import '@/models/schema/_entities.js';
 import type { ValibotPackedMap } from '@/models/schema/_entities.js';
 
 export const refs = {
-	Achievement: packedAchievementSchema,
-	AchievementName: packedAchievementNameSchema,
-	NoteDraft: packedNoteDraftSchema,
 	NoteReaction: packedNoteReactionSchema,
 	NoteReactionWithNote: packedNoteReactionWithNoteSchema,
 	NoteFavorite: packedNoteFavoriteSchema,
-	Following: packedFollowingSchema,
-	Muting: packedMutingSchema,
-	RenoteMuting: packedRenoteMutingSchema,
-	Blocking: packedBlockingSchema,
 	InviteCode: packedInviteCodeSchema,
 	QueueCount: packedQueueCountSchema,
 	QueueMetrics: packedQueueMetricsSchema,
@@ -63,27 +36,10 @@ export const refs = {
 	Clip: packedClipSchema,
 	GalleryPost: packedGalleryPostSchema,
 	Flash: packedFlashSchema,
-	RoleCondFormulaLogics: packedRoleCondFormulaLogicsSchema,
-	RoleCondFormulaValueNot: packedRoleCondFormulaValueNot,
-	RoleCondFormulaValueIsLocalOrRemote: packedRoleCondFormulaValueIsLocalOrRemoteSchema,
-	RoleCondFormulaValueUserSettingBooleanSchema: packedRoleCondFormulaValueUserSettingBooleanSchema,
-	RoleCondFormulaValueAssignedRole: packedRoleCondFormulaValueAssignedRoleSchema,
-	RoleCondFormulaValueCreated: packedRoleCondFormulaValueCreatedSchema,
-	RoleCondFormulaFollowersOrFollowingOrNotes: packedRoleCondFormulaFollowersOrFollowingOrNotesSchema,
-	RoleCondFormulaValue: packedRoleCondFormulaValueSchema,
-	RoleLite: packedRoleLiteSchema,
 	Role: packedRoleSchema,
-	RolePolicies: packedRolePoliciesSchema,
 	ReversiGameLite: packedReversiGameLiteSchema,
 	ReversiGameDetailed: packedReversiGameDetailedSchema,
 	AbuseReportNotificationRecipient: packedAbuseReportNotificationRecipientSchema,
-	ChatMessage: packedChatMessageSchema,
-	ChatMessageLite: packedChatMessageLiteSchema,
-	ChatMessageLiteFor1on1: packedChatMessageLiteFor1on1Schema,
-	ChatMessageLiteForRoom: packedChatMessageLiteForRoomSchema,
-	ChatRoom: packedChatRoomSchema,
-	ChatRoomInvitation: packedChatRoomInvitationSchema,
-	ChatRoomMembership: packedChatRoomMembershipSchema,
 };
 
 /**

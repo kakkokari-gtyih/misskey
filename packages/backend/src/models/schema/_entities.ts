@@ -37,6 +37,8 @@ import '@/models/schema/user-webhook.js';
 import '@/models/schema/hashtag.js';
 import '@/models/schema/announcement.js';
 import '@/models/schema/user-list.js';
+import '@/models/schema/role.js';
+import '@/models/schema/achievement.js';
 import '@/models/schema/user.js';
 import '@/models/schema/note.js';
 import '@/models/schema/notification.js';
@@ -45,6 +47,15 @@ import '@/models/schema/drive-folder.js';
 import '@/models/schema/page.js';
 import '@/models/schema/channel.js';
 import '@/models/schema/meta.js';
+import '@/models/schema/note-draft.js';
+import '@/models/schema/chat-room.js';
+import '@/models/schema/chat-room-invitation.js';
+import '@/models/schema/chat-room-membership.js';
+import '@/models/schema/chat-message.js';
+import '@/models/schema/following.js';
+import '@/models/schema/blocking.js';
+import '@/models/schema/muting.js';
+import '@/models/schema/renote-muting.js';
 // #endregion
 
 import type { PackedSignin } from '@/models/schema/signin.js';
@@ -58,6 +69,19 @@ import type { PackedUserWebhook } from '@/models/schema/user-webhook.js';
 import type { PackedHashtag } from '@/models/schema/hashtag.js';
 import type { PackedAnnouncement } from '@/models/schema/announcement.js';
 import type { PackedUserList } from '@/models/schema/user-list.js';
+import type {
+	PackedRoleCondFormulaLogics,
+	PackedRoleCondFormulaValueNot,
+	PackedRoleCondFormulaValueIsLocalOrRemote,
+	PackedRoleCondFormulaValueUserSettingBoolean,
+	PackedRoleCondFormulaValueAssignedRole,
+	PackedRoleCondFormulaValueCreated,
+	PackedRoleCondFormulaFollowersOrFollowingOrNotes,
+	PackedRoleCondFormulaValue,
+	PackedRoleLite,
+	PackedRolePolicies,
+} from '@/models/schema/role.js';
+import type { PackedAchievementName, PackedAchievement } from '@/models/schema/achievement.js';
 import type {
 	PackedUserLite,
 	PackedUserDetailedNotMeOnly,
@@ -78,6 +102,20 @@ import type {
 	PackedMetaDetailed,
 	PackedMetaClientOptions,
 } from '@/models/schema/meta.js';
+import type { PackedNoteDraft } from '@/models/schema/note-draft.js';
+import type { PackedChatRoom } from '@/models/schema/chat-room.js';
+import type { PackedChatRoomInvitation } from '@/models/schema/chat-room-invitation.js';
+import type { PackedChatRoomMembership } from '@/models/schema/chat-room-membership.js';
+import type {
+	PackedChatMessage,
+	PackedChatMessageLite,
+	PackedChatMessageLiteFor1on1,
+	PackedChatMessageLiteForRoom,
+} from '@/models/schema/chat-message.js';
+import type { PackedFollowing } from '@/models/schema/following.js';
+import type { PackedBlocking } from '@/models/schema/blocking.js';
+import type { PackedMuting } from '@/models/schema/muting.js';
+import type { PackedRenoteMuting } from '@/models/schema/renote-muting.js';
 
 /** Valibot 化済み entity の「`#/components/schemas` 名 → packed 出力型」対応表 */
 export type ValibotPackedMap = {
@@ -94,6 +132,18 @@ export type ValibotPackedMap = {
 	Hashtag: PackedHashtag;
 	Announcement: PackedAnnouncement;
 	UserList: PackedUserList;
+	RoleCondFormulaLogics: PackedRoleCondFormulaLogics;
+	RoleCondFormulaValueNot: PackedRoleCondFormulaValueNot;
+	RoleCondFormulaValueIsLocalOrRemote: PackedRoleCondFormulaValueIsLocalOrRemote;
+	RoleCondFormulaValueUserSettingBooleanSchema: PackedRoleCondFormulaValueUserSettingBoolean;
+	RoleCondFormulaValueAssignedRole: PackedRoleCondFormulaValueAssignedRole;
+	RoleCondFormulaValueCreated: PackedRoleCondFormulaValueCreated;
+	RoleCondFormulaFollowersOrFollowingOrNotes: PackedRoleCondFormulaFollowersOrFollowingOrNotes;
+	RoleCondFormulaValue: PackedRoleCondFormulaValue;
+	RoleLite: PackedRoleLite;
+	RolePolicies: PackedRolePolicies;
+	Achievement: PackedAchievement;
+	AchievementName: PackedAchievementName;
 	UserLite: PackedUserLite;
 	UserDetailedNotMeOnly: PackedUserDetailedNotMeOnly;
 	MeDetailedOnly: PackedMeDetailedOnly;
@@ -127,4 +177,16 @@ export type ValibotPackedMap = {
 	MetaDetailedOnly: PackedMetaDetailedOnly;
 	MetaDetailed: PackedMetaDetailed;
 	MetaClientOptions: PackedMetaClientOptions;
+	NoteDraft: PackedNoteDraft;
+	ChatRoom: PackedChatRoom;
+	ChatRoomInvitation: PackedChatRoomInvitation;
+	ChatRoomMembership: PackedChatRoomMembership;
+	ChatMessage: PackedChatMessage;
+	ChatMessageLite: PackedChatMessageLite;
+	ChatMessageLiteFor1on1: PackedChatMessageLiteFor1on1;
+	ChatMessageLiteForRoom: PackedChatMessageLiteForRoom;
+	Following: PackedFollowing;
+	Blocking: PackedBlocking;
+	Muting: PackedMuting;
+	RenoteMuting: PackedRenoteMuting;
 };

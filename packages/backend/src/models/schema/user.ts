@@ -8,6 +8,8 @@ import * as mi from '@/misc/schema/index.js';
 import { packedAnnouncementSchema } from '@/models/schema/announcement.js';
 import { packedNoteSchema } from '@/models/schema/note.js';
 import { packedPageSchema } from '@/models/schema/page.js';
+import { packedRoleLiteSchema, packedRolePoliciesSchema } from '@/models/schema/role.js';
+import { packedAchievementSchema } from '@/models/schema/achievement.js';
 
 /**
  * 通知の受信条件 (legacy `notificationRecieveConfig`)。
@@ -108,7 +110,7 @@ export const packedUserDetailedNotMeOnlySchema = v.object({
 	followersVisibility: v.picklist(['public', 'followers', 'private']),
 	chatScope: v.picklist(['everyone', 'following', 'followers', 'mutual', 'none']),
 	canChat: v.boolean(),
-	roles: v.array(mi.entityRef('RoleLite')),
+	roles: v.array(packedRoleLiteSchema),
 	followedMessage: v.nullish(v.string()),
 	memo: v.nullable(v.string()),
 	moderationNote: v.optional(v.string()),
@@ -186,9 +188,9 @@ export const packedMeDetailedOnlySchema = v.object({
 		exportCompleted: v.optional(notificationRecieveConfigSchema),
 	}),
 	emailNotificationTypes: v.array(v.string()),
-	achievements: v.array(mi.entityRef('Achievement')),
+	achievements: v.array(packedAchievementSchema),
 	loggedInDays: v.number(),
-	policies: mi.entityRef('RolePolicies'),
+	policies: packedRolePoliciesSchema,
 	// NOTE: legacy 側は `optional: false` かつ `default` 付き (= required のまま default を出す)
 	// なので `v.optional()` では包まず openApi() で default だけを出力する
 	twoFactorEnabled: v.pipe(v.boolean(), mi.openApi({ default: false })),

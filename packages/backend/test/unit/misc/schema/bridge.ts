@@ -24,7 +24,7 @@ import {
 	toInvalidParamInfo,
 	unwrapPipe,
 } from '@/misc/schema/index.js';
-import { refs } from '@/misc/json-schema.js';
+import type { Schema } from '@/misc/json-schema.js';
 import type { SchemaInput, SchemaOutput } from '@/misc/schema/index.js';
 
 describe('misc/schema:bridge', () => {
@@ -37,7 +37,14 @@ describe('misc/schema:bridge', () => {
 		});
 
 		test('legacy JSON Schema / アクション / その他は false', () => {
-			expect(isValibotSchema(refs.Note)).toBe(false);
+			// entity 移行の進行に依存しないよう、legacy スキーマは refs からではなくリテラルで与える
+			const legacySchema = {
+				type: 'object',
+				properties: {
+					id: { type: 'string', optional: false, nullable: false, format: 'id' },
+				},
+			} as const satisfies Schema;
+			expect(isValibotSchema(legacySchema)).toBe(false);
 			expect(isValibotSchema({ type: 'object', properties: {} })).toBe(false);
 			expect(isValibotSchema(maxCodePoints(1))).toBe(false);
 			expect(isValibotSchema(null)).toBe(false);

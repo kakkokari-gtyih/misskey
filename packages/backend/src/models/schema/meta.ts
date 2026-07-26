@@ -5,6 +5,7 @@
 
 import * as v from 'valibot';
 import * as mi from '@/misc/schema/index.js';
+import { packedRolePoliciesSchema } from '@/models/schema/role.js';
 
 // NOTE: legacy 側は MetaLite → MetaDetailedOnly → MetaDetailed → MetaClientOptions の順で
 // 宣言しているが、MetaLite が MetaClientOptions を参照するので (循環ではない) 先に宣言する。
@@ -88,7 +89,7 @@ export const packedMetaLiteSchema = v.object({
 	inquiryUrl: v.nullable(v.string()),
 	serverRules: v.array(v.string()),
 	themeColor: v.nullable(v.string()),
-	policies: mi.entityRef('RolePolicies'),
+	policies: packedRolePoliciesSchema,
 	noteSearchableScope: v.pipe(v.picklist(['local', 'global']), mi.openApi({ default: 'local' })),
 	maxFileSize: v.number(),
 	federation: v.picklist(['all', 'specified', 'none']),
