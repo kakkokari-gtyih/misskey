@@ -6,6 +6,8 @@
 import { In } from 'typeorm';
 import * as Redis from 'ioredis';
 import { Inject, Injectable } from '@nestjs/common';
+import * as v from 'valibot';
+import * as mi from '@/misc/schema/index.js';
 import type { NotesRepository } from '@/models/_.js';
 import {
 	obsoleteNotificationTypes,
@@ -19,6 +21,7 @@ import { NotificationService } from '@/core/NotificationService.js';
 import { DI } from '@/di-symbols.js';
 import { IdService } from '@/core/IdService.js';
 import { MiGroupedNotification, MiNotification } from '@/models/Notification.js';
+import { packedNotificationSchema, type PackedNotification } from '@/models/schema/notification.js';
 
 export const meta = {
 	tags: ['account', 'notifications'],
@@ -32,36 +35,17 @@ export const meta = {
 
 	kind: 'read:notifications',
 
-	res: {
-		type: 'array',
-		optional: false, nullable: false,
-		items: {
-			type: 'object',
-			optional: false, nullable: false,
-			ref: 'Notification',
-		},
-	},
+	res: v.array(packedNotificationSchema),
 } as const;
 
-export const paramDef = {
-	type: 'object',
-	properties: {
-		limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
-		sinceId: { type: 'string', format: 'misskey:id' },
-		untilId: { type: 'string', format: 'misskey:id' },
-		sinceDate: { type: 'integer' },
-		untilDate: { type: 'integer' },
-		markAsRead: { type: 'boolean', default: true },
-		// 後方互換のため、廃止された通知タイプも受け付ける
-		includeTypes: { type: 'array', items: {
-			type: 'string', enum: [...notificationTypes, ...obsoleteNotificationTypes],
-		} },
-		excludeTypes: { type: 'array', items: {
-			type: 'string', enum: [...notificationTypes, ...obsoleteNotificationTypes],
-		} },
-	},
-	required: [],
-} as const;
+export const paramDef = v.object({
+	...mi.paginationEntries({ max: 100, default: 10 }),
+	...mi.paginationDateEntries(),
+	markAsRead: v.optional(v.boolean(), true),
+	// 後方互換のため、廃止された通知タイプも受け付ける
+	includeTypes: v.optional(v.array(v.picklist([...notificationTypes, ...obsoleteNotificationTypes]))),
+	excludeTypes: v.optional(v.array(v.picklist([...notificationTypes, ...obsoleteNotificationTypes]))),
+});
 
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
@@ -152,7 +136,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			groupedNotifications = groupedNotifications.slice(0, ps.limit);
 
-			return await this.notificationEntityService.packGroupedMany(groupedNotifications, me.id);
+			// NotificationEntityService#packGroupedMany の戻り値の型注釈は入力側の型 (MiGroupedNotification[]) のままだが、
+			// 実装 (#packManyInternal → #pack) は実際には Packed<'Notification'> を組み立てて返している。
+			// legacy スキーマでは res の型が any に潰れていたため見えなかった相違で、
+			// ランタイム挙動を変えないようキャストで従来どおりの返却形を維持する。
+			return await this.notificationEntityService.packGroupedMany(groupedNotifications, me.id) as unknown as PackedNotification[];
 		});
 	}
 }

@@ -4,6 +4,8 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import * as v from 'valibot';
+import * as mi from '@/misc/schema/index.js';
 import { getValibotSchema } from '@/core/chart/core.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import InstanceChart from '@/core/chart/charts/instance.js';
@@ -18,16 +20,12 @@ export const meta = {
 	cacheSec: 60 * 60,
 } as const;
 
-export const paramDef = {
-	type: 'object',
-	properties: {
-		span: { type: 'string', enum: ['day', 'hour'] },
-		limit: { type: 'integer', minimum: 1, maximum: 500, default: 30 },
-		offset: { type: 'integer', nullable: true, default: null },
-		host: { type: 'string' },
-	},
-	required: ['span', 'host'],
-} as const;
+export const paramDef = v.object({
+	span: v.picklist(['day', 'hour']),
+	limit: mi.limit({ max: 500, def: 30 }),
+	offset: v.optional(v.nullable(mi.integer()), null),
+	host: v.string(),
+});
 
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export

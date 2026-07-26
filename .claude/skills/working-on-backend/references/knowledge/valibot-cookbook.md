@@ -133,6 +133,10 @@ v.pipe(v.nullable(v.string()), mi.openApi({ default: 'https://github.com/misskey
 
 `optional: true` + `default` (例: `meta.ts` の `features.miauth`) は通常どおり `v.optional(x, d)` でよい (legacy 側も required に載らない)。
 
+**paramDef 世界で `required` 配列と `default` が同居しているプロパティ** (実例: `i/registry/*.ts` の `scope`): legacy の実挙動は「AJV useDefaults が required チェック前に default を埋めるため、クライアントは省略できる」— つまり api.json の `required` 表記は実態と乖離した嘘。この 7 ファイルは PR-S で `v.optional(x, d)` に変換し、`required` から落ちる api.json 差分を「spec を実態に合わせる意図的改善」として allowlist 化する方針 (オーケストレータ決定済み)。通常バッチでは引き続きエスカレーション対象。
+
+**paramDef 世界の any 潰れ顕在化** (実例: `i/2fa/key-done.ts` の `credential: { type: 'object' }`): スキーマは `mi.anyObject()` が正 (api.json 一致) だが、結果の `Record<string, any>` 型は legacy の `any` より狭く、厳密型を要求する下流 API (`WebAuthnService` 等) に渡す箇所でハンドラ側のキャスト (`ps.credential as RegistrationResponseJSON` + 理由コメント) が必要になることがある。スキーマ側を `v.any()` に緩めるのではなくハンドラ側キャストで対処する (ランタイム不変)。
+
 ---
 
 ## R5. enum
