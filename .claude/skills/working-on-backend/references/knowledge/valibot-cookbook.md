@@ -93,6 +93,12 @@ cw: v.optional(v.nullable(v.pipe(v.string(), mi.minCodePoints(1), mi.maxCodePoin
 
 **`v.exactOptional` は使わない** (valibot 1.x の `exactOptional` は「キー自体が存在しない」ことを要求する厳密版で、AJV 側にそこまで厳密な区別が無いため意味が変わる)。
 
+**optional + nullable の表記揺れについて**: `v.nullish(x)` と `v.optional(v.nullable(x))` は検証・型・OpenAPI 出力すべて等価。**default 無しなら `v.nullish(x)` を正とする** (簡潔なため)。default 付きは R4 のとおり必ず `v.optional(v.nullable(x), d)` (nullish に default を渡すのは禁止)。既存バッチで nested 形になっている箇所を直す必要はない。
+
+**トップレベル `res` の `optional: true`** (レスポンスが 204 になり得るエンドポイント、例: `notes/translate.ts`): res スキーマ全体を `v.optional(...)` で包む。`resAllowsEmpty()` がこれを見て OpenAPI に 200+204 の両方を出す (`nullable: true` なら `v.nullable(...)`)。
+
+**インライン res オブジェクトの required 導出**: res 側は「`optional` フラグが無い/false のプロパティ = required」として api.json に出る (legacy コンバータの `!optional` 導出)。valibot 側も同じで「`v.optional`/`v.nullish` で包まれていない entries = required」。entity 世界の `optional: false, nullable: false` 明記に慣れていると、インライン res の**フラグ無しプロパティを optional と誤読しやすい**ので注意 (フラグ無し = required)。
+
 ---
 
 ## R4. `default`
@@ -451,6 +457,7 @@ v.pipe(
 | `format: 'date-time'` | `mi.dateTimeString()` |
 | `format: 'url'` | `mi.urlString()` |
 | 上記以外の res 側 `format` (`'uri'` / `'md5'` 等) | `v.pipe(v.string(), mi.format('uri'))` (専用ヘルパーは作らない) |
+| res 側なのに `format: 'misskey:id'` (リテラルが `'id'` でない箇所がある) | `v.pipe(v.string(), mi.format('misskey:id'))` — **`mi.idString()` にすると `format: 'id'` が出て api.json 差分になる。`mi.misskeyId()` にするとランタイム検証が付いて意味が変わる。必ず元のリテラルを確認する** (実例: `users/lists/get-memberships.ts`) |
 
 ```ts
 createdAt: mi.dateTimeString(),
