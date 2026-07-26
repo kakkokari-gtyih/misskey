@@ -3,28 +3,13 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import {
-	packedMeDetailedOnlySchema,
-	packedMeDetailedSchema,
-	packedUserDetailedNotMeOnlySchema,
-	packedUserDetailedNotMeSchema,
-	packedUserDetailedSchema,
-	packedUserLiteSchema,
-	packedUserSchema,
-} from '@/models/json-schema/user.js';
-import { packedNoteSchema } from '@/models/json-schema/note.js';
-import { packedNotificationSchema } from '@/models/json-schema/notification.js';
-import { packedDriveFileSchema } from '@/models/json-schema/drive-file.js';
-import { packedDriveFolderSchema } from '@/models/json-schema/drive-folder.js';
 import { packedFollowingSchema } from '@/models/json-schema/following.js';
 import { packedMutingSchema } from '@/models/json-schema/muting.js';
 import { packedRenoteMutingSchema } from '@/models/json-schema/renote-muting.js';
 import { packedBlockingSchema } from '@/models/json-schema/blocking.js';
 import { packedNoteReactionSchema, packedNoteReactionWithNoteSchema } from '@/models/json-schema/note-reaction.js';
 import { packedInviteCodeSchema } from '@/models/json-schema/invite-code.js';
-import { packedPageBlockSchema, packedPageSchema } from '@/models/json-schema/page.js';
 import { packedNoteFavoriteSchema } from '@/models/json-schema/note-favorite.js';
-import { packedChannelSchema } from '@/models/json-schema/channel.js';
 import { packedClipSchema } from '@/models/json-schema/clip.js';
 import {
 	packedQueueCountSchema,
@@ -47,12 +32,6 @@ import {
 	packedRoleSchema,
 } from '@/models/json-schema/role.js';
 import { packedReversiGameDetailedSchema, packedReversiGameLiteSchema } from '@/models/json-schema/reversi-game.js';
-import {
-	packedMetaDetailedOnlySchema,
-	packedMetaDetailedSchema,
-	packedMetaLiteSchema,
-	packedMetaClientOptionsSchema,
-} from '@/models/json-schema/meta.js';
 import { packedAbuseReportNotificationRecipientSchema } from '@/models/json-schema/abuse-report-notification-recipient.js';
 import { packedChatMessageSchema, packedChatMessageLiteSchema, packedChatMessageLiteForRoomSchema, packedChatMessageLiteFor1on1Schema } from '@/models/json-schema/chat-message.js';
 import { packedChatRoomSchema } from '@/models/json-schema/chat-room.js';
@@ -64,36 +43,20 @@ import { packedNoteDraftSchema } from '@/models/json-schema/note-draft.js';
 // 確実に実行させるための side-effect import を別途行う (`@/models/schema/` 配下は
 // endpoint 経由の実 import が無いと `components.schemas` から漏れるため)。
 import '@/models/schema/_entities.js';
-import type * as v from 'valibot';
-import type { valibotRefs } from '@/models/schema/_entities.js';
+import type { ValibotPackedMap } from '@/models/schema/_entities.js';
 
 export const refs = {
-	UserLite: packedUserLiteSchema,
-	UserDetailedNotMeOnly: packedUserDetailedNotMeOnlySchema,
-	MeDetailedOnly: packedMeDetailedOnlySchema,
-	UserDetailedNotMe: packedUserDetailedNotMeSchema,
-	MeDetailed: packedMeDetailedSchema,
-	UserDetailed: packedUserDetailedSchema,
-	User: packedUserSchema,
-
 	Achievement: packedAchievementSchema,
 	AchievementName: packedAchievementNameSchema,
-	Note: packedNoteSchema,
 	NoteDraft: packedNoteDraftSchema,
 	NoteReaction: packedNoteReactionSchema,
 	NoteReactionWithNote: packedNoteReactionWithNoteSchema,
 	NoteFavorite: packedNoteFavoriteSchema,
-	Notification: packedNotificationSchema,
-	DriveFile: packedDriveFileSchema,
-	DriveFolder: packedDriveFolderSchema,
 	Following: packedFollowingSchema,
 	Muting: packedMutingSchema,
 	RenoteMuting: packedRenoteMutingSchema,
 	Blocking: packedBlockingSchema,
 	InviteCode: packedInviteCodeSchema,
-	Page: packedPageSchema,
-	PageBlock: packedPageBlockSchema,
-	Channel: packedChannelSchema,
 	QueueCount: packedQueueCountSchema,
 	QueueMetrics: packedQueueMetricsSchema,
 	QueueJob: packedQueueJobSchema,
@@ -113,10 +76,6 @@ export const refs = {
 	RolePolicies: packedRolePoliciesSchema,
 	ReversiGameLite: packedReversiGameLiteSchema,
 	ReversiGameDetailed: packedReversiGameDetailedSchema,
-	MetaLite: packedMetaLiteSchema,
-	MetaDetailedOnly: packedMetaDetailedOnlySchema,
-	MetaDetailed: packedMetaDetailedSchema,
-	MetaClientOptions: packedMetaClientOptionsSchema,
 	AbuseReportNotificationRecipient: packedAbuseReportNotificationRecipientSchema,
 	ChatMessage: packedChatMessageSchema,
 	ChatMessageLite: packedChatMessageLiteSchema,
@@ -128,26 +87,36 @@ export const refs = {
 };
 
 /**
- * 移行期間中の entity 名 (legacy {@link refs} と {@link valibotRefs} の和集合)。
+ * 移行期間中の entity 名 (legacy {@link refs} と {@link ValibotPackedMap} の和集合)。
  *
- * entity を 1 つ Valibot 化するたびに `valibotRefs` へ追記し `refs` から同名エントリを削除するので、
- * 参照側 (`Packed<'Note'>` など) はどちらのレジストリにあっても壊れない。
+ * entity を 1 つ Valibot 化するたびに `ValibotPackedMap` へ追記し `refs` から同名エントリを
+ * 削除するので、参照側 (`Packed<'Note'>` など) はどちらのレジストリにあっても壊れない。
  */
-export type PackedEntityName = keyof typeof refs | keyof typeof valibotRefs;
+export type PackedEntityName = keyof typeof refs | keyof ValibotPackedMap;
+
+/** 未移行 legacy entity の「名前 → packed 出力型」対応表 */
+type LegacyPackedMap = { [K in keyof typeof refs]: SchemaType<(typeof refs)[K]> };
 
 /**
- * packed entity の型。
+ * 移行期間中の「名前 → packed 出力型」対応表 (Valibot 済み ∪ legacy)。
  *
- * **必ず Valibot 側を先に評価すること** (移行済み entity は legacy `refs` から消えるため、
- * 順序を逆にすると移行済み entity が `never` になる)。
+ * キーは常に互いに素 (entity を移行したら `refs` から消して `ValibotPackedMap` へ移す) なので
+ * 交差型で単純に合成できる。
+ *
+ * NOTE: `x extends keyof ValibotPackedMap ? ... : x extends keyof typeof refs ? SchemaType<...>`
+ * のような条件型で書いてはいけない。ジェネリクス越しに `Packed<S>` を使う箇所
+ * (UserEntityService.pack/packMany など) で TypeScript が false 分岐を
+ * 「x = keyof typeof refs」で試算し、legacy `SchemaType` を **全 legacy entity の union** に対して
+ * インスタンス化するため TS2589 (型のインスタンス化が深すぎる) になる。
+ * 添字アクセスなら実際に使われるキーの分しか解決されない。
  */
-export type Packed<x extends PackedEntityName> =
-	x extends keyof typeof valibotRefs ? v.InferOutput<(typeof valibotRefs)[x]> :
-	x extends keyof typeof refs ? SchemaType<(typeof refs)[x]> :
-	never;
+type PackedMap = ValibotPackedMap & LegacyPackedMap;
+
+/** packed entity の型。 */
+export type Packed<x extends PackedEntityName> = PackedMap[x];
 
 export type KeyOf<x extends PackedEntityName> =
-	x extends keyof typeof valibotRefs ? keyof v.InferOutput<(typeof valibotRefs)[x]> & string :
+	x extends keyof ValibotPackedMap ? keyof ValibotPackedMap[x] & string :
 	x extends keyof typeof refs ? PropertiesToUnion<(typeof refs)[x]> :
 	never;
 type PropertiesToUnion<p extends Schema> = p['properties'] extends NonNullable<Obj> ? keyof p['properties'] : never;

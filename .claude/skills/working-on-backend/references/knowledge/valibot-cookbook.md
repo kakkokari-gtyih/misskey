@@ -105,6 +105,17 @@ v.optional(mi.nullableEnum([null, 'a', 'b']), null)
 
 default 値は一字一句コピーする (丸めたり型を変えない)。オブジェクト/配列 literal の default も同様にそのままコピーする。
 
+**entity 世界の `optional: false` + `default` は `v.optional()` で包まない。** entity 世界では `required` を `optional` フラグから導出する (`convertSchemaToOpenApiSchema` の `!v.optional`) ので、`optional: false, default: X` は「**required のまま `default` も出す**」という意味になる。これを `v.optional(x, X)` に変換すると `allowsAbsent()` が true になって required から落ち、api.json が差分になる。`mi.openApi({ default: X })` で `default` キーワードだけを足すこと:
+
+```ts
+// before (models/json-schema/meta.ts / user.ts の MeDetailedOnly 等)
+{ type: 'string', optional: false, nullable: true, default: 'https://github.com/misskey-dev/misskey' }
+// after
+v.pipe(v.nullable(v.string()), mi.openApi({ default: 'https://github.com/misskey-dev/misskey' }))
+```
+
+`optional: true` + `default` (例: `meta.ts` の `features.miauth`) は通常どおり `v.optional(x, d)` でよい (legacy 側も required に載らない)。
+
 ---
 
 ## R5. enum
@@ -230,6 +241,15 @@ v.object({
 
   `mi.anyRecord()` はランタイムでは `mi.anyObject()` (`v.record(v.string(), v.any())`) と同じだが、OpenAPI 出力に `additionalProperties: true` を明示的に付ける (`openApi({ additionalProperties: true })` を pipe している) 点が違う。逆に `mi.anyObject()`/`mi.anyArray()` は `additionalProperties`/`items` を**まったく出力しない** (R1 参照)。json-schema 側に `additionalProperties: true` が**書かれているか否か**で `mi.anyRecord()` と `mi.anyObject()` を使い分けること (両方とも「無検証」という点では同じでも、api.json 上のキー有無が違う)。
 
+- **`properties` と `additionalProperties: true` の併用** (`models/json-schema/meta.ts` の `sentryForFrontend.options` 等) → `v.object({...})` に `mi.openApi({ additionalProperties: true })` を pipe する (`mi.anyRecord()` は properties を持てないので使えない。`v.objectWithRest({...}, v.any())` だと値が `v.any()` のため `additionalProperties` が出力されない)
+
+  ```ts
+  // before
+  { type: 'object', properties: { dsn: { type: 'string' } }, additionalProperties: true }
+  // after
+  v.pipe(v.object({ dsn: v.string() }), mi.openApi({ additionalProperties: true }))
+  ```
+
 **注意 (重要)**: `v.object(...)` は valibot の既定動作として、スキーマに定義されていない未知キーを**出力 (parse 結果) から除去する**。AJV + 独自ブリッジのこれまでの挙動は `properties` に無いキーも入力オブジェクトにそのまま素通しさせていた (デフォルトでは `additionalProperties` 制約自体が無ければ弾かれもしないし削除もされない)。したがって:
 
 1. 移行対象のハンドラ内で `ps.<properties に無いキー>` のような静的アクセスが無いか確認する (無ければ実害はない)。
@@ -257,6 +277,15 @@ export const packedUserDetailedNotMeSchema = mi.composeEntity('UserDetailedNotMe
   packedUserLiteSchema,
   packedUserDetailedNotMeOnlySchema,
 ]);
+```
+
+**合成 entity の公開型 (`export type PackedX`) は `v.InferOutput<typeof packedXSchema>` で書かない。** `composeEntity` の戻り型 (`Flatten<MergeTuple<...>>`) を展開してしまい、ジェネリクス越しに `Packed<S>` を使う箇所 (`UserEntityService.pack` / `packMany` など) で TS2589 (型のインスタンス化が深すぎる) になる。legacy の `allOf` 型 (`ArrayToIntersection`) と同じく**パートの公開型の交差型**で書くこと (判別子なし `oneOf` の合成なら union):
+
+```ts
+export const packedMeDetailedSchema = mi.composeEntity('MeDetailed', [/* ... */]);
+// NG: export type PackedMeDetailed = v.InferOutput<typeof packedMeDetailedSchema>;
+// OK:
+export type PackedMeDetailed = PackedUserLite & PackedUserDetailedNotMeOnly & PackedMeDetailedOnly;
 ```
 
 `mi.composeEntity()` は各パートの entries を flatten して 1 つの `v.object` 相当にまとめつつ、`allOfRefs` メタデータ (各パートの登録名) を保持する。OpenAPI 変換 (`openapi.ts` の `object` ケース) はこのメタデータを見つけると **properties を出力せず `allOf: [{ $ref: <各パートの名前> }, ...]` だけを出力する** ので、手で `{ ...a.entries, ...b.entries }` のように展開しない — メタデータが失われて properties がそのまま出力されてしまう。
@@ -386,6 +415,7 @@ v.pipe(
 | `format: 'id'` | `mi.idString()` |
 | `format: 'date-time'` | `mi.dateTimeString()` |
 | `format: 'url'` | `mi.urlString()` |
+| 上記以外の res 側 `format` (`'uri'` / `'md5'` 等) | `v.pipe(v.string(), mi.format('uri'))` (専用ヘルパーは作らない) |
 
 ```ts
 createdAt: mi.dateTimeString(),
@@ -414,6 +444,10 @@ createdAt: mi.dateTimeString(),
   ```
 
   (`v.GenericSchema<PackedNote>` の明示注釈が無いと TypeScript が循環型を解決できず無限再帰型エラーになることがある。)
+
+  手書きする出力型は **`interface` ではなく `type` エイリアス**で書く。`interface` には implicit index signature が付かないため、`Cloneable` / `JsonValue` のような index signature 前提の型 (stream 配信系が使う) へ代入できず、legacy (`SchemaType` = 型エイリアス由来) との互換が崩れる。
+
+- **モジュール間の循環 import (ESM の TDZ)**: 型の循環だけでなく **モジュールの循環 import** にも `v.lazy()` が要る。`user.ts` ↔ `note.ts` ↔ `page.ts` ↔ `drive-file.ts` のように import が循環している (= import グラフの同一 SCC に属する) モジュール同士の参照は、**どちらの向きも** `v.lazy(() => packedXSchema)` にすること。片側だけ lazy にしても、評価の起点が変われば先に評価されたモジュールの `const` が未初期化のまま参照され `ReferenceError` (TDZ) になる。SCC の外への参照 (`channel.ts` → `note.ts`、`drive-file.ts` → `drive-folder.ts` など逆向きの import が無いもの) は直接参照でよい。
 
 - **legacy `selfRef: true` 付きの自己参照** (`models/json-schema/page.ts` の `PageBlock` が子ブロックとして自分自身を含むケース。`ref: 'PageBlock', selfRef: true` が付いている) は、上の「循環参照」と同じ `v.lazy()` に加えて **`mi.selfRef()`** を pipe で併せて付ける:
 
@@ -598,4 +632,5 @@ v.pipe(
 
 ## 改訂履歴
 
+- 2026-07-27: PR3b (entity 中核クラスタ) で見つかった穴を追記 — R4 に entity 世界の `optional: false` + `default`、R8 に `properties` + `additionalProperties: true` の併用、R9 に合成 entity の公開型を交差型で書く規則 (TS2589 回避)、R12 に `uri`/`md5` 等の汎用 format、R13 に「手書き型は type エイリアス」「ESM 循環 import は両向き `v.lazy()`」を追加。
 - 2026-07-26: 基盤モジュール (`packages/backend/src/misc/schema/{helpers,metadata,registry,openapi}.ts`) の実装完了に伴い、実装と食い違っていた記述を修正 (R4/R5 の nullable enum を `mi.nullableEnum()` に、R10 の判別子なし oneOf を `v.union()` + `mi.asOneOf()` に、R9 の `mi.composeEntity()` シグネチャを `(name, parts[])` 形式に訂正)。R8 に `mi.anyRecord()` を、R13 に `mi.selfRef()` を追記。ヘルパー一覧・既知の許容差分セクションを新設。

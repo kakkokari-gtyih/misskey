@@ -5,19 +5,19 @@
 
 import * as v from 'valibot';
 import type { refs } from '@/misc/json-schema.js';
-import type { valibotRefs } from '@/models/schema/_entities.js';
+import type { ValibotPackedMap } from '@/models/schema/_entities.js';
 
 /**
  * OpenAPI (api.json) 上の `#/components/schemas/X` として公開される entity 名。
  *
- * 移行期間中は legacy の {@link refs} と Valibot 側の {@link valibotRefs} の和集合。
- * entity を移行すると `refs` からキーが消えて `valibotRefs` に移るので、両方を見る必要がある。
+ * 移行期間中は legacy の {@link refs} と Valibot 側の {@link ValibotPackedMap} の和集合。
+ * entity を移行すると `refs` からキーが消えて `ValibotPackedMap` に移るので、両方を見る必要がある。
  * (PR-F で legacy レジストリを削除するタイミングで Valibot 側レジストリのキーだけになる)
  *
  * NOTE: `json-schema.ts` 側も `_entities.ts` を参照するが、いずれも type-only import なので
  * ランタイムの循環依存は発生しない。
  */
-export type EntityName = keyof typeof refs | keyof typeof valibotRefs;
+export type EntityName = keyof typeof refs | keyof ValibotPackedMap;
 
 /**
  * `v.metadata()` に載せる Misskey 独自メタデータ。
