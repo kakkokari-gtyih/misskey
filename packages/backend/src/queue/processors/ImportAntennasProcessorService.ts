@@ -4,58 +4,36 @@
  */
 
 import { Injectable, Inject } from '@nestjs/common';
-import _Ajv from 'ajv';
+import * as v from 'valibot';
+import * as mi from '@/misc/schema/index.js';
 import { IdService } from '@/core/IdService.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import Logger from '@/logger.js';
 import type { AntennasRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
 import { bindThis } from '@/decorators.js';
-import { Schema, SchemaType } from '@/misc/json-schema.js';
 import { QueueLoggerService } from '../QueueLoggerService.js';
 import { DBAntennaImportJobData } from '../types.js';
 import type * as Bull from 'bullmq';
 
-const Ajv = _Ajv.default;
+// NOTE: api.json には現れない (endpoint の paramDef ではなく、インポートファイルの検証用) スキーマ。
+// 旧実装は独立した AJV インスタンスで `compile<ExportedAntenna>()` していた。
+const exportedAntennaSchema = v.object({
+	name: v.pipe(v.string(), mi.minCodePoints(1), mi.maxCodePoints(100)),
+	src: v.picklist(['home', 'all', 'users', 'list', 'users_blacklist']),
+	userListAccts: v.nullish(v.array(v.string())),
+	keywords: v.array(v.array(v.string())),
+	excludeKeywords: v.array(v.array(v.string())),
+	users: v.array(v.string()),
+	caseSensitive: v.boolean(),
+	localOnly: v.optional(v.boolean()),
+	excludeBots: v.optional(v.boolean()),
+	withReplies: v.boolean(),
+	withFile: v.boolean(),
+	excludeNotesInSensitiveChannel: v.optional(v.boolean()),
+});
 
-const exportedAntennaSchema = {
-	type: 'object',
-	properties: {
-		name: { type: 'string', minLength: 1, maxLength: 100 },
-		src: { type: 'string', enum: ['home', 'all', 'users', 'list', 'users_blacklist'] },
-		userListAccts: {
-			type: 'array',
-			items: {
-				type: 'string',
-			},
-			nullable: true,
-		},
-		keywords: { type: 'array', items: {
-			type: 'array', items: {
-				type: 'string',
-			},
-		} },
-		excludeKeywords: { type: 'array', items: {
-			type: 'array', items: {
-				type: 'string',
-			},
-		} },
-		users: { type: 'array', items: {
-			type: 'string',
-		} },
-		caseSensitive: { type: 'boolean' },
-		localOnly: { type: 'boolean' },
-		excludeBots: { type: 'boolean' },
-		withReplies: { type: 'boolean' },
-		withFile: { type: 'boolean' },
-		excludeNotesInSensitiveChannel: { type: 'boolean' },
-	},
-	required: ['name', 'src', 'keywords', 'excludeKeywords', 'users', 'caseSensitive', 'withReplies', 'withFile'],
-} as const satisfies Schema;
-
-export type ExportedAntenna = SchemaType<typeof exportedAntennaSchema>;
-
-const validate = new Ajv().compile<ExportedAntenna>(exportedAntennaSchema);
+export type ExportedAntenna = v.InferOutput<typeof exportedAntennaSchema>;
 
 @Injectable()
 export class ImportAntennasProcessorService {
@@ -78,7 +56,10 @@ export class ImportAntennasProcessorService {
 		try {
 			for (const antenna of job.data.antenna) {
 				if (antenna.keywords.length === 0 || antenna.keywords[0].every(x => x === '')) continue;
-				if (!validate(antenna)) {
+				// NOTE: 旧 AJV validator は default を持たないので入力を書き換えなかった。
+				// safeParse の output (未知キーを落とした新オブジェクト) は使わず、
+				// 検証の成否だけを見て元の `antenna` をそのまま使う (ランタイム挙動を維持する)。
+				if (!v.safeParse(exportedAntennaSchema, antenna).success) {
 					this.logger.warn('Validation Failed');
 					continue;
 				}

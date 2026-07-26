@@ -4,6 +4,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import * as v from 'valibot';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { MiMeta, UsersRepository } from '@/models/_.js';
 import { SignupService } from '@/core/SignupService.js';
@@ -54,15 +55,11 @@ export const meta = {
 	},
 } as const;
 
-export const paramDef = {
-	type: 'object',
-	properties: {
-		username: localUsernameSchema,
-		password: passwordSchema,
-		setupPassword: { type: 'string', nullable: true },
-	},
-	required: ['username', 'password'],
-} as const;
+export const paramDef = v.object({
+	username: localUsernameSchema,
+	password: passwordSchema,
+	setupPassword: v.nullish(v.string()),
+});
 
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export

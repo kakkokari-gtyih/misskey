@@ -4,6 +4,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import * as v from 'valibot';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { RegistryItemsRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
@@ -23,17 +24,13 @@ export const meta = {
 	},
 } as const;
 
-export const paramDef = {
-	type: 'object',
-	properties: {
-		key: { type: 'string' },
-		scope: { type: 'array', default: [], items: {
-			type: 'string', pattern: /^[a-zA-Z0-9_]+$/.toString().slice(1, -1),
-		} },
-		domain: { type: 'string', nullable: true },
-	},
-	required: ['key', 'scope'],
-} as const;
+// NOTE: legacy は `required: ['scope']` と `default: []` が同居していたが、AJV useDefaults は
+// required チェック前に default を埋めるため実際には省略可能だった。実態に合わせて v.optional(x, []) にする
+export const paramDef = v.object({
+	key: v.string(),
+	scope: v.optional(v.array(v.pipe(v.string(), v.regex(/^[a-zA-Z0-9_]+$/))), []),
+	domain: v.nullish(v.string()),
+});
 
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export

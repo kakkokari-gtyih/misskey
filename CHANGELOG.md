@@ -67,6 +67,9 @@
 - Enhance: Docker Image の Node.js を 26.4.0 に、Debian を trixie (v13) に更新
 - Enhance: URLプレビューの結果を内部でキャッシュするように
 - Enhance: OpenAPI仕様でエラーレスポンスが実際のHTTPステータスコード(404など)を反映するように
+- Enhance: APIパラメータの検証エラーで、問題のあったパラメータのパスと全エラーの詳細を返すように
+- Enhance: 複数の受け入れ形式を持つAPI (users/show等) で、マッチした形式以外の不正なパラメータの組み合わせも検証されるように
+- Enhance: `i/registry/*` APIの `scope` パラメータがOpenAPI仕様上も省略可能として正しく表現されるように
 - Fix: `/stats` API のレスポンス型が正しくない問題を修正
 - Fix: ハッシュタグに関連するデータを更新する際のエラーハンドリングを修正
 - Fix: Sentry 使用環境下にて、Misskey が発行した SQL クエリが span に含まれない問題を修正

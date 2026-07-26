@@ -1,0 +1,22 @@
+[
+	{
+		"pattern": "/paths/~1notes~1create/post/requestBody/content/application~1json/schema/if",
+		"op": "remove",
+		"reason": "PR-S2 (cookbook R14): notes/create の paramDef の if/then を v.pipe(obj, v.rawCheck(...)) へ移行した。ランタイム検証 (renoteId/fileIds/mediaIds/poll がすべて欠落か null なら text 必須かつ /[^\\s]+/) は完全に保持されるが、OpenAPI に対応キーワードが無いため spec からは if/then の記述が消える"
+	},
+	{
+		"pattern": "/paths/~1notes~1create/post/requestBody/content/application~1json/schema/then",
+		"op": "remove",
+		"reason": "PR-S2 (cookbook R14): 上記 if/then 移行の then 側。同上"
+	},
+	{
+		"pattern": "/paths/~1users~1following/post/requestBody/content/application~1json/schema/allOf",
+		"op": "remove",
+		"reason": "PR-S2 (cookbook R9): paramDef の `allOf: [{ anyOf: [...] }, { 共通プロパティ }]` を、共通プロパティを各分岐へ分配した v.union へ変換したため allOf ラッパーが消え anyOf 直下になる (下記 add と対)。分岐の選択が AJV の anyOf より厳密になる意図的な挙動変更 (users/show.ts と同じ扱い)"
+	},
+	{
+		"pattern": "/paths/~1users~1following/post/requestBody/content/application~1json/schema/anyOf",
+		"op": "add",
+		"reason": "PR-S2 (cookbook R9): 上記 allOf 除去と対。各 anyOf 分岐に共通プロパティ (sinceId/untilId/sinceDate/untilDate/limit/birthday) を分配した形になる"
+	}
+]

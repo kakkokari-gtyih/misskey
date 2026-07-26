@@ -126,8 +126,11 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 		const requestType = endpoint.meta.requireFile ? 'multipart/form-data' : 'application/json';
 		const schema = { ...convertEndpointSchemaToOpenApi(endpoint.params, 'param', false) };
 
-		// TODO: paramDef が Valibot 化された endpoint (drive/files/create など) では
-		// properties / required への直接注入ではなく Valibot 側で file を表現する必要がある
+		// `meta.requireFile` の endpoint (drive/files/create のみ) はリクエストが multipart/form-data で
+		// 運ばれ、`file` は paramDef ではなく ApiCallService が受け取る (Valibot / legacy いずれの
+		// paramDef にも現れない) ため、spec 上の `file` プロパティはここで注入する。
+		// `schema` は convertEndpointSchemaToOpenApi() が返した **変換後のプレーンな OpenAPI 構造**
+		// (Valibot 化済みの paramDef でも同じ) なので、properties / required に直接足してよい。
 		if (endpoint.meta.requireFile) {
 			schema.properties = {
 				...schema.properties,

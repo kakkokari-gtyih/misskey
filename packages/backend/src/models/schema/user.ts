@@ -15,8 +15,8 @@ import { packedAchievementSchema } from '@/models/schema/achievement.js';
  * 通知の受信条件 (legacy `notificationRecieveConfig`)。
  *
  * 判別キー `type` を持つ oneOf なので `v.variant` (cookbook R10)。
- * legacy 側の同名 const は未移行エンドポイント (i/update・admin/show-user) の paramDef が
- * spread して消費しているため [json-schema/user.ts](../json-schema/user.ts) に残置してある。
+ * legacy 側の同名 const (`models/json-schema/user.ts`) は消費者 (i/update・admin/show-user) の
+ * 移行完了により撤去済み。
  */
 export const notificationRecieveConfigSchema = v.variant('type', [
 	v.object({

@@ -5,7 +5,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import * as Redis from 'ioredis';
-import _Ajv from 'ajv';
+import * as v from 'valibot';
 import { ModuleRef } from '@nestjs/core';
 import { In } from 'typeorm';
 import { DI } from '@/di-symbols.js';
@@ -52,9 +52,6 @@ import type { OnModuleInit } from '@nestjs/common';
 import type { NoteEntityService } from './NoteEntityService.js';
 import type { PageEntityService } from './PageEntityService.js';
 import { toArray } from '@/misc/prelude/array.js';
-
-const Ajv = _Ajv.default;
-const ajv = new Ajv();
 
 function isLocalUser(user: MiUser): user is MiLocalUser;
 function isLocalUser<T extends { host: MiUser['host'] }>(user: T): user is (T & { host: null; });
@@ -154,12 +151,14 @@ export class UserEntityService implements OnModuleInit {
 	}
 
 	//#region Validators
-	public validateLocalUsername = ajv.compile(localUsernameSchema);
-	public validatePassword = ajv.compile(passwordSchema);
-	public validateName = ajv.compile(nameSchema);
-	public validateDescription = ajv.compile(descriptionSchema);
-	public validateLocation = ajv.compile(locationSchema);
-	public validateBirthday = ajv.compile(birthdaySchema);
+	// NOTE: 旧実装は `ajv.compile(<legacy json-schema>)` だった。断片が Valibot 化されたので
+	// `v.is()` (= 検証結果を boolean で返す。呼び出し側は真偽値としてしか使っていない) に置き換える。
+	public validateLocalUsername = (value: unknown): boolean => v.is(localUsernameSchema, value);
+	public validatePassword = (value: unknown): boolean => v.is(passwordSchema, value);
+	public validateName = (value: unknown): boolean => v.is(nameSchema, value);
+	public validateDescription = (value: unknown): boolean => v.is(descriptionSchema, value);
+	public validateLocation = (value: unknown): boolean => v.is(locationSchema, value);
+	public validateBirthday = (value: unknown): boolean => v.is(birthdaySchema, value);
 	//#endregion
 
 	public isLocalUser = isLocalUser;

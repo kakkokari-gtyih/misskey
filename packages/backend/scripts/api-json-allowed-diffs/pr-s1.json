@@ -1,0 +1,80 @@
+[
+	{
+		"pattern": "/paths/~1users~1show/post/requestBody/content/application~1json/schema/allOf",
+		"op": "remove",
+		"reason": "PR-S1: paramDef `allOf: [{ anyOf: [...] }, { common }]` was distributed into a single `v.union` (cookbook R9), so the outer allOf wrapper disappears. Accepted inputs are unchanged ((A|B|C) AND D == (A AND D)|(B AND D)|(C AND D)); only the spec shape and unknown-key stripping change."
+	},
+	{
+		"pattern": "/paths/~1users~1show/post/requestBody/content/application~1json/schema/anyOf",
+		"op": "add",
+		"reason": "PR-S1: the distributed `v.union` branches (userId / userIds / username, each carrying the common `host`) are emitted as a flat anyOf."
+	},
+	{
+		"pattern": "/paths/~1users~1followers/post/requestBody/content/application~1json/schema/allOf",
+		"op": "remove",
+		"reason": "PR-S1: paramDef `allOf: [{ anyOf: [...] }, { pagination }]` distributed into `v.union` (cookbook R9)."
+	},
+	{
+		"pattern": "/paths/~1users~1followers/post/requestBody/content/application~1json/schema/anyOf",
+		"op": "add",
+		"reason": "PR-S1: the distributed `v.union` branches (userId / username+host, each carrying sinceId/untilId/sinceDate/untilDate/limit) are emitted as a flat anyOf."
+	},
+	{
+		"pattern": "/paths/~1users~1search-by-username-and-host/post/requestBody/content/application~1json/schema/allOf",
+		"op": "remove",
+		"reason": "PR-S1: paramDef `allOf: [{ anyOf: [...] }, { limit, detail }]` distributed into `v.union` (cookbook R9)."
+	},
+	{
+		"pattern": "/paths/~1users~1search-by-username-and-host/post/requestBody/content/application~1json/schema/anyOf",
+		"op": "add",
+		"reason": "PR-S1: the distributed `v.union` branches (username / host, each carrying limit+detail) are emitted as a flat anyOf."
+	},
+	{
+		"pattern": "/paths/~1admin~1emoji~1update/post/requestBody/content/application~1json/schema/allOf",
+		"op": "remove",
+		"reason": "PR-S1: paramDef `allOf: [{ anyOf: [...] }, { fileId, category, ... }]` distributed into `v.union` (cookbook R9)."
+	},
+	{
+		"pattern": "/paths/~1admin~1emoji~1update/post/requestBody/content/application~1json/schema/anyOf",
+		"op": "add",
+		"reason": "PR-S1: the distributed `v.union` branches (id / name, each carrying the shared update fields) are emitted as a flat anyOf."
+	},
+	{
+		"pattern": "/paths/~1notes~1search-by-tag/post/requestBody/content/application~1json/schema/allOf",
+		"op": "remove",
+		"reason": "PR-S1: paramDef `allOf: [{ anyOf: [...] }, { reply, renote, ... }]` distributed into `v.union` (cookbook R9)."
+	},
+	{
+		"pattern": "/paths/~1notes~1search-by-tag/post/requestBody/content/application~1json/schema/anyOf",
+		"op": "add",
+		"reason": "PR-S1: the distributed `v.union` branches (tag / query, each carrying the shared filter+pagination fields) are emitted as a flat anyOf."
+	},
+	{
+		"pattern": "/paths/~1i~1registry~1get-all/post/requestBody/content/application~1json/schema/required",
+		"reason": "PR-S1: `scope` had `required` and `default: []` at the same time; AJV useDefaults fills the default before the required check, so it was always omittable. Converted to `v.optional(x, [])` (cookbook R4), which drops it from `required` - the spec now matches the actual behaviour."
+	},
+	{
+		"pattern": "/paths/~1i~1registry~1keys/post/requestBody/content/application~1json/schema/required",
+		"reason": "PR-S1: same as i/registry/get-all - `scope` (required + default: []) became `v.optional(x, [])`, so it is no longer listed as required."
+	},
+	{
+		"pattern": "/paths/~1i~1registry~1keys-with-type/post/requestBody/content/application~1json/schema/required",
+		"reason": "PR-S1: same as i/registry/get-all - `scope` (required + default: []) became `v.optional(x, [])`, so it is no longer listed as required."
+	},
+	{
+		"pattern": "/paths/~1i~1registry~1get/post/requestBody/content/application~1json/schema/required",
+		"reason": "PR-S1: same as i/registry/get-all - `scope` drops out of required (`key` stays required)."
+	},
+	{
+		"pattern": "/paths/~1i~1registry~1get-detail/post/requestBody/content/application~1json/schema/required",
+		"reason": "PR-S1: same as i/registry/get-all - `scope` drops out of required (`key` stays required)."
+	},
+	{
+		"pattern": "/paths/~1i~1registry~1remove/post/requestBody/content/application~1json/schema/required",
+		"reason": "PR-S1: same as i/registry/get-all - `scope` drops out of required (`key` stays required)."
+	},
+	{
+		"pattern": "/paths/~1i~1registry~1set/post/requestBody/content/application~1json/schema/required",
+		"reason": "PR-S1: same as i/registry/get-all - `scope` drops out of required (`key` and `value` stay required)."
+	}
+]

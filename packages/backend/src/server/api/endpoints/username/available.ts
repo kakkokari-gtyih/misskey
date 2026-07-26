@@ -5,6 +5,7 @@
 
 import { IsNull } from 'typeorm';
 import { Inject, Injectable } from '@nestjs/common';
+import * as v from 'valibot';
 import type { MiMeta, UsedUsernamesRepository, UsersRepository } from '@/models/_.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { localUsernameSchema } from '@/models/User.js';
@@ -27,13 +28,9 @@ export const meta = {
 	},
 } as const;
 
-export const paramDef = {
-	type: 'object',
-	properties: {
-		username: localUsernameSchema,
-	},
-	required: ['username'],
-} as const;
+export const paramDef = v.object({
+	username: localUsernameSchema,
+});
 
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
