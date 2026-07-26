@@ -21,6 +21,12 @@ interface IEndpointMetaBase {
 			readonly message: string;
 			readonly code: string;
 			readonly id: string;
+			/**
+			 * このエラーを返すときの HTTP ステータスコード (ApiError と同じ意味)。
+			 * 省略した場合は 400 として返される。OpenAPI 生成でもこの値が使われる
+			 */
+			readonly httpStatusCode?: number;
+			readonly kind?: 'client' | 'server' | 'permission';
 		};
 	};
 

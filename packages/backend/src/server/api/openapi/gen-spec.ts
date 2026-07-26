@@ -9,6 +9,40 @@ import endpoints from '../endpoints.js';
 import { errors as basicErrors } from './errors.js';
 import { getSchemas, convertEndpointSchemaToOpenApi } from './schemas.js';
 
+/**
+ * エラーレスポンスの description。basicErrors のステータス以外は meta.errors の
+ * httpStatusCode から動的に生えるため、既知のものは名前を付けておく
+ */
+const errorResponseDescriptions: Record<string, string> = {
+	'400': 'Client error',
+	'401': 'Authentication error',
+	'403': 'Forbidden error',
+	'404': 'Not found',
+	'413': 'Payload too large',
+	'418': 'I\'m Ai',
+	'422': 'Unprocessable entity',
+	'429': 'Too many requests',
+	'500': 'Internal server error',
+};
+
+function describeErrorStatus(status: string): string {
+	return errorResponseDescriptions[status] ?? (Number(status) >= 500 ? 'Server error' : 'Client error');
+}
+
+function makeErrorResponse(status: string, examples: Record<string, unknown>) {
+	return {
+		description: describeErrorStatus(status),
+		content: {
+			'application/json': {
+				schema: {
+					$ref: '#/components/schemas/Error',
+				},
+				examples,
+			},
+		},
+	};
+}
+
 export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 	const spec = {
 		openapi: '3.1.0',
@@ -46,17 +80,34 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 	// にしてからディープコピーして spec に載せる。こうしないと生成物が endpoints の meta を参照した
 	// ままになり、生成物を書き換えたときにメモリ上の値が汚れて次回以降の出力に影響する
 	for (const endpoint of endpoints) {
-		const errors = {} as any;
+		// meta.errors を「実際に返される HTTP ステータスコード」ごとに振り分ける。
+		// httpStatusCode を持たないエラーは ApiCallService が 400 として返すため 400 に入れる
+		const errorExamplesByStatus = new Map<string, Record<string, unknown>>();
 
 		if (endpoint.meta.errors) {
 			for (const e of Object.values(endpoint.meta.errors)) {
-				errors[e.code] = {
+				const status = String(e.httpStatusCode ?? 400);
+				const examples = errorExamplesByStatus.get(status) ?? {};
+				examples[e.code] = {
 					value: {
 						error: e,
 					},
 				};
+				errorExamplesByStatus.set(status, examples);
 			}
 		}
+
+		// basicErrors のステータス (429 は rate limit のある endpoint のみ) と
+		// meta.errors 由来のステータスの和集合を、ステータスコード昇順で出力する
+		const errorStatuses = [...new Set([
+			...Object.keys(basicErrors).filter(status => status !== '429' || endpoint.meta.limit),
+			...errorExamplesByStatus.keys(),
+		])].sort((a, b) => Number(a) - Number(b));
+
+		const errorResponses = Object.fromEntries(errorStatuses.map(status => [status, makeErrorResponse(status, {
+			...errorExamplesByStatus.get(status),
+			...basicErrors[status as keyof typeof basicErrors],
+		})]));
 
 		const resSchema = endpoint.meta.res ? convertEndpointSchemaToOpenApi(endpoint.meta.res, 'res', includeSelfRef) : {};
 
@@ -95,7 +146,7 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 		}
 
 		const hasBody = (schema.type === 'object' && schema.properties && Object.keys(schema.properties).length >= 1)
-			|| ['allOf', 'oneOf', 'anyOf'].some(o => (Array.isArray(schema[o]) && schema[o].length >= 0));
+			|| ['allOf', 'oneOf', 'anyOf'].some(o => (Array.isArray(schema[o]) && schema[o].length > 0));
 
 		const info = {
 			operationId: endpoint.name.replaceAll('/', '___'), // NOTE: スラッシュは使えない
@@ -143,74 +194,7 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 						description: 'OK (without any results)',
 					},
 				} : {}),
-				'400': {
-					description: 'Client error',
-					content: {
-						'application/json': {
-							schema: {
-								$ref: '#/components/schemas/Error',
-							},
-							examples: { ...errors, ...basicErrors['400'] },
-						},
-					},
-				},
-				'401': {
-					description: 'Authentication error',
-					content: {
-						'application/json': {
-							schema: {
-								$ref: '#/components/schemas/Error',
-							},
-							examples: basicErrors['401'],
-						},
-					},
-				},
-				'403': {
-					description: 'Forbidden error',
-					content: {
-						'application/json': {
-							schema: {
-								$ref: '#/components/schemas/Error',
-							},
-							examples: basicErrors['403'],
-						},
-					},
-				},
-				'418': {
-					description: 'I\'m Ai',
-					content: {
-						'application/json': {
-							schema: {
-								$ref: '#/components/schemas/Error',
-							},
-							examples: basicErrors['418'],
-						},
-					},
-				},
-				...(endpoint.meta.limit ? {
-					'429': {
-						description: 'Too many requests',
-						content: {
-							'application/json': {
-								schema: {
-									$ref: '#/components/schemas/Error',
-								},
-								examples: basicErrors['429'],
-							},
-						},
-					},
-				} : {}),
-				'500': {
-					description: 'Internal server error',
-					content: {
-						'application/json': {
-							schema: {
-								$ref: '#/components/schemas/Error',
-							},
-							examples: basicErrors['500'],
-						},
-					},
-				},
+				...errorResponses,
 			},
 		};
 
