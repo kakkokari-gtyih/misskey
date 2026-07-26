@@ -99,6 +99,8 @@ cw: v.optional(v.nullable(v.pipe(v.string(), mi.minCodePoints(1), mi.maxCodePoin
 
 **インライン res オブジェクトの required 導出**: res 側は「`optional` フラグが無い/false のプロパティ = required」として api.json に出る (legacy コンバータの `!optional` 導出)。valibot 側も同じで「`v.optional`/`v.nullish` で包まれていない entries = required」。entity 世界の `optional: false, nullable: false` 明記に慣れていると、インライン res の**フラグ無しプロパティを optional と誤読しやすい**ので注意 (フラグ無し = required)。
 
+**res ブロック内の手書き `required` 配列は罠**: たまに res のインライン object に paramDef 流の `required: [...]` 配列が書かれているが (実例: `admin/roles/users.ts`)、legacy コンバータは **res モードでは手書き `required` を無視して `optional` フラグから導出し直す**。したがって変換の正は「api.json (baseline) の required」= フラグ導出の結果であり、手書き配列ではない。手書き `required` に無いプロパティでも `optional: true` が付いていなければ **required として変換する** (迷ったら baseline の該当パスを `jq` で確認)。
+
 ---
 
 ## R4. `default`
@@ -177,6 +179,8 @@ v.literal('list')
 | json-schema | valibot |
 |---|---|
 | `pattern: '...'` | `v.regex(/.../)` (文字列 → 正規表現リテラル化するときのエスケープに注意。特に `\\s` のような二重エスケープ済み文字列は `RegExp` リテラルにすると `\s` 1 段になる点を確認する) |
+
+**pattern 文字列は `regex.source` がそのまま api.json に出る。** 検証上冗長なエスケープ (文字クラス内の `\/` 等) も legacy の pattern 文字列と一致させるため**削らずそのまま写す** (実例: `admin/drive/files.ts` の `/^[a-zA-Z0-9\/\-*]+$/` — `\/` を外すと semantically 同一でも api.json 差分になる)。
 | `minimum` / `maximum` | `v.minValue(n)` / `v.maxValue(n)` |
 | 文字列の `minLength` / `maxLength` | **`mi.minCodePoints(n)` / `mi.maxCodePoints(n)` 必須** |
 
