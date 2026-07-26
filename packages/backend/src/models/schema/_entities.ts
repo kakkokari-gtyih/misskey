@@ -16,4 +16,34 @@
  *
  * 全 entity の移行が完了したら (PR-F) `Packed<>` ごと削除し、各 `Packed*` 型の直接 import へ移る。
  */
-export const valibotRefs = {} as const;
+import { packedSigninSchema } from '@/models/schema/signin.js';
+import { packedAdSchema } from '@/models/schema/ad.js';
+import {
+	packedEmojiSimpleSchema,
+	packedEmojiDetailedSchema,
+	packedEmojiDetailedAdminSchema,
+} from '@/models/schema/emoji.js';
+import { packedSystemWebhookSchema } from '@/models/schema/system-webhook.js';
+import { packedFederationInstanceSchema } from '@/models/schema/federation-instance.js';
+import { packedAppSchema } from '@/models/schema/app.js';
+import { packedAntennaSchema } from '@/models/schema/antenna.js';
+import { packedUserWebhookSchema } from '@/models/schema/user-webhook.js';
+import { packedHashtagSchema } from '@/models/schema/hashtag.js';
+import { packedAnnouncementSchema } from '@/models/schema/announcement.js';
+import { packedUserListSchema } from '@/models/schema/user-list.js';
+
+export const valibotRefs = {
+	Signin: packedSigninSchema,
+	Ad: packedAdSchema,
+	EmojiSimple: packedEmojiSimpleSchema,
+	EmojiDetailed: packedEmojiDetailedSchema,
+	EmojiDetailedAdmin: packedEmojiDetailedAdminSchema,
+	SystemWebhook: packedSystemWebhookSchema,
+	FederationInstance: packedFederationInstanceSchema,
+	App: packedAppSchema,
+	Antenna: packedAntennaSchema,
+	UserWebhook: packedUserWebhookSchema,
+	Hashtag: packedHashtagSchema,
+	Announcement: packedAnnouncementSchema,
+	UserList: packedUserListSchema,
+} as const;

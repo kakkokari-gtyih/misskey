@@ -13,8 +13,6 @@ import {
 	packedUserSchema,
 } from '@/models/json-schema/user.js';
 import { packedNoteSchema } from '@/models/json-schema/note.js';
-import { packedUserListSchema } from '@/models/json-schema/user-list.js';
-import { packedAppSchema } from '@/models/json-schema/app.js';
 import { packedNotificationSchema } from '@/models/json-schema/notification.js';
 import { packedDriveFileSchema } from '@/models/json-schema/drive-file.js';
 import { packedDriveFolderSchema } from '@/models/json-schema/drive-folder.js';
@@ -23,28 +21,18 @@ import { packedMutingSchema } from '@/models/json-schema/muting.js';
 import { packedRenoteMutingSchema } from '@/models/json-schema/renote-muting.js';
 import { packedBlockingSchema } from '@/models/json-schema/blocking.js';
 import { packedNoteReactionSchema, packedNoteReactionWithNoteSchema } from '@/models/json-schema/note-reaction.js';
-import { packedHashtagSchema } from '@/models/json-schema/hashtag.js';
 import { packedInviteCodeSchema } from '@/models/json-schema/invite-code.js';
 import { packedPageBlockSchema, packedPageSchema } from '@/models/json-schema/page.js';
 import { packedNoteFavoriteSchema } from '@/models/json-schema/note-favorite.js';
 import { packedChannelSchema } from '@/models/json-schema/channel.js';
-import { packedAntennaSchema } from '@/models/json-schema/antenna.js';
 import { packedClipSchema } from '@/models/json-schema/clip.js';
-import { packedFederationInstanceSchema } from '@/models/json-schema/federation-instance.js';
 import {
 	packedQueueCountSchema,
 	packedQueueMetricsSchema,
 	packedQueueJobSchema,
 } from '@/models/json-schema/queue.js';
 import { packedGalleryPostSchema } from '@/models/json-schema/gallery-post.js';
-import {
-	packedEmojiDetailedAdminSchema,
-	packedEmojiDetailedSchema,
-	packedEmojiSimpleSchema,
-} from '@/models/json-schema/emoji.js';
 import { packedFlashSchema } from '@/models/json-schema/flash.js';
-import { packedAnnouncementSchema } from '@/models/json-schema/announcement.js';
-import { packedSigninSchema } from '@/models/json-schema/signin.js';
 import {
 	packedRoleCondFormulaFollowersOrFollowingOrNotesSchema,
 	packedRoleCondFormulaLogicsSchema,
@@ -58,7 +46,6 @@ import {
 	packedRolePoliciesSchema,
 	packedRoleSchema,
 } from '@/models/json-schema/role.js';
-import { packedAdSchema } from '@/models/json-schema/ad.js';
 import { packedReversiGameDetailedSchema, packedReversiGameLiteSchema } from '@/models/json-schema/reversi-game.js';
 import {
 	packedMetaDetailedOnlySchema,
@@ -66,8 +53,6 @@ import {
 	packedMetaLiteSchema,
 	packedMetaClientOptionsSchema,
 } from '@/models/json-schema/meta.js';
-import { packedUserWebhookSchema } from '@/models/json-schema/user-webhook.js';
-import { packedSystemWebhookSchema } from '@/models/json-schema/system-webhook.js';
 import { packedAbuseReportNotificationRecipientSchema } from '@/models/json-schema/abuse-report-notification-recipient.js';
 import { packedChatMessageSchema, packedChatMessageLiteSchema, packedChatMessageLiteForRoomSchema, packedChatMessageLiteFor1on1Schema } from '@/models/json-schema/chat-message.js';
 import { packedChatRoomSchema } from '@/models/json-schema/chat-room.js';
@@ -75,6 +60,10 @@ import { packedChatRoomInvitationSchema } from '@/models/json-schema/chat-room-i
 import { packedChatRoomMembershipSchema } from '@/models/json-schema/chat-room-membership.js';
 import { packedAchievementNameSchema, packedAchievementSchema } from '@/models/json-schema/achievement.js';
 import { packedNoteDraftSchema } from '@/models/json-schema/note-draft.js';
+// NOTE: `import type` (下記) は erased されるので、Valibot 化済み entity の defineEntity() 副作用を
+// 確実に実行させるための side-effect import を別途行う (`@/models/schema/` 配下は
+// endpoint 経由の実 import が無いと `components.schemas` から漏れるため)。
+import '@/models/schema/_entities.js';
 import type * as v from 'valibot';
 import type { valibotRefs } from '@/models/schema/_entities.js';
 
@@ -87,12 +76,8 @@ export const refs = {
 	UserDetailed: packedUserDetailedSchema,
 	User: packedUserSchema,
 
-	UserList: packedUserListSchema,
 	Achievement: packedAchievementSchema,
 	AchievementName: packedAchievementNameSchema,
-	Ad: packedAdSchema,
-	Announcement: packedAnnouncementSchema,
-	App: packedAppSchema,
 	Note: packedNoteSchema,
 	NoteDraft: packedNoteDraftSchema,
 	NoteReaction: packedNoteReactionSchema,
@@ -105,7 +90,6 @@ export const refs = {
 	Muting: packedMutingSchema,
 	RenoteMuting: packedRenoteMutingSchema,
 	Blocking: packedBlockingSchema,
-	Hashtag: packedHashtagSchema,
 	InviteCode: packedInviteCodeSchema,
 	Page: packedPageSchema,
 	PageBlock: packedPageBlockSchema,
@@ -113,15 +97,9 @@ export const refs = {
 	QueueCount: packedQueueCountSchema,
 	QueueMetrics: packedQueueMetricsSchema,
 	QueueJob: packedQueueJobSchema,
-	Antenna: packedAntennaSchema,
 	Clip: packedClipSchema,
-	FederationInstance: packedFederationInstanceSchema,
 	GalleryPost: packedGalleryPostSchema,
-	EmojiSimple: packedEmojiSimpleSchema,
-	EmojiDetailed: packedEmojiDetailedSchema,
-	EmojiDetailedAdmin: packedEmojiDetailedAdminSchema,
 	Flash: packedFlashSchema,
-	Signin: packedSigninSchema,
 	RoleCondFormulaLogics: packedRoleCondFormulaLogicsSchema,
 	RoleCondFormulaValueNot: packedRoleCondFormulaValueNot,
 	RoleCondFormulaValueIsLocalOrRemote: packedRoleCondFormulaValueIsLocalOrRemoteSchema,
@@ -139,8 +117,6 @@ export const refs = {
 	MetaDetailedOnly: packedMetaDetailedOnlySchema,
 	MetaDetailed: packedMetaDetailedSchema,
 	MetaClientOptions: packedMetaClientOptionsSchema,
-	UserWebhook: packedUserWebhookSchema,
-	SystemWebhook: packedSystemWebhookSchema,
 	AbuseReportNotificationRecipient: packedAbuseReportNotificationRecipientSchema,
 	ChatMessage: packedChatMessageSchema,
 	ChatMessageLite: packedChatMessageLiteSchema,
@@ -206,7 +182,7 @@ export interface Schema extends OfSchema {
 	readonly description?: string;
 	readonly example?: any;
 	readonly format?: string;
-	readonly ref?: keyof typeof refs;
+	readonly ref?: PackedEntityName;
 	readonly selfRef?: boolean;
 	readonly enum?: ReadonlyArray<string | null>;
 	readonly default?: (this['type'] extends TypeStringef ? StringDefToType<this['type']> : any) | null;
@@ -268,7 +244,7 @@ type ArrayUnion<T> = T extends any ? Array<T> : never;
 type ArrayToTuple<X extends ReadonlyArray<Schema>> = { [K in keyof X]: SchemaType<X[K]> };
 
 type ObjectSchemaTypeDef<p extends Schema> =
-	p['ref'] extends keyof typeof refs ? Packed<p['ref']> :
+	p['ref'] extends PackedEntityName ? Packed<p['ref']> :
 	p['properties'] extends NonNullable<Obj> ?
 		p['anyOf'] extends ReadonlyArray<Schema> ? p['anyOf'][number]['required'] extends ReadonlyArray<keyof p['properties']> ?
 			UnionObjType<p['properties'], NonNullable<p['anyOf'][number]['required']>> & ObjType<p['properties'], NonNullable<p['required']>>
