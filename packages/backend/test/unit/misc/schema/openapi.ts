@@ -13,7 +13,6 @@ import {
 	composeEntity,
 	dateTimeString,
 	defineEntity,
-	entityRef,
 	example,
 	idString,
 	integer,
@@ -30,35 +29,21 @@ import {
 	uniqueArray,
 	valibotToOpenApi,
 } from '@/misc/schema/index.js';
-import { convertSchemaToOpenApiSchema } from '@/server/api/openapi/schemas.js';
-import type { Schema } from '@/misc/json-schema.js';
 import type { AnyValibotSchema, ValibotOpenApiContext } from '@/misc/schema/index.js';
 
-// `@/server/api/openapi/schemas.js` の import グラフに `@/models/schema/_entities.js` の
-// 副作用 import が含まれ、実 entity が全登録された状態になる。このテストのダミー
-// `defineEntity()` が名前衝突で throw しないよう、レジストリを空に戻してから始める
+// import グラフに `@/models/schema/_entities.js` の副作用 import が含まれ、実 entity が
+// 全登録された状態になる。このテストのダミー `defineEntity()` が名前衝突で throw しないよう、
+// レジストリを空に戻してから始める
 // (vitest はファイル単位でモジュールを分離するため他のテストには影響しない)。
 resetEntityRegistry();
 
 const RES: ValibotOpenApiContext = { use: 'res', includeSelfRef: true };
 const PARAM: ValibotOpenApiContext = { use: 'param', includeSelfRef: false };
 
-/**
- * シャドウ変換ヘルパー。
- *
- * 「Valibot 版スキーマ」と「それが置き換える legacy JSON Schema」を両コンバータに通し、
- * 出力が deep-equal であることを検証する。entity / endpoint の移行バッチで、削除する legacy
- * スキーマをフィクスチャに退避してこれに渡すことで api.json 差分ゼロを機械的に担保できる。
- */
-export function expectOpenApiEquivalent(
-	valibotSchema: AnyValibotSchema,
-	legacySchema: Schema,
-	use: 'param' | 'res',
-	includeSelfRef: boolean,
-): void {
-	expect(valibotToOpenApi(valibotSchema, { use, includeSelfRef }))
-		.toStrictEqual(convertSchemaToOpenApiSchema(legacySchema, use, includeSelfRef));
-}
+// `$ref` 出力の確認用ダミー entity (実 entity の中身には依存しない)
+const refAntennaSchema = defineEntity('Antenna', v.object({ id: idString() }));
+const refBlockingSchema = defineEntity('Blocking', v.object({ id: idString() }));
+const refClipSchema = defineEntity('Clip', v.object({ id: idString() }));
 
 describe('misc/schema:valibotToOpenApi', () => {
 	describe('primitives', () => {
@@ -274,8 +259,8 @@ describe('misc/schema:valibotToOpenApi', () => {
 		});
 
 		test('$ref → oneOf [$ref, null]', () => {
-			expect(valibotToOpenApi(v.nullable(entityRef('Note')), RES))
-				.toStrictEqual({ oneOf: [{ $ref: '#/components/schemas/Note' }, { type: 'null' }] });
+			expect(valibotToOpenApi(v.nullable(refAntennaSchema), RES))
+				.toStrictEqual({ oneOf: [{ $ref: '#/components/schemas/Antenna' }, { type: 'null' }] });
 		});
 
 		test('二重 nullable でも null は 1 度だけ', () => {
@@ -291,11 +276,11 @@ describe('misc/schema:valibotToOpenApi', () => {
 		});
 
 		test('asOneOf() で union を oneOf にできる', () => {
-			expect(valibotToOpenApi(v.pipe(v.union([entityRef('UserLite'), entityRef('UserDetailed')]), asOneOf()), RES))
+			expect(valibotToOpenApi(v.pipe(v.union([refBlockingSchema, refClipSchema]), asOneOf()), RES))
 				.toStrictEqual({
 					oneOf: [
-						{ $ref: '#/components/schemas/UserLite' },
-						{ $ref: '#/components/schemas/UserDetailed' },
+						{ $ref: '#/components/schemas/Blocking' },
+						{ $ref: '#/components/schemas/Clip' },
 					],
 				});
 		});
@@ -337,11 +322,6 @@ describe('misc/schema:valibotToOpenApi', () => {
 			expect(valibotToOpenApi(leafSchema, { ...RES, rootName: 'Hashtag' }))
 				.toStrictEqual({ type: 'object', properties: { tag: { type: 'string' } }, required: ['tag'] });
 			expect(valibotToOpenApi(leafSchema, RES)).toStrictEqual({ $ref: '#/components/schemas/Hashtag' });
-		});
-
-		test('entityRef() は未移行 entity への $ref', () => {
-			expect(valibotToOpenApi(entityRef('DriveFile'), RES))
-				.toStrictEqual({ $ref: '#/components/schemas/DriveFile' });
 		});
 
 		test('v.lazy() 経由の自己参照は $ref になる', () => {
@@ -464,57 +444,49 @@ describe('misc/schema:valibotToOpenApi', () => {
 		});
 	});
 
-	// legacy コンバータとの等価性 (移行バッチが使う検証手段そのものの健全性チェック)
-	describe('シャドウ変換 (legacy コンバータとの deep-equal)', () => {
+	/**
+	 * 移行前の legacy コンバータ (`convertSchemaToOpenApiSchema`) が出していた形の回帰フィクスチャ。
+	 *
+	 * 移行中はこの 4 ケースを「legacy コンバータに同じ意味のスキーマを通した結果」と deep-equal 比較
+	 * (シャドウ変換) していた。legacy コンバータを撤去した今は、その当時の出力をそのまま
+	 * 期待値として直書きし、api.json の出力形が動いていないことの回帰テストとして残している。
+	 */
+	describe('回帰フィクスチャ (移行前の出力形)', () => {
 		test('小さな object', () => {
-			expectOpenApiEquivalent(
-				v.object({
-					a: v.string(),
-					b: v.optional(v.nullable(v.number())),
-					c: v.array(idString()),
-				}),
-				{
-					type: 'object',
-					properties: {
-						a: { type: 'string', optional: false, nullable: false },
-						b: { type: 'number', optional: true, nullable: true },
-						c: {
-							type: 'array',
-							optional: false, nullable: false,
-							items: { type: 'string', optional: false, nullable: false, format: 'id' },
-						},
-					},
-				} as const satisfies Schema,
-				'res',
-				true,
-			);
+			expect(valibotToOpenApi(v.object({
+				a: v.string(),
+				b: v.optional(v.nullable(v.number())),
+				c: v.array(idString()),
+			}), RES)).toStrictEqual({
+				type: 'object',
+				properties: {
+					a: { type: 'string' },
+					b: { type: ['number', 'null'] },
+					c: { type: 'array', items: { type: 'string', format: 'id' } },
+				},
+				required: ['a', 'c'],
+			});
 		});
 
-		test('nullable な ref', () => {
-			expectOpenApiEquivalent(
-				v.nullable(entityRef('Note')),
-				{ type: 'object', ref: 'Note', optional: false, nullable: true } as const satisfies Schema,
-				'res',
-				true,
-			);
+		test('nullable な entity 参照', () => {
+			expect(valibotToOpenApi(v.nullable(refAntennaSchema), RES)).toStrictEqual({
+				oneOf: [{ $ref: '#/components/schemas/Antenna' }, { type: 'null' }],
+			});
 		});
 
 		test('enum + default', () => {
-			expectOpenApiEquivalent(
-				v.optional(v.picklist(['public', 'home']), 'public'),
-				{ type: 'string', enum: ['public', 'home'], default: 'public' } as const satisfies Schema,
-				'param',
-				false,
-			);
+			expect(valibotToOpenApi(v.optional(v.picklist(['public', 'home']), 'public'), PARAM)).toStrictEqual({
+				type: 'string',
+				enum: ['public', 'home'],
+				default: 'public',
+			});
 		});
 
 		test('nullable な enum (null 込み)', () => {
-			expectOpenApiEquivalent(
-				nullableEnum(['likeOnly', null]),
-				{ type: 'string', nullable: true, enum: ['likeOnly', null] } as const satisfies Schema,
-				'res',
-				true,
-			);
+			expect(valibotToOpenApi(nullableEnum(['likeOnly', null]), RES)).toStrictEqual({
+				type: ['string', 'null'],
+				enum: ['likeOnly', null],
+			});
 		});
 	});
 });

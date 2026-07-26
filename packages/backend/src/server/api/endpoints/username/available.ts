@@ -16,16 +16,9 @@ export const meta = {
 
 	requireCredential: false,
 
-	res: {
-		type: 'object',
-		optional: false, nullable: false,
-		properties: {
-			available: {
-				type: 'boolean',
-				optional: false, nullable: false,
-			},
-		},
-	},
+	res: v.object({
+		available: v.boolean(),
+	}),
 } as const;
 
 export const paramDef = v.object({

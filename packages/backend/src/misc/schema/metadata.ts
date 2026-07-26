@@ -4,21 +4,15 @@
  */
 
 import * as v from 'valibot';
-import type { refs } from '@/misc/json-schema.js';
-import type { ValibotPackedMap } from '@/models/schema/_entities.js';
+import type { PackedEntityMap } from '@/models/schema/_entities.js';
 import type { AnyValibotSchema } from './bridge.js';
 
 /**
  * OpenAPI (api.json) 上の `#/components/schemas/X` として公開される entity 名。
  *
- * 移行期間中は legacy の {@link refs} と Valibot 側の {@link ValibotPackedMap} の和集合。
- * entity を移行すると `refs` からキーが消えて `ValibotPackedMap` に移るので、両方を見る必要がある。
- * (PR-F で legacy レジストリを削除するタイミングで Valibot 側レジストリのキーだけになる)
- *
- * NOTE: `json-schema.ts` 側も `_entities.ts` を参照するが、いずれも type-only import なので
- * ランタイムの循環依存は発生しない。
+ * 実体は {@link PackedEntityMap} (各 entity モジュールの `PackedX` 型の索引) のキー。
  */
-export type EntityName = keyof typeof refs | keyof ValibotPackedMap;
+export type EntityName = keyof PackedEntityMap;
 
 /**
  * {@link composeEntity} が合成する `allOf` の 1 パート。
@@ -46,11 +40,6 @@ export type MiMeta = {
 	readonly example?: unknown;
 	/** OpenAPI `deprecated` */
 	readonly deprecated?: boolean;
-	/**
-	 * 未移行 legacy entity への参照マーカー ({@link entityRef} が付ける)。
-	 * res モードで `{ $ref: '#/components/schemas/<name>' }` として出力される。
-	 */
-	readonly ref?: EntityName;
 	/**
 	 * 自己参照マーカー (legacy の `selfRef: true` 相当)。
 	 * `includeSelfRef === false` のとき `$ref` を出さず `{ type: 'object' }` に退化する。

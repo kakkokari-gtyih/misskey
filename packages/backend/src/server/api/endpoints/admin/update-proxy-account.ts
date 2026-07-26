@@ -10,6 +10,7 @@ import {
 	descriptionSchema,
 } from '@/models/User.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
+import { packedUserDetailedSchema } from '@/models/schema/user.js';
 import { ModerationLogService } from '@/core/ModerationLogService.js';
 import { SystemAccountService } from '@/core/SystemAccountService.js';
 
@@ -20,11 +21,7 @@ export const meta = {
 	requireModerator: true,
 	kind: 'write:admin:account',
 
-	res: {
-		type: 'object',
-		nullable: false, optional: false,
-		ref: 'UserDetailed',
-	},
+	res: packedUserDetailedSchema,
 } as const;
 
 export const paramDef = v.object({

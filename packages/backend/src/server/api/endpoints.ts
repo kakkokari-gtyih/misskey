@@ -4,10 +4,10 @@
  */
 
 import { permissions } from 'misskey-js';
-import type { KeyOf } from '@/misc/json-schema.js';
 import { getCastableParams } from '@/misc/schema/cast.js';
 import type { CastableType } from '@/misc/schema/cast.js';
-import type { EndpointSchema } from '@/misc/schema/bridge.js';
+import type { AnyValibotSchema } from '@/misc/schema/bridge.js';
+import type { PackedRolePolicies } from '@/models/schema/role.js';
 
 import * as endpointsObject from './endpoint-list.js';
 
@@ -30,7 +30,7 @@ interface IEndpointMetaBase {
 		};
 	};
 
-	readonly res?: EndpointSchema;
+	readonly res?: AnyValibotSchema;
 
 	/**
 	 * このエンドポイントにリクエストするのにユーザー情報が必須か否か
@@ -48,7 +48,7 @@ interface IEndpointMetaBase {
 	 */
 	readonly requireAdmin?: boolean;
 
-	readonly requiredRolePolicy?: KeyOf<'RolePolicies'>;
+	readonly requiredRolePolicy?: keyof PackedRolePolicies & string;
 
 	/**
 	 * 引っ越し済みのユーザーによるリクエストを禁止するか
@@ -136,7 +136,7 @@ export type IEndpointMeta = (Omit<IEndpointMetaBase, 'requireCrential' | 'requir
 export interface IEndpoint {
 	name: string;
 	meta: IEndpointMeta;
-	params: EndpointSchema;
+	params: AnyValibotSchema;
 	/**
 	 * GET / multipart リクエストで `JSON.parse` によるキャストが必要なトップレベルパラメータ。
 	 * (paramDef の内省結果を毎リクエスト計算しないよう、初回アクセス時に 1 回だけ求めてキャッシュする)

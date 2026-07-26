@@ -78,11 +78,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				this.notificationService.readAllNotification(me.id);
 			}
 
-			// NotificationEntityService#packMany の戻り値の型注釈は入力側の型 (MiNotification[]) のままだが、
-			// 実装 (#packManyInternal → #pack) は実際には Packed<'Notification'> を組み立てて返している。
-			// legacy スキーマでは res の型が any に潰れていたため見えなかった相違で、
-			// ランタイム挙動を変えないようキャストで従来どおりの返却形を維持する。
-			return await this.notificationEntityService.packMany(notifications, me.id) as unknown as PackedNotification[];
+			return await this.notificationEntityService.packMany(notifications, me.id);
 		});
 	}
 }

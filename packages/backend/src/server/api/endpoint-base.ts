@@ -4,25 +4,13 @@
  */
 
 import * as fs from 'node:fs';
-import _Ajv from 'ajv';
 import * as v from 'valibot';
-import type { Schema } from '@/misc/json-schema.js';
-import { isValibotSchema } from '@/misc/schema/bridge.js';
-import type { AnyValibotSchema, EndpointSchema, SchemaOutput } from '@/misc/schema/bridge.js';
 import { toInvalidParamInfo } from '@/misc/schema/error.js';
-import { MISSKEY_ID_REGEX } from '@/misc/schema/helpers.js';
+import type { AnyValibotSchema } from '@/misc/schema/bridge.js';
 import type { MiLocalUser } from '@/models/User.js';
 import type { MiAccessToken } from '@/models/AccessToken.js';
 import { ApiError } from './error.js';
 import type { IEndpointMeta } from './endpoints.js';
-
-const Ajv = _Ajv.default;
-
-const ajv = new Ajv({
-	useDefaults: true,
-});
-
-ajv.addFormat('misskey:id', MISSKEY_ID_REGEX);
 
 export type Response = Record<string, any> | void;
 
@@ -31,9 +19,9 @@ type File = {
 	path: string;
 };
 
-type Executor<T extends IEndpointMeta, Ps extends EndpointSchema> =
-	(params: SchemaOutput<Ps>, user: T['requireCredential'] extends true ? MiLocalUser : MiLocalUser | null, token: MiAccessToken | null, file?: File, cleanup?: () => any, ip?: string | null, headers?: Record<string, string> | null) =>
-		Promise<T['res'] extends undefined ? Response : SchemaOutput<NonNullable<T['res']>>>;
+type Executor<T extends IEndpointMeta, Ps extends AnyValibotSchema> =
+	(params: v.InferOutput<Ps>, user: T['requireCredential'] extends true ? MiLocalUser : MiLocalUser | null, token: MiAccessToken | null, file?: File, cleanup?: () => any, ip?: string | null, headers?: Record<string, string> | null) =>
+		Promise<T['res'] extends undefined ? Response : v.InferOutput<NonNullable<T['res']>>>;
 
 /** paramDef による検証結果。成功時の `value` が `cb` に渡される値になる */
 type ValidationResult =
@@ -51,12 +39,11 @@ function invalidParamError(info: Record<string, unknown>): ApiError {
 }
 
 /**
- * Valibot スキーマ用の validator。
+ * paramDef 用の validator。
  *
- * `v.safeParse()` の出力 (default 適用済みの **新しいオブジェクト**) をハンドラに渡す
- * (legacy の AJV useDefaults による in-place mutate とは異なる)。
+ * `v.safeParse()` の出力 (default 適用済みの **新しいオブジェクト**) をハンドラに渡す。
  */
-function makeValibotValidator(paramDef: AnyValibotSchema): Validator {
+function makeValidator(paramDef: AnyValibotSchema): Validator {
 	return (params: unknown) => {
 		const result = v.safeParse(paramDef, params);
 		if (!result.success) {
@@ -66,36 +53,11 @@ function makeValibotValidator(paramDef: AnyValibotSchema): Validator {
 	};
 }
 
-/**
- * legacy の独自 JSON Schema 用の validator (現行挙動をそのまま維持)。
- *
- * AJV は `useDefaults` により渡されたオブジェクトを in-place で書き換えるので、
- * 成功時はそのオブジェクト自身をハンドラに渡す。
- */
-function makeAjvValidator(paramDef: Schema): Validator {
-	const validate = ajv.compile(paramDef);
-
-	return (params: unknown) => {
-		if (validate(params)) return { ok: true, value: params };
-
-		const errors = validate.errors!;
-		return {
-			ok: false,
-			error: invalidParamError({
-				param: errors[0].schemaPath,
-				reason: errors[0].message,
-			}),
-		};
-	};
-}
-
-export abstract class Endpoint<T extends IEndpointMeta, Ps extends EndpointSchema> {
+export abstract class Endpoint<T extends IEndpointMeta, Ps extends AnyValibotSchema> {
 	public exec: (params: any, user: T['requireCredential'] extends true ? MiLocalUser : MiLocalUser | null, token: MiAccessToken | null, file?: File, ip?: string | null, headers?: Record<string, string> | null) => Promise<any>;
 
 	constructor(meta: T, paramDef: Ps, cb: Executor<T, Ps>) {
-		const validate: Validator = isValibotSchema(paramDef)
-			? makeValibotValidator(paramDef)
-			: makeAjvValidator(paramDef as Schema);
+		const validate: Validator = makeValidator(paramDef);
 
 		this.exec = (params: any, user: T['requireCredential'] extends true ? MiLocalUser : MiLocalUser | null, token: MiAccessToken | null, file?: File, ip?: string | null, headers?: Record<string, string> | null) => {
 			let cleanup: undefined | (() => void) = undefined;
@@ -119,7 +81,7 @@ export abstract class Endpoint<T extends IEndpointMeta, Ps extends EndpointSchem
 				return Promise.reject(result.error);
 			}
 
-			return cb(result.value as SchemaOutput<Ps>, user, token, file, cleanup, ip, headers);
+			return cb(result.value as v.InferOutput<Ps>, user, token, file, cleanup, ip, headers);
 		};
 	}
 }

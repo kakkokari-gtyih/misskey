@@ -15,8 +15,6 @@ import { packedAchievementSchema } from '@/models/schema/achievement.js';
  * 通知の受信条件 (legacy `notificationRecieveConfig`)。
  *
  * 判別キー `type` を持つ oneOf なので `v.variant` (cookbook R10)。
- * legacy 側の同名 const (`models/json-schema/user.ts`) は消費者 (i/update・admin/show-user) の
- * 移行完了により撤去済み。
  */
 export const notificationRecieveConfigSchema = v.variant('type', [
 	v.object({
@@ -213,11 +211,10 @@ export type PackedMeDetailedOnly = v.InferOutput<typeof packedMeDetailedOnlySche
 /**
  * 合成 entity (`allOf`) の公開型を作る。
  *
- * legacy の `ObjType` ([json-schema.ts](../../misc/json-schema.ts)) と同じく
  * `infer` を挟んだ union → intersection 変換で、TypeScript の
  * 「型のインスタンス化が深すぎる (TS2589)」判定を回避する
- * (misskey#8535 と同じ手法。素の `A & B & C` で書くと UserEntityService.packMany のように
- * ジェネリクス越しに `Packed<S>` を展開する箇所で TS2589 になる)。
+ * (misskey#8535 と同じ手法。素の `A & B & C` で書くと `UserEntityService.packMany` のように
+ * ジェネリクス越しに合成型を展開する箇所で TS2589 になる)。
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MergeParts<U> = (U extends any ? (k: U) => void : never) extends ((k: infer I) => void) ? I : never;

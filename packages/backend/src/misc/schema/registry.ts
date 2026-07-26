@@ -4,7 +4,6 @@
  */
 
 import * as v from 'valibot';
-import type { Packed } from '@/misc/json-schema.js';
 import { miMeta } from './metadata.js';
 import { unwrapPipe } from './bridge.js';
 import type { AllOfPart, EntityName } from './metadata.js';
@@ -75,22 +74,6 @@ export function resolveEntity(name: EntityName): AnyValibotSchema | undefined {
 /** 登録済み entity の一覧 (登録順) */
 export function getRegisteredEntities(): ReadonlyMap<EntityName, AnyValibotSchema> {
 	return byName;
-}
-
-/**
- * **移行期間限定のつなぎ。** Valibot 化済み entity から、まだ legacy JSON Schema のままの
- * entity を参照するためのプレースホルダ。
- *
- * ランタイム検証は行わない (res のランタイム検証はスコープ外なので実害なし)。
- * OpenAPI 上は `{ $ref: '#/components/schemas/<name>' }` を出力する。
- *
- * 全 entity の移行完了後 (PR-F) にスキーマ直接 import へ置換して削除する。
- */
-export function entityRef<const N extends EntityName>(name: N, opts: { selfRef?: boolean } = {}): v.GenericSchema<Packed<N>> {
-	return v.pipe(
-		v.custom<Packed<N>>(() => true),
-		opts.selfRef === true ? miMeta({ ref: name, selfRef: true }) : miMeta({ ref: name }),
-	);
 }
 
 type Flatten<T> = { [K in keyof T]: T[K] } & {};

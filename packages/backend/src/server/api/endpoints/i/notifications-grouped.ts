@@ -136,11 +136,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			groupedNotifications = groupedNotifications.slice(0, ps.limit);
 
-			// NotificationEntityService#packGroupedMany の戻り値の型注釈は入力側の型 (MiGroupedNotification[]) のままだが、
-			// 実装 (#packManyInternal → #pack) は実際には Packed<'Notification'> を組み立てて返している。
-			// legacy スキーマでは res の型が any に潰れていたため見えなかった相違で、
-			// ランタイム挙動を変えないようキャストで従来どおりの返却形を維持する。
-			return await this.notificationEntityService.packGroupedMany(groupedNotifications, me.id) as unknown as PackedNotification[];
+			return await this.notificationEntityService.packGroupedMany(groupedNotifications, me.id);
 		});
 	}
 }

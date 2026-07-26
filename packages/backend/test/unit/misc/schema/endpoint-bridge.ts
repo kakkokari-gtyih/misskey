@@ -8,10 +8,9 @@ import * as v from 'valibot';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { ApiError } from '@/server/api/error.js';
 import { integer, limit, misskeyId } from '@/misc/schema/index.js';
-import type { SchemaOutput } from '@/misc/schema/index.js';
 
 /**
- * endpoint 機構の互換ブリッジ (endpoint-base / endpoints / ApiCallService / openapi) の
+ * endpoint 機構 (endpoint-base / endpoints / ApiCallService / openapi) の
  * 型レベル + ランタイムの最小テスト。
  *
  * DB には一切依存しない (Endpoint のサブクラスを直接 new して `exec()` を叩くだけ)。
@@ -19,20 +18,13 @@ import type { SchemaOutput } from '@/misc/schema/index.js';
 
 // 型が厳密に一致することを確認するためのヘルパー
 type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
-/**
- * 相互に代入可能であることを確認するためのヘルパー。
- *
- * legacy の `SchemaType` は `UnionToIntersection` ハックの都合で交差型
- * (`{ a: X } & { b?: Y }`) を返すため、{@link Equals} では一致判定できない。
- */
-type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
 function assertType<T extends true>(_ok?: T): void { /* 型が合わなければコンパイルエラーになる */ }
 
 const user = null as never;
 const token = null;
 
-describe('endpoint bridge: Valibot paramDef', () => {
+describe('endpoint: paramDef の検証と型導出', () => {
 	const meta = {
 		requireCredential: false,
 		res: v.object({
@@ -47,14 +39,14 @@ describe('endpoint bridge: Valibot paramDef', () => {
 		text: v.optional(v.string()),
 	});
 
-	// ハンドラが受け取る型は InferOutput (default 付きキーは必須) になる
-	assertType<Equals<SchemaOutput<typeof paramDef>, { id: string, limit: number, text?: string | undefined }>>();
+	// ハンドラが受け取る型は v.InferOutput (default 付きキーは必須) になる
+	assertType<Equals<v.InferOutput<typeof paramDef>, { id: string, limit: number, text?: string | undefined }>>();
 
 	class ValibotEndpoint extends Endpoint<typeof meta, typeof paramDef> {
 		constructor() {
 			super(meta, paramDef, async (ps) => {
 				// ps は v.InferOutput<typeof paramDef> として推論される
-				assertType<Equals<typeof ps, SchemaOutput<typeof paramDef>>>();
+				assertType<Equals<typeof ps, v.InferOutput<typeof paramDef>>>();
 				return { id: ps.id, count: ps.limit };
 			});
 		}
@@ -78,56 +70,5 @@ describe('endpoint bridge: Valibot paramDef', () => {
 		expect((err as ApiError).id).toBe('3d81ceae-475f-4600-b2a8-2bc116157532');
 		expect((err as ApiError).info.param).toBe('limit');
 		expect((err as ApiError).info.details).toHaveLength(1);
-	});
-});
-
-describe('endpoint bridge: legacy paramDef', () => {
-	const meta = {
-		requireCredential: false,
-		res: {
-			type: 'object',
-			properties: {
-				id: { type: 'string' },
-			},
-			required: ['id'],
-		},
-	} as const;
-
-	const paramDef = {
-		type: 'object',
-		properties: {
-			id: { type: 'string', format: 'misskey:id' },
-			limit: { type: 'integer', default: 10 },
-		},
-		required: ['id'],
-	} as const;
-
-	// legacy 側は SchemaType 経由 (default 付きキーは required 扱い) で解決される
-	assertType<MutuallyAssignable<SchemaOutput<typeof paramDef>, { id: string, limit: number }>>();
-
-	class LegacyEndpoint extends Endpoint<typeof meta, typeof paramDef> {
-		constructor() {
-			super(meta, paramDef, async (ps) => {
-				assertType<Equals<typeof ps, SchemaOutput<typeof paramDef>>>();
-				return { id: `${ps.id}:${ps.limit}` };
-			});
-		}
-	}
-
-	test('AJV useDefaults は入力オブジェクトを in-place で書き換える (現行挙動)', async () => {
-		const ep = new LegacyEndpoint();
-		const params: Record<string, unknown> = { id: 'abc123' };
-
-		await expect(ep.exec(params, user, token)).resolves.toStrictEqual({ id: 'abc123:10' });
-		expect(params).toStrictEqual({ id: 'abc123', limit: 10 });
-	});
-
-	test('検証失敗時は INVALID_PARAM (schemaPath 形式) で reject する', async () => {
-		const ep = new LegacyEndpoint();
-
-		const err = await ep.exec({ id: 'abc 123' }, user, token).catch((e: unknown) => e);
-		expect(err).toBeInstanceOf(ApiError);
-		expect((err as ApiError).code).toBe('INVALID_PARAM');
-		expect((err as ApiError).info.param).toMatch(/^#\//);
 	});
 });

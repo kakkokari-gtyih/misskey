@@ -10,7 +10,12 @@ import { ModuleRef } from '@nestjs/core';
 import { In } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { Config } from '@/config.js';
-import type { Packed } from '@/misc/json-schema.js';
+import type {
+	PackedMeDetailed,
+	PackedUserDetailed,
+	PackedUserDetailedNotMe,
+	PackedUserLite,
+} from '@/models/schema/user.js';
 import type { Promiseable } from '@/misc/prelude/await-all.js';
 import { awaitAll } from '@/misc/prelude/await-all.js';
 import { USER_ACTIVE_THRESHOLD, USER_ONLINE_THRESHOLD } from '@/const.js';
@@ -78,6 +83,17 @@ export type UserRelation = {
 	isBlocked: boolean
 	isMuted: boolean
 	isRenoteMuted: boolean
+};
+
+/**
+ * `pack()` / `packMany()` の `schema` オプション → 出力型。
+ * (旧 `Packed<S>` の代わりに、この service が扱う 4 種だけを引く索引)
+ */
+type PackedUserSchemaMap = {
+	UserLite: PackedUserLite;
+	UserDetailedNotMe: PackedUserDetailedNotMe;
+	UserDetailed: PackedUserDetailed;
+	MeDetailed: PackedMeDetailed;
 };
 
 @Injectable()
@@ -151,7 +167,7 @@ export class UserEntityService implements OnModuleInit {
 	}
 
 	//#region Validators
-	// NOTE: 旧実装は `ajv.compile(<legacy json-schema>)` だった。断片が Valibot 化されたので
+	// NOTE: 旧実装は AJV (`ajv.compile()`) で検証していた。断片が Valibot 化されたので
 	// `v.is()` (= 検証結果を boolean で返す。呼び出し側は真偽値としてしか使っていない) に置き換える。
 	public validateLocalUsername = (value: unknown): boolean => v.is(localUsernameSchema, value);
 	public validatePassword = (value: unknown): boolean => v.is(passwordSchema, value);
@@ -412,7 +428,7 @@ export class UserEntityService implements OnModuleInit {
 			userMemos?: Map<MiUser['id'], string | null>,
 			pinNotes?: Map<MiUser['id'], MiUserNotePining[]>,
 		},
-	): Promise<Packed<S>> {
+	): Promise<PackedUserSchemaMap[S]> {
 		const opts = Object.assign({
 			schema: 'UserLite',
 			includeSecrets: false,
@@ -650,7 +666,7 @@ export class UserEntityService implements OnModuleInit {
 				withReplies: relation.following?.withReplies ?? false,
 				followedMessage: relation.isFollowing ? profile!.followedMessage : undefined,
 			} : {}),
-		} as Promiseable<Packed<S>>;
+		} as Promiseable<PackedUserSchemaMap[S]>;
 
 		return await awaitAll(packed);
 	}
@@ -662,7 +678,7 @@ export class UserEntityService implements OnModuleInit {
 			schema?: S,
 			includeSecrets?: boolean,
 		},
-	): Promise<Packed<S>[]> {
+	): Promise<PackedUserSchemaMap[S][]> {
 		// -- IDのみの要素を補完して完全なエンティティ一覧を作る
 
 		const _users = users.filter((user): user is MiUser => typeof user !== 'string');

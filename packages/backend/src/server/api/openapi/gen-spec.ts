@@ -5,9 +5,10 @@
 
 import type { Config } from '@/config.js';
 import { resAllowsEmpty } from '@/misc/schema/bridge.js';
+import { valibotToOpenApi } from '@/misc/schema/openapi.js';
 import endpoints from '../endpoints.js';
 import { errors as basicErrors } from './errors.js';
-import { getSchemas, convertEndpointSchemaToOpenApi } from './schemas.js';
+import { getSchemas } from './schemas.js';
 
 /**
  * エラーレスポンスの description。basicErrors のステータス以外は meta.errors の
@@ -109,7 +110,7 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 			...basicErrors[status as keyof typeof basicErrors],
 		})]));
 
-		const resSchema = endpoint.meta.res ? convertEndpointSchemaToOpenApi(endpoint.meta.res, 'res', includeSelfRef) : {};
+		const resSchema = endpoint.meta.res ? valibotToOpenApi(endpoint.meta.res, { use: 'res', includeSelfRef }) : {};
 
 		let desc = (endpoint.meta.description ? endpoint.meta.description : 'No description provided.') + '\n\n';
 
@@ -124,13 +125,13 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 		}
 
 		const requestType = endpoint.meta.requireFile ? 'multipart/form-data' : 'application/json';
-		const schema = { ...convertEndpointSchemaToOpenApi(endpoint.params, 'param', false) };
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const schema: any = { ...valibotToOpenApi(endpoint.params, { use: 'param', includeSelfRef: false }) };
 
 		// `meta.requireFile` の endpoint (drive/files/create のみ) はリクエストが multipart/form-data で
-		// 運ばれ、`file` は paramDef ではなく ApiCallService が受け取る (Valibot / legacy いずれの
-		// paramDef にも現れない) ため、spec 上の `file` プロパティはここで注入する。
-		// `schema` は convertEndpointSchemaToOpenApi() が返した **変換後のプレーンな OpenAPI 構造**
-		// (Valibot 化済みの paramDef でも同じ) なので、properties / required に直接足してよい。
+		// 運ばれ、`file` は paramDef ではなく ApiCallService が受け取る (paramDef には現れない) ため、
+		// spec 上の `file` プロパティはここで注入する。`schema` は valibotToOpenApi() が返した
+		// **変換後のプレーンな OpenAPI 構造** なので properties / required に直接足してよい。
 		if (endpoint.meta.requireFile) {
 			schema.properties = {
 				...schema.properties,

@@ -1,14 +1,21 @@
-# AJV/json-schema → Valibot 変換 Cookbook
+# Valibot スキーマ規約 (旧: AJV/json-schema → Valibot 変換 Cookbook)
 
-`packages/backend/` の `paramDef` / entity (`packed*Schema`) を、既存の AJV + 独自 json-schema 拡張 (`optional` / `nullable` / `ref` / `selfRef`) から [Valibot](https://valibot.dev/) へ**段階的に**移行するための変換規則書。移行バッチ (複数ファイルへの機械的な書き換えを行うエージェント実行) はこの文書の規則番号 (R1〜R16) を根拠として引用しながら作業すること。
+> **移行は完了している。** `packages/backend/` の `paramDef` / entity (`packed*Schema`) はすべて [Valibot](https://valibot.dev/) 化され、AJV と独自 json-schema 基盤 (`Schema` / `SchemaType` / `refs` / `Packed<>` / `KeyOf<>` / `entityRef()`、および `ajv` パッケージ依存) は撤去済み。
+>
+> **本文書は今後の新規エンドポイント / entity 作成の規約集として参照する。** 「before (json-schema)」の記述は、旧コードを読むときの対応表と「なぜこの書き方が正なのか」の根拠として残している。新規に書くときは各規則の "after" 側だけを見ればよい。
+>
+> - 新規 endpoint を書くときの早見表 → [api-meta-paramdef.md](api-meta-paramdef.md)
+> - ヘルパーの網羅表 → [ヘルパー一覧](#ヘルパー一覧-miscschemaindexjs-の公開-api)
+
+この文書の規則番号 (R1〜R16) は、スキーマの書き方についてレビュー・議論するときの共通の参照点として使う。
 
 ## 目的と前提
 
-- 移行対象は 2 つの世界: **paramDef 世界** (`server/api/endpoints/**/*.ts` の `export const paramDef`。AJV `ajv.compile()` で検証、`required` 配列でオプショナル制御、`useDefaults: true` でデフォルト値補完) と **entity 世界** (`models/json-schema/*.ts` の `packed*Schema`。プロパティ単位の `optional` / `nullable` フラグでオプショナル制御、レスポンスの型定義と OpenAPI 生成に使用)。両者は `Schema` 型 ([`@/misc/json-schema.js`](../../../../../packages/backend/src/misc/json-schema.ts)) を共有しているが、オプショナルの表現方法が違う (R3 参照)。
-- **互換ブリッジ**により legacy `Schema` と valibot スキーマは共存できる (paramDef / entity 単位で個別に valibot 化してよく、ファイル全部を一度に移行する必要はない)。ブリッジの実装詳細はこの文書の対象外 — 呼び出し側 (`Endpoint` 基底クラス、`gen-spec.ts` 等) が両方を受け付けることだけを前提にする。
+- スキーマには 2 つの世界がある: **paramDef 世界** (`server/api/endpoints/**/*.ts` の `export const paramDef`。リクエストの検証とハンドラ引数 `ps` の型付け) と **entity 世界** (`models/schema/*.ts` の `packed*Schema`。レスポンスの型定義と OpenAPI 生成)。旧 json-schema 時代は前者が `required` 配列、後者がプロパティ単位の `optional` / `nullable` フラグとオプショナルの表現方法が違ったが、**Valibot ではどちらも同じ 4 象限 (R3) に帰着する**。
+- 旧構成では両者が `Schema` 型 (`@/misc/json-schema.js`) を共有し AJV で検証していた。この基盤は PR-F で撤去済みで、現在は `Endpoint` 基底クラス / `gen-spec.ts` とも Valibot スキーマのみを受け付ける。
 - ヘルパーは `@/misc/schema/index.js` から `import * as mi from '@/misc/schema/index.js';` で使う。**このヘルパー層は実装中**であり、関数名・シグネチャは本文書が正 (source of truth)。実装時に本文書と食い違うヘルパーを見つけたら、本文書に合わせて実装を直すか、本文書側の更新を提案すること (どちらを直すかは PR で明示する)。
 - 生の `v.*` (valibot 本体) は `import * as v from 'valibot';` で使う。
-- **大原則**: 規則にマッチしないイディオム (この文書がカバーしない構造・パターン) は**変換せず、エスカレーション記録として残して次のファイルへ進む**。無理にひねり出した変換は「検証の意味を変える」リスクの方が大きい。エスカレーションは `pnpm` 実行結果やコミットメッセージではなく、バッチ実行ログ/PR 説明に列挙する (対象ファイル・該当箇所・理由)。
+- **大原則**: この文書がカバーしていない構造・パターンに出くわしたら、**無理にひねり出した書き方をしない**。既存スキーマの書き換えなら「検証の意味を変える」リスクの方が大きいので手を止めて相談する。新規スキーマなら、既存の類似 endpoint がどう書いているかを先に確認する。
 
 ---
 
@@ -34,7 +41,7 @@ value: v.any(),
 
 `mi.integer()` は `v.pipe(v.number(), v.integer())`相当 (AJV の `integer` は「数値かつ整数」であって文字列ではない点に注意)。
 
-**例外: 生成元が `any` に依存している `properties` 無し object** — legacy の `{ type: 'object' }` (properties 無し) の TS 型は `SchemaType` 上 **`any` に潰れていた**ため、`mi.anyObject()` (= `Record<string, any>`) に置き換えると生成元 (entity service など、このバッチで編集してはいけないファイル) の代入がコンパイルエラーになることがある (例: `models/json-schema/queue.ts` の `packedQueueJobSchema.progress` に `QueueService` が bullmq の `JobProgress` = `string | boolean | number | object` を代入している)。この場合だけ **型は `any` のまま api.json 出力だけ合わせる**:
+**例外: 生成元が `any` に依存している `properties` 無し object** — legacy の `{ type: 'object' }` (properties 無し) の TS 型は `SchemaType` 上 **`any` に潰れていた**ため、`mi.anyObject()` (= `Record<string, any>`) に置き換えると生成元 (entity service など) の代入がコンパイルエラーになることがある (例: `models/schema/queue.ts` の `packedQueueJobSchema.progress` に `QueueService` が bullmq の `JobProgress` = `string | boolean | number | object` を代入している)。この場合だけ **型は `any` のまま api.json 出力だけ合わせる**:
 
 ```ts
 // 型は legacy と同じ any、api.json 上は { type: 'object' }
@@ -93,7 +100,7 @@ cw: v.optional(v.nullable(v.pipe(v.string(), mi.minCodePoints(1), mi.maxCodePoin
 
 **`v.exactOptional` は使わない** (valibot 1.x の `exactOptional` は「キー自体が存在しない」ことを要求する厳密版で、AJV 側にそこまで厳密な区別が無いため意味が変わる)。
 
-**optional + nullable の表記揺れについて**: `v.nullish(x)` と `v.optional(v.nullable(x))` は検証・型・OpenAPI 出力すべて等価。**default 無しなら `v.nullish(x)` を正とする** (簡潔なため)。default 付きは R4 のとおり必ず `v.optional(v.nullable(x), d)` (nullish に default を渡すのは禁止)。既存バッチで nested 形になっている箇所を直す必要はない。
+**optional + nullable の表記揺れについて**: `v.nullish(x)` と `v.optional(v.nullable(x))` は検証・型・OpenAPI 出力すべて等価。**default 無しなら `v.nullish(x)` を正とする** (簡潔なため)。default 付きは R4 のとおり必ず `v.optional(v.nullable(x), d)` (nullish に default を渡すのは禁止)。既に nested 形で書かれている箇所をわざわざ直す必要はない。
 
 **トップレベル `res` の `optional: true`** (レスポンスが 204 になり得るエンドポイント、例: `notes/translate.ts`): res スキーマ全体を `v.optional(...)` で包む。`resAllowsEmpty()` がこれを見て OpenAPI に 200+204 の両方を出す (`nullable: true` なら `v.nullable(...)`)。
 
@@ -133,7 +140,7 @@ v.pipe(v.nullable(v.string()), mi.openApi({ default: 'https://github.com/misskey
 
 `optional: true` + `default` (例: `meta.ts` の `features.miauth`) は通常どおり `v.optional(x, d)` でよい (legacy 側も required に載らない)。
 
-**paramDef 世界で `required` 配列と `default` が同居しているプロパティ** (実例: `i/registry/*.ts` の `scope`): legacy の実挙動は「AJV useDefaults が required チェック前に default を埋めるため、クライアントは省略できる」— つまり api.json の `required` 表記は実態と乖離した嘘。この 7 ファイルは PR-S で `v.optional(x, d)` に変換し、`required` から落ちる api.json 差分を「spec を実態に合わせる意図的改善」として allowlist 化する方針 (オーケストレータ決定済み)。通常バッチでは引き続きエスカレーション対象。
+**paramDef 世界で `required` 配列と `default` が同居しているプロパティ** (実例: `i/registry/*.ts` の `scope`): legacy の実挙動は「AJV useDefaults が required チェック前に default を埋めるため、クライアントは省略できる」— つまり api.json の `required` 表記は実態と乖離した嘘。該当の 7 ファイルは `v.optional(x, d)` に変換済みで、`required` から落ちる api.json 差分は「spec を実態に合わせる意図的改善」として allowlist 化済み。**新規に `required` かつ `default` を両立させようとしない** (Valibot では `v.optional(x, d)` = 省略可 + default が唯一の正しい表現)。
 
 **paramDef 世界の any 潰れ顕在化** (実例: `i/2fa/key-done.ts` の `credential: { type: 'object' }`): スキーマは `mi.anyObject()` が正 (api.json 一致) だが、結果の `Record<string, any>` 型は legacy の `any` より狭く、厳密型を要求する下流 API (`WebAuthnService` 等) に渡す箇所でハンドラ側のキャスト (`ps.credential as RegistrationResponseJSON` + 理由コメント) が必要になることがある。スキーマ側を `v.any()` に緩めるのではなくハンドラ側キャストで対処する (ランタイム不変)。
 
@@ -264,7 +271,7 @@ v.object({
 
   `mi.anyRecord()` はランタイムでは `mi.anyObject()` (`v.record(v.string(), v.any())`) と同じだが、OpenAPI 出力に `additionalProperties: true` を明示的に付ける (`openApi({ additionalProperties: true })` を pipe している) 点が違う。逆に `mi.anyObject()`/`mi.anyArray()` は `additionalProperties`/`items` を**まったく出力しない** (R1 参照)。json-schema 側に `additionalProperties: true` が**書かれているか否か**で `mi.anyRecord()` と `mi.anyObject()` を使い分けること (両方とも「無検証」という点では同じでも、api.json 上のキー有無が違う)。
 
-- **`properties` と `additionalProperties: true` の併用** (`models/json-schema/meta.ts` の `sentryForFrontend.options` 等) → `v.object({...})` に `mi.openApi({ additionalProperties: true })` を pipe する (`mi.anyRecord()` は properties を持てないので使えない。`v.objectWithRest({...}, v.any())` だと値が `v.any()` のため `additionalProperties` が出力されない)
+- **`properties` と `additionalProperties: true` の併用** (`models/schema/meta.ts` の `sentryForFrontend.options` 等) → `v.object({...})` に `mi.openApi({ additionalProperties: true })` を pipe する (`mi.anyRecord()` は properties を持てないので使えない。`v.objectWithRest({...}, v.any())` だと値が `v.any()` のため `additionalProperties` が出力されない)
 
   ```ts
   // before
@@ -286,7 +293,7 @@ v.object({
 **entity 合成 (entity 世界)**: `packedUserDetailedNotMeSchema` のように、複数の entity (`ref`) を `allOf` で束ねるパターンは `mi.composeEntity(name, parts)` 経由で合成する。シグネチャは `composeEntity<N extends EntityName>(name: N, parts: [AnyValibotSchema, ...AnyValibotSchema[]])` — **第 1 引数が登録名の文字列、第 2 引数が合成元スキーマの配列** (スキーマを直接 2 個以上の引数として渡す形ではない) であることに注意する。`parts` の各要素は **object スキーマ** でなければならない (object 以外を渡すと `composeEntity` が throw する):
 
 ```ts
-// before (models/json-schema/user.ts packedUserDetailedNotMeSchema 相当)
+// before (models/schema/user.ts packedUserDetailedNotMeSchema 相当)
 export const packedUserDetailedNotMeSchema = {
   type: 'object',
   allOf: [
@@ -378,7 +385,7 @@ v.union([
 - それ以外 (判別子が無い、ブランチの型が揃っていない等) → `v.union([...])` に **`mi.asOneOf()`** を併用する (**素の `v.union` だけでは不可**。理由は下記)
 
 ```ts
-// before (models/json-schema/user.ts notificationRecieveConfig 相当)
+// before (models/schema/user.ts notificationRecieveConfig 相当)
 {
   oneOf: [
     { type: 'object', properties: { type: { type: 'string', enum: ['all', 'following', ...] } }, required: ['type'] },
@@ -394,7 +401,7 @@ v.variant('type', [
 ```
 
 ```ts
-// before (models/json-schema/user.ts packedUserSchema 相当: 判別子が無い oneOf)
+// before (models/schema/user.ts packedUserSchema 相当: 判別子が無い oneOf)
 export const packedUserSchema = {
   oneOf: [
     { type: 'object', ref: 'UserLite' },
@@ -499,10 +506,10 @@ createdAt: mi.dateTimeString(),
 
 - **モジュール間の循環 import (ESM の TDZ)**: 型の循環だけでなく **モジュールの循環 import** にも `v.lazy()` が要る。`user.ts` ↔ `note.ts` ↔ `page.ts` ↔ `drive-file.ts` のように import が循環している (= import グラフの同一 SCC に属する) モジュール同士の参照は、**どちらの向きも** `v.lazy(() => packedXSchema)` にすること。片側だけ lazy にしても、評価の起点が変われば先に評価されたモジュールの `const` が未初期化のまま参照され `ReferenceError` (TDZ) になる。SCC の外への参照 (`channel.ts` → `note.ts`、`drive-file.ts` → `drive-folder.ts` など逆向きの import が無いもの) は直接参照でよい。
 
-- **legacy `selfRef: true` 付きの自己参照** (`models/json-schema/page.ts` の `PageBlock` が子ブロックとして自分自身を含むケース。`ref: 'PageBlock', selfRef: true` が付いている) は、上の「循環参照」と同じ `v.lazy()` に加えて **`mi.selfRef()`** を pipe で併せて付ける:
+- **legacy `selfRef: true` 付きの自己参照** (`models/schema/page.ts` の `PageBlock` が子ブロックとして自分自身を含むケース。`ref: 'PageBlock', selfRef: true` が付いている) は、上の「循環参照」と同じ `v.lazy()` に加えて **`mi.selfRef()`** を pipe で併せて付ける:
 
   ```ts
-  // before (models/json-schema/page.ts sectionBlockSchema.properties.children.items 相当)
+  // before (models/schema/page.ts sectionBlockSchema.properties.children.items 相当)
   { type: 'object', ref: 'PageBlock', selfRef: true }
 
   // after
@@ -510,9 +517,8 @@ createdAt: mi.dateTimeString(),
   ```
 
   legacy の `selfRef: true` は「レスポンス生成用の `#/components/schemas/*` 一覧 (`getSchemas(includeSelfRef)`) を作るときは自己参照を展開しない (`{ type: 'object' }` に退化させる) が、エンドポイント個別の `res` を出すときは `$ref` のまま出す」という **2 種類の出し分け** ([`server/api/openapi/schemas.ts`](../../../../../packages/backend/src/server/api/openapi/schemas.ts) の `includeSelfRef` 引数) のための注釈で、`mi.selfRef()` はこの区別をコンバータ (`valibotToOpenApi` の `ctx.includeSelfRef`) に伝えるためだけに存在する (ランタイム検証には影響しない)。**ただの循環参照 (Note の reply など、legacy 側に `selfRef: true` が無いもの) には `mi.selfRef()` を付けない** — legacy に無い注釈を新規に足すことになり検証意味は変えないが余計な差分の元になる。
-  - `mi.entityRef()` で未移行の legacy entity を参照する側 (次の箇条) が、その参照先自体が legacy `selfRef: true` を持つ場合は `mi.entityRef('PageBlock', { selfRef: true })` のように `selfRef` オプションを渡す (`registry.ts` の `entityRef(name, opts)` 第 2 引数)。
 
-- **未移行の legacy entity への参照** → `mi.entityRef('X')` (`X` は `refs` のキー名。**移行期間限定**の橋渡しヘルパーで、legacy `Schema` 側の `packedXSchema` を valibot から参照できるようにするラッパー。参照先が valibot 化されたら `mi.entityRef('X')` を直接 import に置き換える)。
+- **`mi.entityRef()` は撤去済み** — 移行期間中に「まだ legacy のままの entity」を参照するための橋渡しヘルパーだったが、全 entity の Valibot 化完了に伴い削除した。entity 参照は常にスキーマの直接 import (循環していれば `v.lazy()`) で書く。
 
 ---
 
@@ -585,7 +591,7 @@ v.pipe(
 
 ## ヘルパー一覧 (`@/misc/schema/index.js` の公開 API)
 
-`import * as mi from '@/misc/schema/index.js';` で使えるヘルパーの早見表。シグネチャは [`helpers.ts`](../../../../../packages/backend/src/misc/schema/helpers.ts) / [`metadata.ts`](../../../../../packages/backend/src/misc/schema/metadata.ts) / [`registry.ts`](../../../../../packages/backend/src/misc/schema/registry.ts) を正典として簡略化して載せている (型引数の詳細は実装参照)。ここに無い `mi.*` 名を移行バッチで使わない — 実装に存在しないヘルパーを書かない。
+`import * as mi from '@/misc/schema/index.js';` で使えるヘルパーの早見表。シグネチャは [`helpers.ts`](../../../../../packages/backend/src/misc/schema/helpers.ts) / [`metadata.ts`](../../../../../packages/backend/src/misc/schema/metadata.ts) / [`registry.ts`](../../../../../packages/backend/src/misc/schema/registry.ts) を正典として簡略化して載せている (型引数の詳細は実装参照)。ここに無い `mi.*` 名を使わない — 実装に存在しないヘルパーを書かない。
 
 ### helpers.ts
 
@@ -627,32 +633,30 @@ v.pipe(
 | API | シグネチャ (簡略) | 説明 | 対応する旧イディオム |
 |---|---|---|---|
 | `mi.defineEntity(name: EntityName, schema)` | `(name, schema) => schema` (同じ schema をそのまま返す) | Valibot 版 packed スキーマを `#/components/schemas/<name>` として登録する | `refs['X'] = packedXSchema` |
-| `mi.entityRef(name: EntityName, opts?: { selfRef?: boolean })` | `(name, opts?) => GenericSchema<Packed<N>>` | **移行期間限定**。未移行 legacy entity への参照プレースホルダ (ランタイム検証なし、OpenAPI は `$ref` を出力)。参照先が legacy 側で `selfRef: true` を持つ場合は `opts.selfRef: true` を渡す (R13) | `{ type: 'object', ref: 'X' }` |
 | `mi.composeEntity(name: EntityName, parts: [schema, ...schema[]])` | `(name, parts) => GenericSchema<...>` | 複数の object スキーマを `allOf` で合成する。第 1 引数は登録名の文字列、第 2 引数はスキーマの配列。パートは `defineEntity` 済み (→ `$ref`) でも未登録 (→ インライン展開) でもよい (R9) | `{ allOf: [{ ref: 'A' }, { properties: ... }, ...] }` |
 
 ---
 
 ## 禁止事項
 
-移行バッチで以下を行わない (見つけたら差し戻す):
+以下を行わない (レビューで見つけたら差し戻す):
 
-- 検証の意味を **1 ビットでも**変える変換 (境界値、`default` の適用条件、`required`/optional 判定、enum 許容値、のいずれか)
+- **既存スキーマの書き換えで** 検証の意味を **1 ビットでも**変える (境界値、`default` の適用条件、`required`/optional 判定、enum 許容値、のいずれか)
 - `v.intersect` の使用 (R9)
 - 文字列に対する素の `v.minLength` / `v.maxLength` (R6 — 必ず `mi.minCodePoints`/`mi.maxCodePoints`)
 - 規則に無い箇所への `v.any()` の新規追加 (既存の無検証箇所を `v.any()` に落とすのは R1 の対象内だが、**検証されていた箇所を新たに `v.any()` に緩める**のは禁止)
-- `transform` / `coerce` 系アクションの追加 (値を変形する検証は移行のスコープ外。現行 AJV は型変換をしていないので、valibot 側でも型変換を追加しない)
+- `transform` / `coerce` 系アクションの追加 (paramDef では OpenAPI コンバータが throw する。値の変形はスキーマではなくハンドラ内で行う)
 - `v.pipe()` の 2 番目以降にスキーマを置くこと (`v.pipe(v.string(), v.transform(Number), v.number())` のような形)。OpenAPI コンバータは pipe の先頭のみをスキーマとして扱い、中間スキーマは黙って無視されるため誤った spec が出る。pipe は「先頭スキーマ + アクションのみ」で構成する
 - `packages/backend/built/api.json` / `packages/misskey-js/src/autogen/` の手編集 (再生成コマンドで生成する。手編集した差分をそのままコミットしない)
-- このバッチが対象とするファイル以外の編集
-- `CHANGELOG.md` への追記 (内部リファクタリングのバッチでは不要。ユーザー影響がある場合のみ別途判断する)
+- `Schema` / `SchemaType` / `Packed<>` / `KeyOf<>` / `refs` / `mi.entityRef()` の新規使用 (すべて撤去済み。packed entity の型は `import type { PackedX } from '@/models/schema/<file>.js'` で直接 import する)
 
 ---
 
-## 既知の許容差分・非対応の注記
+## 既知の制約・非対応の注記
 
-移行を進めても**必ずしも diff がゼロにならない**箇所、および valibot コンバータが対応していない箇所を先に把握しておく。「規則通りに変換したのに空 diff にならない」「コンバータが throw した」で混乱しないための注記であり、いずれも規則の適用ミスではない。
+「検証は書いたのに api.json に出てこない」「コンバータが throw した」で混乱しないための注記。いずれも規則の適用ミスではない。
 
-- **`if`/`then` (`notes/create.ts` のみ、R14)**: legacy の `if`/`then` を `v.pipe(obj, v.rawCheck(...))` に変換すると、**OpenAPI 出力から `if`/`then` 相当の記述が消える**。`openapi.ts` の `object` ケースは `entries`/`allOfRefs` しか見ておらず、pipe 上の `rawCheck` アクションは (kind が `'validation'` であって `'metadata'` ではないため) `mergeMetadata()` にも `applyActions()` にも一切拾われない (`object` 型は `applyActions` 自体を呼ばない)。つまり **ランタイム検証は保持されるが api.json 上の `if`/`then` は消える** — これは移行前後で観測可能な差分になる。この 1 箇所は将来 PR-S で diff allowlist (`diff-api-json.mjs --allow`) に登録して吸収する予定であり、移行バッチ側で無理に api.json 側の出力を復元しようとしなくてよい (rawCheck 変換自体は R14 のまま進める)。
+- **`if`/`then` (`notes/create.ts` のみ、R14)**: legacy の `if`/`then` を `v.pipe(obj, v.rawCheck(...))` に変換すると、**OpenAPI 出力から `if`/`then` 相当の記述が消える**。`openapi.ts` の `object` ケースは `entries`/`allOfRefs` しか見ておらず、pipe 上の `rawCheck` アクションは (kind が `'validation'` であって `'metadata'` ではないため) `mergeMetadata()` にも `applyActions()` にも一切拾われない (`object` 型は `applyActions` 自体を呼ばない)。つまり **ランタイム検証は保持されるが api.json 上の `if`/`then` は消える**。移行時に観測された差分で、`diff-api-json.mjs` の allowlist に登録して吸収済み。
 - **`v.check` / `v.rawCheck` 等のカスタム検証全般**: 上と同じ理由で、OpenAPI に対応するキーワードが無いカスタム検証アクションは**すべて出力されない** (`applyActions()` の `switch` に無い `type` は黙って無視される)。`mi.minCodePoints`/`mi.maxCodePoints`/`mi.uniqueArray()` のようにマーカー付きで特別扱いされているものだけが `minLength`/`maxLength`/`uniqueItems` として出力される。ランタイムの検証意味は保たれるので問題ないが、「spec 上その制約が見えなくなる」こと自体は許容された既知差分。
 - **オブジェクトキーの出力順序**: 気にしなくてよい。[`diff-api-json.mjs`](../../../../../packages/backend/scripts/diff-api-json.mjs) の `normalize()` は比較前にオブジェクトキーを再帰的にソートし、`required` 配列の要素もソートする (両者とも順序は意味を持たない)。
 - **それ以外の配列 (`enum` / `oneOf` / `anyOf` / `allOf` / `prefixItems` / `properties` 相当) の順序は保存される** — `diff-api-json.mjs` は `required` 以外の配列を並べ替えないので、**元の json-schema の配列順序を必ず維持する** (R5 の `mi.nullableEnum()` が null を含めた配列をそのままの順序で渡す理由もこれ)。`v.object({...})` の entries 挿入順もプロパティ出力順としてそのまま保存される (`openapi.ts` の object ケースのコメント参照)。
@@ -660,9 +664,9 @@ v.pipe(
 
 ---
 
-## バッチ検証手順
+## 検証手順
 
-移行バッチ 1 本 (1 ファイル、または関連ファイル群) ごとに以下を順に実行する:
+スキーマ (paramDef / res / entity) を書き換えたら以下を順に実行する。**リファクタリング目的なら api.json 差分ゼロが受け入れ条件**:
 
 1. **`pnpm lint`** — typecheck + eslint。valibot への書き換えで型が壊れていないか確認する。
 2. **API 契約差分確認**:
@@ -678,14 +682,15 @@ v.pipe(
    - `default` 値 (一字一句)
    - 境界値 (`minimum`/`maximum`/`minLength`/`maxLength`/`minItems`/`maxItems`)
    - `enum` 値 (全メンバー一致)
-5. **backend テストはこの環境ではローカル実行しない** (CI に任せる)。`pnpm --filter backend test` 等を対話環境で実行して DB を汚さないこと。
+5. **backend テストはローカルで実行せず CI に任せる** (`pnpm --filter backend test` 等を対話環境で実行して DB を汚さないこと)。
 
-エスカレーションが発生したファイルは、上記手順を完走させず (該当ファイルはスキップして) 次のファイルに進み、エスカレーション一覧をバッチの PR 説明にまとめる。
+意図的に API を変えた場合は allowlist 化して空 diff にしたうえで、その理由を PR 説明に明記する。
 
 ---
 
 ## 改訂履歴
 
+- 2026-07-27: PR-F (legacy 機構の完全撤去) を反映 — 移行完了に伴い本文書の位置づけを「移行手順書」から「新規スキーマ作成の規約集」に変更。`mi.entityRef()` の撤去 (R13 / ヘルパー一覧)、`Packed<>` / `KeyOf<>` / `SchemaType` / `Schema` / `refs` / `ajv` 依存の削除を追記。
 - 2026-07-27: PR3c-2 (entity 移行の完遂) の基盤拡張を反映 — R9 の `mi.composeEntity()` が「未登録のプレーンな `v.object` パート」も受け付けるようになり (`allOfRefs` → `allOfParts` メタデータ)、`Role` の `ref` + inline properties 混在 `allOf` が非対応パターンではなくなった。R1 に「legacy 側の型が `any` だった `properties` 無し object」の例外 (`v.pipe(v.any(), mi.openApi({ type: 'object' }))`) を追記。
 - 2026-07-27: PR3b (entity 中核クラスタ) で見つかった穴を追記 — R4 に entity 世界の `optional: false` + `default`、R8 に `properties` + `additionalProperties: true` の併用、R9 に合成 entity の公開型を交差型で書く規則 (TS2589 回避)、R12 に `uri`/`md5` 等の汎用 format、R13 に「手書き型は type エイリアス」「ESM 循環 import は両向き `v.lazy()`」を追加。
 - 2026-07-26: 基盤モジュール (`packages/backend/src/misc/schema/{helpers,metadata,registry,openapi}.ts`) の実装完了に伴い、実装と食い違っていた記述を修正 (R4/R5 の nullable enum を `mi.nullableEnum()` に、R10 の判別子なし oneOf を `v.union()` + `mi.asOneOf()` に、R9 の `mi.composeEntity()` シグネチャを `(name, parts[])` 形式に訂正)。R8 に `mi.anyRecord()` を、R13 に `mi.selfRef()` を追記。ヘルパー一覧・既知の許容差分セクションを新設。

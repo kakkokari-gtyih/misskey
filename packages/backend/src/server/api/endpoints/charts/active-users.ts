@@ -6,7 +6,7 @@
 import { Injectable } from '@nestjs/common';
 import * as v from 'valibot';
 import * as mi from '@/misc/schema/index.js';
-import { getValibotSchema } from '@/core/chart/core.js';
+import { getResSchema } from '@/core/chart/core.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import ActiveUsersChart from '@/core/chart/charts/active-users.js';
 import { schema } from '@/core/chart/charts/entities/active-users.js';
@@ -14,7 +14,7 @@ import { schema } from '@/core/chart/charts/entities/active-users.js';
 export const meta = {
 	tags: ['charts', 'users'],
 
-	res: getValibotSchema(schema),
+	res: getResSchema(schema),
 
 	allowGet: true,
 	cacheSec: 60 * 60,

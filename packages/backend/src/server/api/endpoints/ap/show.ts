@@ -11,7 +11,6 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { MiNote } from '@/models/Note.js';
 import type { MiLocalUser, MiUser } from '@/models/User.js';
 import { isActor, isPost, getApId } from '@/core/activitypub/type.js';
-import type { SchemaOutput } from '@/misc/schema/index.js';
 import { ApResolverService } from '@/core/activitypub/ApResolverService.js';
 import { ApDbResolverService } from '@/core/activitypub/ApDbResolverService.js';
 import { ApPersonService } from '@/core/activitypub/models/ApPersonService.js';
@@ -111,7 +110,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	 * URIからUserかNoteを解決する
 	 */
 	@bindThis
-	private async fetchAny(uri: string, me: MiLocalUser | null | undefined): Promise<SchemaOutput<typeof meta['res']> | null> {
+	private async fetchAny(uri: string, me: MiLocalUser | null | undefined): Promise<v.InferOutput<typeof meta['res']> | null> {
 		if (!this.utilityService.isFederationAllowedUri(uri)) {
 			throw new ApiError(meta.errors.federationNotAllowed);
 		}
@@ -181,7 +180,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	}
 
 	@bindThis
-	private async mergePack(me: MiLocalUser | null | undefined, user: MiUser | null | undefined, note: MiNote | null | undefined): Promise<SchemaOutput<typeof meta.res> | null> {
+	private async mergePack(me: MiLocalUser | null | undefined, user: MiUser | null | undefined, note: MiNote | null | undefined): Promise<v.InferOutput<typeof meta.res> | null> {
 		if (user != null) {
 			return {
 				type: 'User',

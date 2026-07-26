@@ -13,6 +13,7 @@ import { MAX_NOTE_TEXT_LENGTH } from '@/const.js';
 import { ApiError } from '@/server/api/error.js';
 import { NoteDraftEntityService } from '@/core/entities/NoteDraftEntityService.js';
 import { IdentifiableError } from '@/misc/identifiable-error.js';
+import { packedNoteDraftSchema } from '@/models/schema/note-draft.js';
 
 export const meta = {
 	tags: ['notes', 'drafts'],
@@ -23,17 +24,9 @@ export const meta = {
 
 	kind: 'write:account',
 
-	res: {
-		type: 'object',
-		optional: false, nullable: false,
-		properties: {
-			createdDraft: {
-				type: 'object',
-				optional: false, nullable: false,
-				ref: 'NoteDraft',
-			},
-		},
-	},
+	res: v.object({
+		createdDraft: packedNoteDraftSchema,
+	}),
 
 	errors: {
 		noSuchRenoteTarget: {

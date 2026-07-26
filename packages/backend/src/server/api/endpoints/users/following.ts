@@ -12,6 +12,7 @@ import { birthdaySchema } from '@/models/User.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { QueryService } from '@/core/QueryService.js';
 import { FollowingEntityService } from '@/core/entities/FollowingEntityService.js';
+import { packedFollowingSchema } from '@/models/schema/following.js';
 import { UtilityService } from '@/core/UtilityService.js';
 import { DI } from '@/di-symbols.js';
 import { RoleService } from '@/core/RoleService.js';
@@ -24,15 +25,7 @@ export const meta = {
 
 	description: 'Show everyone that this user is following.',
 
-	res: {
-		type: 'array',
-		optional: false, nullable: false,
-		items: {
-			type: 'object',
-			optional: false, nullable: false,
-			ref: 'Following',
-		},
-	},
+	res: v.array(packedFollowingSchema),
 
 	errors: {
 		noSuchUser: {

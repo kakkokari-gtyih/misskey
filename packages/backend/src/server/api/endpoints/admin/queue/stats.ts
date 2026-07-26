@@ -8,7 +8,7 @@ import * as v from 'valibot';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { DbQueue, DeliverQueue, EndedPollNotificationQueue, PostScheduledNoteQueue, InboxQueue, ObjectStorageQueue, SystemQueue, UserWebhookDeliverQueue, SystemWebhookDeliverQueue } from '@/core/QueueModule.js';
 import { packedQueueCountSchema } from '@/models/schema/queue.js';
-import type { Packed } from '@/misc/json-schema.js';
+import type { PackedQueueCount } from '@/models/schema/queue.js';
 
 export const meta = {
 	tags: ['admin'],
@@ -45,10 +45,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			// res スキーマが宣言する 5 キーより広い (レスポンスにも余分なキーがそのまま含まれ得る)。
 			// legacy スキーマでは res の型が any に潰れていたため見えなかった相違で、
 			// ランタイム挙動を変えないようキャストで従来どおりの返却形を維持する。
-			const deliverJobCounts = await this.deliverQueue.getJobCounts() as Packed<'QueueCount'>;
-			const inboxJobCounts = await this.inboxQueue.getJobCounts() as Packed<'QueueCount'>;
-			const dbJobCounts = await this.dbQueue.getJobCounts() as Packed<'QueueCount'>;
-			const objectStorageJobCounts = await this.objectStorageQueue.getJobCounts() as Packed<'QueueCount'>;
+			const deliverJobCounts = await this.deliverQueue.getJobCounts() as PackedQueueCount;
+			const inboxJobCounts = await this.inboxQueue.getJobCounts() as PackedQueueCount;
+			const dbJobCounts = await this.dbQueue.getJobCounts() as PackedQueueCount;
+			const objectStorageJobCounts = await this.objectStorageQueue.getJobCounts() as PackedQueueCount;
 
 			return {
 				deliver: deliverJobCounts,

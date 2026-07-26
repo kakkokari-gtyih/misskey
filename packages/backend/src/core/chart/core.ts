@@ -104,7 +104,7 @@ type Unflatten<T extends Record<string, any>> = UnionToIntersection<
  * NOTE: `meta.res` は OpenAPI 生成と戻り値の型付けにしか使われない (ランタイム検証はしない)
  * ため、戻り値の型引数は出力型としてのみ意味を持つ。
  */
-export function getValibotSchema<S extends Schema>(schema: S): v.GenericSchema<Unflatten<ChartResult<S>>> {
+export function getResSchema<S extends Schema>(schema: S): v.GenericSchema<Unflatten<ChartResult<S>>> {
 	/** `null` = 葉 (数値配列) */
 	type Node = Map<string, Node | null>;
 
@@ -122,7 +122,7 @@ export function getValibotSchema<S extends Schema>(schema: S): v.GenericSchema<U
 		if (nextKey) {
 			const child = parent.get(key);
 			// 同じプレフィックスが葉としても使われている (`'a'` と `'a.b'` が併存する) スキーマは表現できない
-			if (child == null) throw new Error(`getValibotSchema: conflicting chart schema key '${key}'`);
+			if (child == null) throw new Error(`getResSchema: conflicting chart schema key '${key}'`);
 			unflatten(keys.join('.'), child);
 		}
 	};

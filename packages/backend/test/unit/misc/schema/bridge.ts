@@ -6,12 +6,13 @@
 import { describe, expect, test } from 'vitest';
 import * as v from 'valibot';
 import {
+	anyObject,
 	baseTypeOf,
 	composeEntity,
 	defineEntity,
-	entityRef,
 	formatValibotIssues,
 	getCastableParams,
+	getParamTypes,
 	idString,
 	integer,
 	isValibotSchema,
@@ -25,8 +26,6 @@ import {
 	toInvalidParamInfo,
 	unwrapPipe,
 } from '@/misc/schema/index.js';
-import type { Schema } from '@/misc/json-schema.js';
-import type { SchemaInput, SchemaOutput } from '@/misc/schema/index.js';
 
 describe('misc/schema:bridge', () => {
 	describe('isValibotSchema()', () => {
@@ -37,15 +36,7 @@ describe('misc/schema:bridge', () => {
 			expect(isValibotSchema(v.optional(v.string()))).toBe(true);
 		});
 
-		test('legacy JSON Schema / アクション / その他は false', () => {
-			// entity 移行の進行に依存しないよう、legacy スキーマは refs からではなくリテラルで与える
-			const legacySchema = {
-				type: 'object',
-				properties: {
-					id: { type: 'string', optional: false, nullable: false, format: 'id' },
-				},
-			} as const satisfies Schema;
-			expect(isValibotSchema(legacySchema)).toBe(false);
+		test('プレーンオブジェクト / アクション / その他は false', () => {
 			expect(isValibotSchema({ type: 'object', properties: {} })).toBe(false);
 			expect(isValibotSchema(maxCodePoints(1))).toBe(false);
 			expect(isValibotSchema(null)).toBe(false);
@@ -69,18 +60,12 @@ describe('misc/schema:bridge', () => {
 	});
 
 	describe('resAllowsEmpty()', () => {
-		test('Valibot: optional / nullable / nullish は空レスポンスを許す', () => {
+		test('optional / nullable / nullish は空レスポンスを許す', () => {
 			expect(resAllowsEmpty(v.optional(v.string()))).toBe(true);
 			expect(resAllowsEmpty(v.nullable(v.string()))).toBe(true);
 			expect(resAllowsEmpty(v.nullish(v.string()))).toBe(true);
 			expect(resAllowsEmpty(v.string())).toBe(false);
 			expect(resAllowsEmpty(v.object({ a: v.optional(v.string()) }))).toBe(false);
-		});
-
-		test('legacy: optional / nullable フラグを見る', () => {
-			expect(resAllowsEmpty({ type: 'string', optional: true })).toBe(true);
-			expect(resAllowsEmpty({ type: 'string', nullable: true })).toBe(true);
-			expect(resAllowsEmpty({ type: 'string' })).toBe(false);
 		});
 
 		test('res 未定義なら false', () => {
@@ -89,25 +74,19 @@ describe('misc/schema:bridge', () => {
 		});
 	});
 
-	describe('SchemaOutput / SchemaInput (型レベル)', () => {
-		test('Valibot 側が先に評価され入出力が分離される', () => {
+	describe('v.InferOutput / v.InferInput (型レベル)', () => {
+		test('入出力が分離される (default 付きキーは入力では省略可)', () => {
 			const paramDef = v.object({
 				limit: limit({ max: 100, def: 10 }),
 				text: v.optional(v.string()),
 			});
 
 			// 出力型では default 付きキーが必須になる
-			const output: SchemaOutput<typeof paramDef> = { limit: 10 };
+			const output: v.InferOutput<typeof paramDef> = { limit: 10 };
 			// 入力型では default 付きキーは省略できる
-			const input: SchemaInput<typeof paramDef> = {};
+			const input: v.InferInput<typeof paramDef> = {};
 
 			expect(v.parse(paramDef, input)).toStrictEqual(output);
-		});
-
-		test('legacy スキーマは SchemaType 経由で解決される', () => {
-			const legacy = { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] } as const;
-			const value: SchemaOutput<typeof legacy> = { a: 'x' };
-			expect(Object.keys(legacy.properties)).toStrictEqual(Object.keys(value));
 		});
 	});
 });
@@ -132,12 +111,6 @@ describe('misc/schema:registry', () => {
 		const schema = v.object({ id: idString() });
 		expect(defineEntity('App', schema)).toBe(schema);
 		expect(defineEntity('App', schema)).toBe(schema);
-	});
-
-	test('entityRef() はランタイム検証をせず何でも通す (res 検証はスコープ外)', () => {
-		const ref = entityRef('Note');
-		expect(v.safeParse(ref, { anything: true }).success).toBe(true);
-		expect(lookupEntityName(ref)).toBeUndefined();
 	});
 
 	describe('composeEntity()', () => {
@@ -181,7 +154,7 @@ describe('misc/schema:registry', () => {
 });
 
 describe('misc/schema:cast', () => {
-	test('Valibot: boolean / number / integer を抽出する', () => {
+	test('boolean / number / integer を抽出する', () => {
 		const paramDef = v.object({
 			limit: limit({ max: 100, def: 10 }),
 			userId: misskeyId(),
@@ -197,7 +170,7 @@ describe('misc/schema:cast', () => {
 		});
 	});
 
-	test('Valibot: optional / nullable / nullish を剥がして判定する', () => {
+	test('optional / nullable / nullish を剥がして判定する', () => {
 		expect(getCastableParams(v.object({
 			a: v.nullable(v.boolean()),
 			b: v.nullish(integer()),
@@ -205,26 +178,38 @@ describe('misc/schema:cast', () => {
 		}))).toStrictEqual({ a: 'boolean', b: 'integer', c: 'number' });
 	});
 
-	test('Valibot: トップレベルが object でなければ空', () => {
+	test('トップレベルが object でなければ空', () => {
 		expect(getCastableParams(v.union([v.object({ a: v.boolean() })]))).toStrictEqual({});
 		expect(getCastableParams(v.string())).toStrictEqual({});
 	});
 
-	test('legacy: 現行 ApiCallService と同一判定', () => {
-		expect(getCastableParams({
-			type: 'object',
-			properties: {
-				a: { type: 'boolean' },
-				b: { type: 'integer' },
-				c: { type: 'number' },
-				d: { type: 'string' },
-				e: { type: 'array' },
-			},
-		})).toStrictEqual({ a: 'boolean', b: 'integer', c: 'number' });
+	test('getParamTypes() は /endpoint API 用の {name, type} 一覧を返す', () => {
+		const paramDef = v.object({
+			userId: misskeyId(),
+			limit: limit({ max: 100, def: 10 }),
+			ratio: v.optional(v.number()),
+			withFiles: v.nullish(v.boolean()),
+			visibility: v.picklist(['public', 'home']),
+			tags: v.optional(v.array(v.string())),
+			extra: anyObject(),
+			// 旧 paramDef でも `type` が書かれていなかったもの (= 無検証) は type なし
+			whatever: v.any(),
+		});
+
+		expect(getParamTypes(paramDef)).toStrictEqual([
+			{ name: 'userId', type: 'string' },
+			{ name: 'limit', type: 'integer' },
+			{ name: 'ratio', type: 'number' },
+			{ name: 'withFiles', type: 'boolean' },
+			{ name: 'visibility', type: 'string' },
+			{ name: 'tags', type: 'array' },
+			{ name: 'extra', type: 'object' },
+			{ name: 'whatever', type: undefined },
+		]);
 	});
 
-	test('legacy: properties が無ければ空', () => {
-		expect(getCastableParams({ type: 'object' })).toStrictEqual({});
+	test('getParamTypes(): トップレベルが object でなければ空', () => {
+		expect(getParamTypes(v.union([v.object({ a: v.boolean() })]))).toStrictEqual([]);
 	});
 });
 

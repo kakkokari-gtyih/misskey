@@ -322,7 +322,6 @@ export type MiPartialRemoteUser = Partial<MiUser> & {
 //
 // 複数の endpoint (`admin/accounts/create` / `admin/update-proxy-account` / `username/available` /
 // `i/update` / `users/following`) と {@link UserEntityService} の validate 系が消費する断片。
-// legacy の json-schema 版はすべての消費者が Valibot 化されたので撤去済み
 // (pattern / minLength / maxLength は api.json 上の出力が変わらないよう一字一句そのまま移植している)。
 
 /** `^\w{1,20}$` (ローカルユーザー名) */

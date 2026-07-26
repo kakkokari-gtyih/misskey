@@ -3,49 +3,22 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { Schema, SchemaType } from '@/misc/json-schema.js';
 import type * as v from 'valibot';
 
 /**
  * 任意の (同期) Valibot スキーマ。
  *
  * `v.GenericSchema` のエイリアス。パイプ済みスキーマ (`v.SchemaWithPipe`) もこれを満たす。
+ *
+ * endpoint の `paramDef` / `meta.res` に指定できるスキーマでもある
+ * (出力型は `v.InferOutput<...>`、入力型は `v.InferInput<...>` で取る)。
  */
 export type AnyValibotSchema = v.GenericSchema;
 
 /**
- * endpoint の `paramDef` / `meta.res` に指定できるスキーマ。
- *
- * 移行期間中は legacy の独自 JSON Schema と Valibot スキーマが混在する。
- */
-export type EndpointSchema = Schema | AnyValibotSchema;
-
-/**
- * スキーマの出力型 (= ハンドラが受け取る型 / レスポンスの型)。
- *
- * **必ず Valibot 側を先に評価すること。** legacy の {@link Schema} は全プロパティ optional な
- * interface なので、Valibot スキーマも構造的に `Schema` を満たしてしまう。
- */
-export type SchemaOutput<S> =
-	S extends AnyValibotSchema ? v.InferOutput<S> :
-	S extends Schema ? SchemaType<S> :
-	never;
-
-/**
- * スキーマの入力型 (= クライアントが送ってよい型)。
- *
- * legacy 側は入出力を区別できないので出力型と同じものを返す。
- * ({@link SchemaOutput} と同じ理由で Valibot 側を先に評価する)
- */
-export type SchemaInput<S> =
-	S extends AnyValibotSchema ? v.InferInput<S> :
-	S extends Schema ? SchemaType<S> :
-	never;
-
-/**
  * Valibot スキーマか否かを判別する。
  *
- * legacy の独自 JSON Schema はプレーンオブジェクトなので `kind` も `~standard` も持たない。
+ * OpenAPI コンバータのように `unknown` を受ける入口で使う型ガード。
  */
 export function isValibotSchema(x: unknown): x is AnyValibotSchema {
 	return typeof x === 'object' && x !== null &&
@@ -92,20 +65,12 @@ export function allowsAbsent(schema: AnyValibotSchema): boolean {
 }
 
 /**
- * `res` が「空レスポンス (204) もありうる」ことを表しているか。
- *
- * legacy: `optional: true` または `nullable: true` / Valibot: optional / nullable / nullish ラッパー。
- *
- * 現行 [gen-spec.ts](../../server/api/openapi/gen-spec.ts) の
- * `res?.optional === true || res?.nullable === true` の置き換え。
+ * `res` が「空レスポンス (204) もありうる」ことを表しているか
+ * (= optional / nullable / nullish ラッパーで包まれているか)。
  */
-export function resAllowsEmpty(res: EndpointSchema | undefined | null): boolean {
+export function resAllowsEmpty(res: AnyValibotSchema | undefined | null): boolean {
 	if (res == null) return false;
 
-	if (isValibotSchema(res)) {
-		const type = baseTypeOf(res);
-		return ABSENTABLE_TYPES.has(type) || NULLABLE_TYPES.has(type);
-	}
-
-	return res.optional === true || res.nullable === true;
+	const type = baseTypeOf(res);
+	return ABSENTABLE_TYPES.has(type) || NULLABLE_TYPES.has(type);
 }

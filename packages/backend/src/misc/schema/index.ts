@@ -4,15 +4,15 @@
  */
 
 /**
- * AJV + 独自 JSON Schema から Valibot への段階的移行の基盤。
+ * Misskey の paramDef / entity スキーマ (Valibot) の共通基盤。
  *
  * - {@link ./helpers.js}: Misskey 共通の DSL (`misskeyId()` / `limit()` / `maxCodePoints()` など)
  * - {@link ./metadata.js}: OpenAPI 出力用メタデータ (`format()` / `example()` / `selfRef()` など)
- * - {@link ./registry.js}: entity レジストリ (`defineEntity()` / `composeEntity()` / `entityRef()`)
- * - {@link ./bridge.js}: legacy JSON Schema と Valibot の共存ブリッジ
+ * - {@link ./registry.js}: entity レジストリ (`defineEntity()` / `composeEntity()`)
+ * - {@link ./bridge.js}: Valibot スキーマの内省ユーティリティ (`unwrapPipe()` / `allowsAbsent()` など)
  * - {@link ./openapi.js}: Valibot → OpenAPI (api.json) コンバータ
  * - {@link ./error.js}: `INVALID_PARAM` の info 組み立て
- * - {@link ./cast.js}: GET / multipart のキャスト対象抽出
+ * - {@link ./cast.js}: paramDef の内省 (GET / multipart のキャスト対象 / `/endpoint` の型名)
  */
 
 export {
@@ -61,7 +61,6 @@ export {
 	lookupEntityName,
 	resolveEntity,
 	getRegisteredEntities,
-	entityRef,
 	composeEntity,
 	resetEntityRegistry,
 } from './registry.js';
@@ -74,7 +73,7 @@ export {
 	allowsAbsent,
 	resAllowsEmpty,
 } from './bridge.js';
-export type { AnyValibotSchema, EndpointSchema, SchemaInput, SchemaOutput } from './bridge.js';
+export type { AnyValibotSchema } from './bridge.js';
 
 export { valibotToOpenApi } from './openapi.js';
 export type { OpenApiSchemaObject, ValibotOpenApiContext } from './openapi.js';
@@ -82,5 +81,5 @@ export type { OpenApiSchemaObject, ValibotOpenApiContext } from './openapi.js';
 export { formatValibotIssues, toInvalidParamInfo } from './error.js';
 export type { InvalidParamInfo, ValibotIssueDetail } from './error.js';
 
-export { getCastableParams } from './cast.js';
+export { getCastableParams, getParamTypes } from './cast.js';
 export type { CastableType } from './cast.js';

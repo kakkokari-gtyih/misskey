@@ -4,25 +4,19 @@
  */
 
 /**
- * Valibot 版 packed スキーマのレジストリ。
+ * packed entity の索引。
  *
- * legacy の [refs](../../misc/json-schema.ts) と対になるもので、`Packed<'X'>` の条件型が
- * 「Valibot 化済みか」を判定するための **型レベルの索引** として使う
- * (`x extends keyof ValibotPackedMap ? ValibotPackedMap[x] : SchemaType<...>`)。
+ * 2 つの役割がある:
  *
- * entity を 1 つ移行するたびに、ここへ (side-effect import と {@link ValibotPackedMap} の両方に)
- * 追記し legacy `refs` から同名エントリを削除する。ランタイムの `$ref` 復元は
- * {@link ../../misc/schema/registry.ts} の `defineEntity()` が担うので、
- * このモジュールがランタイムで行うのは各 entity モジュールの読み込み (= 登録の実行) だけ。
+ * 1. **登録の実行**: 各 entity モジュールを side-effect import して `mi.defineEntity()` を走らせる。
+ *    entity モジュールがどこからも import されないと `components.schemas` から漏れるため、
+ *    ここが「全 entity が必ず読み込まれる」ことの保証点になっている。
+ * 2. **entity 名の型**: {@link PackedEntityMap} のキーが
+ *    [EntityName](../../misc/schema/metadata.ts) (= `#/components/schemas/X` の `X`) の定義になる。
  *
- * NOTE: 「name → スキーマ値」のオブジェクトではなく **「name → 出力型」の手書きマップ** に
- * しているのは型の循環を避けるため。スキーマ値のマップにすると
- * `typeof valibotRefs` の解決 → 各スキーマの推論 → (`entityRef()` 経由で) `Packed<>` →
- * `keyof typeof valibotRefs` という循環が起き、`Packed` / `EntityName` が
- * 「型エイリアスが自分自身を循環参照している」エラーになる。型マップならプロパティごとに
- * 遅延解決されるのでこの循環が発生しない。
- *
- * 全 entity の移行が完了したら (PR-F) `Packed<>` ごと削除し、各 `Packed*` 型の直接 import へ移る。
+ * **`PackedX` 型そのものはここから import しないこと。** 参照側は各 entity モジュール
+ * (`@/models/schema/note.js` など) から直接 import する。このマップは entity 名の集合を
+ * 型として得るためだけの索引で、型の配布経路ではない。
  */
 
 // #region defineEntity() の副作用を実行するための side-effect import
@@ -102,9 +96,10 @@ import type {
 	PackedUser,
 } from '@/models/schema/user.js';
 import type { PackedNote } from '@/models/schema/note.js';
+import type { PackedNotification } from '@/models/schema/notification.js';
 import type { PackedDriveFile } from '@/models/schema/drive-file.js';
 import type { PackedDriveFolder } from '@/models/schema/drive-folder.js';
-import type { PackedPage } from '@/models/schema/page.js';
+import type { PackedPage, PackedPageBlock } from '@/models/schema/page.js';
 import type { PackedChannel } from '@/models/schema/channel.js';
 import type {
 	PackedMetaLite,
@@ -136,8 +131,8 @@ import type { PackedAbuseReportNotificationRecipient } from '@/models/schema/abu
 import type { PackedReversiGameLite, PackedReversiGameDetailed } from '@/models/schema/reversi-game.js';
 import type { PackedQueueCount, PackedQueueMetrics, PackedQueueJob } from '@/models/schema/queue.js';
 
-/** Valibot 化済み entity の「`#/components/schemas` 名 → packed 出力型」対応表 */
-export type ValibotPackedMap = {
+/** 「`#/components/schemas` 名 → packed 出力型」対応表 */
+export type PackedEntityMap = {
 	Signin: PackedSignin;
 	Ad: PackedAd;
 	EmojiSimple: PackedEmojiSimple;
@@ -172,26 +167,11 @@ export type ValibotPackedMap = {
 	UserDetailed: PackedUserDetailed;
 	User: PackedUser;
 	Note: PackedNote;
-	/**
-	 * NOTE: legacy の `SchemaType<{ type: 'object', oneOf: [...] }>` は `any` に潰れていた
-	 * (`ObjectSchemaTypeDef` が `oneOf` を見ないため)。参照側 (NotificationEntityService /
-	 * stream/channels/main.ts / is-instance-muted.ts / i/notifications*.ts) はその `any` に
-	 * 依存していて判別 union として narrowing していないので、このバッチでは legacy と同じ
-	 * `any` を保つ (api.json 側は `v.variant` で厳密なまま)。
-	 * TODO(PR-F): 参照側の narrowing 追加とセットで `PackedNotification` (notification.ts) へ厳密化する。
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	Notification: any;
+	Notification: PackedNotification;
 	DriveFile: PackedDriveFile;
 	DriveFolder: PackedDriveFolder;
 	Page: PackedPage;
-	/**
-	 * NOTE: `Notification` と同じ理由で legacy では `any` だった (PageEntityService が
-	 * DB の `Record<string, any>[]` をそのまま詰めている)。
-	 * TODO(PR-F): 参照側の修正とセットで `PackedPageBlock` (page.ts) へ厳密化する。
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	PageBlock: any;
+	PageBlock: PackedPageBlock;
 	Channel: PackedChannel;
 	MetaLite: PackedMetaLite;
 	MetaDetailedOnly: PackedMetaDetailedOnly;

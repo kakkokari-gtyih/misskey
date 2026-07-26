@@ -72,11 +72,6 @@ function convert(schema: unknown, ctx: ValibotOpenApiContext, state: ConvertStat
 		return refObject(entityName, meta, ctx);
 	}
 
-	// entityRef() (未移行 legacy entity へのつなぎ) のマーカー
-	if (meta.ref != null) {
-		return refObject(meta.ref, meta, ctx);
-	}
-
 	switch (base.type) {
 		case 'optional':
 		case 'exact_optional':
@@ -260,7 +255,7 @@ function convert(schema: unknown, ctx: ValibotOpenApiContext, state: ConvertStat
 		}
 
 		case 'custom':
-			// entityRef() 以外の v.custom は形を推測できないので、メタデータで補うものとして扱う
+			// v.custom は形を推測できないので、メタデータで補うものとして扱う
 			return applyExtras({}, meta);
 
 		default:

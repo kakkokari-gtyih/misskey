@@ -32,6 +32,7 @@ import { CacheService } from '@/core/CacheService.js';
 import { RemoteUserResolveService } from '@/core/RemoteUserResolveService.js';
 import { DriveFileEntityService } from '@/core/entities/DriveFileEntityService.js';
 import { HttpRequestService } from '@/core/HttpRequestService.js';
+import { packedMeDetailedSchema } from '@/models/schema/user.js';
 import type { Config } from '@/config.js';
 import { safeForSql } from '@/misc/safe-for-sql.js';
 import { AvatarDecorationService } from '@/core/AvatarDecorationService.js';
@@ -126,11 +127,7 @@ export const meta = {
 		},
 	},
 
-	res: {
-		type: 'object',
-		optional: false, nullable: false,
-		ref: 'MeDetailed',
-	},
+	res: packedMeDetailedSchema,
 } as const;
 
 // legacy の `{ type: 'array', items: { oneOf: [array<string>, string] } }` 相当。

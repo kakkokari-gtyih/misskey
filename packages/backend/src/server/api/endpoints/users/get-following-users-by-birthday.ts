@@ -15,7 +15,7 @@ import type {
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { packedUserLiteSchema } from '@/models/schema/user.js';
-import type { Packed } from '@/misc/json-schema.js';
+import type { PackedUserLite } from '@/models/schema/user.js';
 
 // legacy の `oneOf` の各分岐で使い回されている `{ month, day }`
 const monthDaySchema = v.object({
@@ -101,7 +101,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				.offset(ps.offset).limit(ps.limit)
 				.getRawMany<{ birthday_date: number; user_id: string }>();
 
-			const users = new Map<string, Packed<'UserLite'>>((
+			const users = new Map<string, PackedUserLite>((
 				await this.userEntityService.packMany(
 					birthdayUsers.map(u => u.user_id),
 					me,
@@ -128,7 +128,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					};
 				})
 				.filter(item => item.user != null)
-				.map(item => item as { id: string; birthday: string; user: Packed<'UserLite'> });
+				.map(item => item as { id: string; birthday: string; user: PackedUserLite });
 		});
 	}
 }

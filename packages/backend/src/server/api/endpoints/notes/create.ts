@@ -13,6 +13,7 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { NoteCreateService } from '@/core/NoteCreateService.js';
 import { IdentifiableError } from '@/misc/identifiable-error.js';
+import { packedNoteSchema } from '@/models/schema/note.js';
 import { ApiError } from '../../error.js';
 
 export const meta = {
@@ -29,17 +30,9 @@ export const meta = {
 
 	kind: 'write:notes',
 
-	res: {
-		type: 'object',
-		optional: false, nullable: false,
-		properties: {
-			createdNote: {
-				type: 'object',
-				optional: false, nullable: false,
-				ref: 'Note',
-			},
-		},
-	},
+	res: v.object({
+		createdNote: packedNoteSchema,
+	}),
 
 	errors: {
 		noSuchRenoteTarget: {

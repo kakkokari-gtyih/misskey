@@ -83,10 +83,13 @@ export const packedPageSchema = v.object({
 mi.defineEntity('Page', packedPageSchema);
 
 /**
- * NOTE: `content` だけ legacy 互換のため `any[]` に緩めている。legacy の `Packed<'Page'>` は
- * `content` の要素が `Packed<'PageBlock'>` = `any` に潰れていて (_entities.ts の PageBlock の
- * NOTE 参照)、PageEntityService は DB の `Record<string, any>[]` をそのまま詰めている。
- * TODO(PR-F): PageEntityService 側の修正とセットで `PackedPageBlock[]` へ厳密化する。
+ * NOTE: `content` は意図的に `any[]` のままにしている ({@link PackedPageBlock} へは厳密化しない)。
+ *
+ * `PackedPageBlock` は spec (api.json) 上のブロック種別 4 つ (text / section / image / note) しか
+ * 表していないが、DB (`MiPage.content` = `Record<string, any>[]`) には spec に無い種別も入る
+ * (`PageEntityService#pack` の後方互換 migrate が `input` を `textInput` / `numberInput` に
+ * 書き換えている)。`PackedPageBlock[]` に狭めると「実際に返り得る値」を型が誤って表すことになり、
+ * 唯一の生成元である PageEntityService でキャストを強いるだけなので、実態に合う `any[]` を正とする。
  */
 export type PackedPage = Omit<v.InferOutput<typeof packedPageSchema>, 'content'> & {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
