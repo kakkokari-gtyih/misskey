@@ -165,3 +165,41 @@ export const packedRolePoliciesSchema = v.object({
 mi.defineEntity('RolePolicies', packedRolePoliciesSchema);
 
 export type PackedRolePolicies = v.InferOutput<typeof packedRolePoliciesSchema>;
+
+/**
+ * `Role` の `allOf` のうち `ref` を持たない (= `#/components/schemas` に名前が無い) 側のパート。
+ *
+ * legacy の `packedRoleSchema` は `allOf: [{ ref: 'RoleLite' }, { inline properties }]` という
+ * 混在パターンなので、レジストリに登録せずそのまま `mi.composeEntity()` に渡す
+ * (未登録パートは `allOf` の中でインライン展開される。cookbook R9)。
+ */
+const packedRoleDetailedOnlySchema = v.object({
+	createdAt: mi.dateTimeString(),
+	updatedAt: mi.dateTimeString(),
+	target: v.picklist(['manual', 'conditional']),
+	condFormula: packedRoleCondFormulaValueSchema,
+	isPublic: mi.example(v.boolean(), false),
+	isExplorable: mi.example(v.boolean(), false),
+	asBadge: mi.example(v.boolean(), false),
+	preserveAssignmentOnMoveAccount: mi.example(v.boolean(), false),
+	canEditMembersByModerator: mi.example(v.boolean(), false),
+	policies: v.record(v.string(), v.union([
+		v.object({
+			// NOTE: legacy 側は `additionalProperties` 配下なので `optional` フラグが無く、
+			// (コンバータが additionalProperties を再帰変換しないため) api.json にも
+			// `required` が出ず、型も全プロパティ optional に潰れていた。それに合わせる。
+			value: v.optional(v.pipe(v.union([mi.integer(), v.boolean()]), mi.asOneOf())),
+			priority: v.optional(mi.integer()),
+			useDefault: v.optional(v.boolean()),
+		}),
+	])),
+	usersCount: mi.integer(),
+});
+
+export const packedRoleSchema = mi.composeEntity('Role', [
+	packedRoleLiteSchema,
+	packedRoleDetailedOnlySchema,
+]);
+
+// NOTE: 合成 entity の公開型は交差型で書く (composeEntity の戻り型を展開すると TS2589。cookbook R9)
+export type PackedRole = PackedRoleLite & v.InferOutput<typeof packedRoleDetailedOnlySchema>;

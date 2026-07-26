@@ -7,13 +7,13 @@ import * as v from 'valibot';
 import type { Packed } from '@/misc/json-schema.js';
 import { miMeta } from './metadata.js';
 import { unwrapPipe } from './bridge.js';
-import type { EntityName } from './metadata.js';
+import type { AllOfPart, EntityName } from './metadata.js';
 import type { AnyValibotSchema } from './bridge.js';
 
 export type { EntityName };
 
 /** name → schema。api.json の `components.schemas` を組み立てるのに使う */
-const byName = new Map<EntityName, AnyValibotSchema>();
+let byName = new Map<EntityName, AnyValibotSchema>();
 
 /**
  * schema → name。**逆引きで `$ref` を復元するための唯一の仕組み。**
@@ -21,7 +21,23 @@ const byName = new Map<EntityName, AnyValibotSchema>();
  * 「コード上はスキーマを直接 import、spec 上は `$ref`」を両立させるため、
  * 参照の同一性 (=== ) でレジストリ登録済み entity を検出する。
  */
-const bySchema = new WeakMap<AnyValibotSchema, EntityName>();
+let bySchema = new WeakMap<AnyValibotSchema, EntityName>();
+
+/**
+ * レジストリを空に戻す。**ユニットテスト専用。**
+ *
+ * 実 entity は `@/models/schema/_entities.js` の副作用 import で全登録されるため、
+ * それを import グラフに含むテストがダミー entity を `defineEntity()` すると
+ * 名前衝突で throw する。vitest はテストファイルごとにモジュールを分離するので、
+ * テストファイル冒頭でこれを呼んでも他のテストや実行時挙動には影響しない。
+ * プロダクションコードから呼んではならない。
+ *
+ * @internal
+ */
+export function resetEntityRegistry(): void {
+	byName = new Map();
+	bySchema = new WeakMap();
+}
 
 /**
  * Valibot 版 packed スキーマを `#/components/schemas/<name>` として公開登録する。
@@ -93,39 +109,44 @@ export type ComposedOutput<TParts extends readonly AnyValibotSchema[]> =
 	Flatten<MergeTuple<{ [K in keyof TParts]: v.InferOutput<TParts[K]> }>>;
 
 /**
- * legacy の `allOf` による entity 合成 (UserDetailedNotMe 等) の置き換え。
+ * legacy の `allOf` による entity 合成 (UserDetailedNotMe / Role 等) の置き換え。
  *
  * - **ランタイム / 型**: 各パートの entries を spread マージしたフラットな `v.object`
  *   (`UnionToIntersection` ハック不要、型が速く読みやすい)
- * - **OpenAPI**: `allOfRefs` メタデータからコンバータが `allOf: [{ $ref }, ...]` を出力するので
+ * - **OpenAPI**: `allOfParts` メタデータからコンバータが `allOf: [...]` を出力するので
  *   現行 api.json と差分ゼロ
  *
- * 各パートは {@link defineEntity} 済み (= `$ref` 可能) の object スキーマでなければならない。
+ * 各パートは object スキーマ (pipe 済みも可) でなければならない。パートは
+ *
+ * - {@link defineEntity} 済み → `allOf` には `{ $ref }` として出る
+ * - 未登録のプレーンな `v.object` → `allOf` にはそのパートを展開した object として出る
+ *   (legacy の `Role` のように `allOf` の一部だけが名前付き `ref` で残りが inline properties の混在パターン)
+ *
+ * のどちらでもよい。
  */
 export function composeEntity<
 	const N extends EntityName,
 	const TParts extends readonly [AnyValibotSchema, ...AnyValibotSchema[]],
 >(name: N, parts: TParts): v.GenericSchema<ComposedInput<TParts>, ComposedOutput<TParts>> {
-	const allOfRefs: EntityName[] = [];
+	const allOfParts: AllOfPart[] = [];
 	const merged: Record<string, AnyValibotSchema> = {};
 
 	for (const part of parts) {
 		const refName = lookupEntityName(part);
-		if (refName == null) {
-			throw new Error(`composeEntity('${name}'): every part must be registered via defineEntity()`);
-		}
-		allOfRefs.push(refName);
 
 		const { base } = unwrapPipe(part);
 		const entries = (base as { entries?: Record<string, AnyValibotSchema> }).entries;
 		if (entries == null) {
-			throw new Error(`composeEntity('${name}'): part '${refName}' is not an object schema`);
+			throw new Error(`composeEntity('${name}'): part '${refName ?? '(inline)'}' is not an object schema`);
 		}
+
+		// 登録済みなら名前 ($ref 用)、未登録ならスキーマそのもの (インライン展開用) を保持する
+		allOfParts.push(refName ?? part);
 
 		Object.assign(merged, entries);
 	}
 
-	const schema = v.pipe(v.object(merged), miMeta({ allOfRefs: allOfRefs as readonly EntityName[] }));
+	const schema = v.pipe(v.object(merged), miMeta({ allOfParts: allOfParts as readonly AllOfPart[] }));
 
 	// NOTE: entries を動的にマージしているため v.object の推論は使えない。外向きの型は
 	// ComposedInput / ComposedOutput で表現する (パート同士のキーは互いに素である前提)。

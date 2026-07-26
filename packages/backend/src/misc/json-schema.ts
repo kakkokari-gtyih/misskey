@@ -3,54 +3,34 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { packedNoteReactionSchema, packedNoteReactionWithNoteSchema } from '@/models/json-schema/note-reaction.js';
-import { packedInviteCodeSchema } from '@/models/json-schema/invite-code.js';
-import { packedNoteFavoriteSchema } from '@/models/json-schema/note-favorite.js';
-import { packedClipSchema } from '@/models/json-schema/clip.js';
-import {
-	packedQueueCountSchema,
-	packedQueueMetricsSchema,
-	packedQueueJobSchema,
-} from '@/models/json-schema/queue.js';
-import { packedGalleryPostSchema } from '@/models/json-schema/gallery-post.js';
-import { packedFlashSchema } from '@/models/json-schema/flash.js';
-// NOTE: `packedRoleSchema` (Role) のみ未移行のまま残っている (allOf の inline properties 混在パターンが
-// mi.composeEntity() の対応範囲外なため。PR3c-1 でエスカレーション。models/json-schema/role.ts 参照)
-import { packedRoleSchema } from '@/models/json-schema/role.js';
-import { packedReversiGameDetailedSchema, packedReversiGameLiteSchema } from '@/models/json-schema/reversi-game.js';
-import { packedAbuseReportNotificationRecipientSchema } from '@/models/json-schema/abuse-report-notification-recipient.js';
 // NOTE: `import type` (下記) は erased されるので、Valibot 化済み entity の defineEntity() 副作用を
 // 確実に実行させるための side-effect import を別途行う (`@/models/schema/` 配下は
 // endpoint 経由の実 import が無いと `components.schemas` から漏れるため)。
 import '@/models/schema/_entities.js';
 import type { ValibotPackedMap } from '@/models/schema/_entities.js';
 
-export const refs = {
-	NoteReaction: packedNoteReactionSchema,
-	NoteReactionWithNote: packedNoteReactionWithNoteSchema,
-	NoteFavorite: packedNoteFavoriteSchema,
-	InviteCode: packedInviteCodeSchema,
-	QueueCount: packedQueueCountSchema,
-	QueueMetrics: packedQueueMetricsSchema,
-	QueueJob: packedQueueJobSchema,
-	Clip: packedClipSchema,
-	GalleryPost: packedGalleryPostSchema,
-	Flash: packedFlashSchema,
-	Role: packedRoleSchema,
-	ReversiGameLite: packedReversiGameLiteSchema,
-	ReversiGameDetailed: packedReversiGameDetailedSchema,
-	AbuseReportNotificationRecipient: packedAbuseReportNotificationRecipientSchema,
-};
+/**
+ * 未移行 (legacy JSON Schema のままの) entity レジストリ。
+ *
+ * **全 entity が Valibot 化されたので空**。`refs` / {@link Schema} / {@link SchemaType} ごと削除するのは
+ * PR-F (legacy 基盤の撤去) の仕事なので、移行期間の型 (`PackedEntityName` / {@link Packed} の
+ * legacy 側分岐) が壊れないよう空のまま残している。
+ *
+ * NOTE: `Record<string, Schema>` のような注釈は付けないこと (`keyof typeof refs` が `string` になり、
+ * {@link PackedEntityName} が entity 名の union でなくなる)。
+ */
+export const refs = {} satisfies Record<string, Schema>;
 
 /**
- * 移行期間中の entity 名 (legacy {@link refs} と {@link ValibotPackedMap} の和集合)。
+ * entity 名 (legacy {@link refs} と {@link ValibotPackedMap} の和集合)。
  *
- * entity を 1 つ Valibot 化するたびに `ValibotPackedMap` へ追記し `refs` から同名エントリを
- * 削除するので、参照側 (`Packed<'Note'>` など) はどちらのレジストリにあっても壊れない。
+ * `refs` が空になった (= 全 entity が Valibot 化された) ので `keyof typeof refs` は `never`、
+ * 実質 `keyof ValibotPackedMap` と等しい。和集合の形のまま残しているのは PR-F で
+ * legacy レジストリごと畳むまでの互換のため。
  */
 export type PackedEntityName = keyof typeof refs | keyof ValibotPackedMap;
 
-/** 未移行 legacy entity の「名前 → packed 出力型」対応表 */
+/** 未移行 legacy entity の「名前 → packed 出力型」対応表 (現在は空) */
 type LegacyPackedMap = { [K in keyof typeof refs]: SchemaType<(typeof refs)[K]> };
 
 /**

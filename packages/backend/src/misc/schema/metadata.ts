@@ -6,6 +6,7 @@
 import * as v from 'valibot';
 import type { refs } from '@/misc/json-schema.js';
 import type { ValibotPackedMap } from '@/models/schema/_entities.js';
+import type { AnyValibotSchema } from './bridge.js';
 
 /**
  * OpenAPI (api.json) 上の `#/components/schemas/X` として公開される entity 名。
@@ -18,6 +19,17 @@ import type { ValibotPackedMap } from '@/models/schema/_entities.js';
  * ランタイムの循環依存は発生しない。
  */
 export type EntityName = keyof typeof refs | keyof ValibotPackedMap;
+
+/**
+ * {@link composeEntity} が合成する `allOf` の 1 パート。
+ *
+ * - **`EntityName` (文字列)**: `defineEntity()` 済みのパート。`{ $ref: '#/components/schemas/<name>' }` を出力する
+ * - **スキーマ**: レジストリに登録されていないインラインのパート (legacy の
+ *   「`ref` の無い `allOf` 要素」に対応する)。その場で再帰変換して展開した object を出力する
+ *
+ * 文字列とスキーマ (object) は `typeof` で判別できるので判別子は持たせていない。
+ */
+export type AllOfPart = EntityName | AnyValibotSchema;
 
 /**
  * `v.metadata()` に載せる Misskey 独自メタデータ。
@@ -46,9 +58,9 @@ export type MiMeta = {
 	readonly selfRef?: boolean;
 	/**
 	 * allOf 合成マーカー ({@link composeEntity} が付ける)。
-	 * これが付いた object は properties を出力せず `allOf: [{ $ref }, ...]` を出力する。
+	 * これが付いた object は properties を出力せず `allOf: [...]` を出力する。
 	 */
-	readonly allOfRefs?: readonly EntityName[];
+	readonly allOfParts?: readonly AllOfPart[];
 	/**
 	 * `v.union` を OpenAPI 上どのキーワードで出すか。既定は `anyOf`。
 	 * 現行 api.json が `oneOf` を出している箇所 (判別キーの無い oneOf) の互換用。

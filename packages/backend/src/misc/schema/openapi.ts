@@ -133,10 +133,14 @@ function convert(schema: unknown, ctx: ValibotOpenApiContext, state: ConvertStat
 		case 'loose_object':
 		case 'object_with_rest': {
 			// composeEntity() が付ける allOf 合成マーカー。properties は出力しない
-			if (meta.allOfRefs != null) {
+			if (meta.allOfParts != null) {
 				return applyExtras({
 					type: 'object',
-					allOf: meta.allOfRefs.map(name => ({ $ref: refPath(name) })),
+					allOf: meta.allOfParts.map(part => typeof part === 'string'
+						// 登録済みパート → $ref
+						? { $ref: refPath(part) }
+						// 未登録のインラインパート → その場で展開する (legacy の「ref の無い allOf 要素」)
+						: convert(part, ctx, { ...state, isRoot: false })),
 				}, meta);
 			}
 

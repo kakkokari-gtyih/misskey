@@ -18,6 +18,7 @@ import {
 	limit,
 	lookupEntityName,
 	maxCodePoints,
+	mergeMetadata,
 	misskeyId,
 	resAllowsEmpty,
 	resolveEntity,
@@ -156,9 +157,19 @@ describe('misc/schema:registry', () => {
 			expect(v.safeParse(composed, { id: 'abc' }).success).toBe(false);
 		});
 
-		test('未登録スキーマをパートに渡すと throw する', () => {
-			expect(() => composeEntity('MeDetailed', [lite, v.object({ x: v.string() })]))
-				.toThrow(/must be registered via defineEntity/);
+		test('未登録スキーマもパートにできる (allOfParts はスキーマ本体を保持する)', () => {
+			// legacy の Role のような「ref + inline properties 混在の allOf」に対応するための拡張
+			const inline = v.object({ x: v.string() });
+			const composed = composeEntity('MeDetailed', [lite, inline]);
+
+			const { base, actions } = unwrapPipe(composed);
+			expect(Object.keys((base as unknown as { entries: object }).entries))
+				.toStrictEqual(['id', 'name', 'x']);
+			// 登録済みパートは名前、未登録パートはスキーマ本体で保持される
+			expect(mergeMetadata(actions).allOfParts).toStrictEqual(['UserLite', inline]);
+
+			expect(v.safeParse(composed, { id: 'abc', name: null, x: 'y' }).success).toBe(true);
+			expect(v.safeParse(composed, { id: 'abc', name: null }).success).toBe(false);
 		});
 
 		test('object でないパートを渡すと throw する', () => {

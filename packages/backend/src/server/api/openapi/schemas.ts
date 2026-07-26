@@ -86,7 +86,10 @@ function getEntitySchemas(includeSelfRef: boolean): Record<string, any> {
 	const valibotEntities = getRegisteredEntities();
 	const result: Record<string, any> = {};
 
-	for (const [key, schema] of Object.entries(refs)) {
+	// NOTE: legacy `refs` は全 entity の Valibot 化完了により空 (= このループは現状 no-op)。
+	// `refs` ごと消すのは PR-F の仕事なので、それまでは legacy 側の分岐を残しておく
+	// (`{}` からは値の型が推論できないので `Schema` を明示する)。
+	for (const [key, schema] of Object.entries<Schema>(refs)) {
 		const valibotSchema = valibotEntities.get(key as EntityName);
 		result[key] = valibotSchema != null
 			? valibotToOpenApi(valibotSchema, { use: 'res', includeSelfRef, rootName: key })

@@ -54,7 +54,7 @@ export {
 	isSkippedInOpenApi,
 	mergeMetadata,
 } from './metadata.js';
-export type { EntityName, MiMeta, CollectedMetadata } from './metadata.js';
+export type { AllOfPart, EntityName, MiMeta, CollectedMetadata } from './metadata.js';
 
 export {
 	defineEntity,
@@ -63,6 +63,7 @@ export {
 	getRegisteredEntities,
 	entityRef,
 	composeEntity,
+	resetEntityRegistry,
 } from './registry.js';
 export type { ComposedInput, ComposedOutput } from './registry.js';
 

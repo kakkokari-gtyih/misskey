@@ -25,6 +25,7 @@ import {
 	omitKeywords,
 	openApi,
 	paginationEntries,
+	resetEntityRegistry,
 	selfRef,
 	uniqueArray,
 	valibotToOpenApi,
@@ -32,6 +33,12 @@ import {
 import { convertSchemaToOpenApiSchema } from '@/server/api/openapi/schemas.js';
 import type { Schema } from '@/misc/json-schema.js';
 import type { AnyValibotSchema, ValibotOpenApiContext } from '@/misc/schema/index.js';
+
+// `@/server/api/openapi/schemas.js` の import グラフに `@/models/schema/_entities.js` の
+// 副作用 import が含まれ、実 entity が全登録された状態になる。このテストのダミー
+// `defineEntity()` が名前衝突で throw しないよう、レジストリを空に戻してから始める
+// (vitest はファイル単位でモジュールを分離するため他のテストには影響しない)。
+resetEntityRegistry();
 
 const RES: ValibotOpenApiContext = { use: 'res', includeSelfRef: true };
 const PARAM: ValibotOpenApiContext = { use: 'param', includeSelfRef: false };
@@ -383,6 +390,40 @@ describe('misc/schema:valibotToOpenApi', () => {
 					{ $ref: '#/components/schemas/UserDetailedNotMeOnly' },
 				],
 			});
+		});
+
+		test('composeEntity() の未登録パートは allOf にインライン展開される', () => {
+			// legacy の Role (`allOf: [{ ref: 'RoleLite' }, { inline properties }]`) と同じ混在パターン
+			const lite = defineEntity('RoleLite', v.object({ id: idString() }));
+			const detailedOnly = v.object({
+				createdAt: dateTimeString(),
+				usersCount: integer(),
+				isPublic: v.optional(v.boolean()),
+			});
+			const composed = composeEntity('Role', [lite, detailedOnly]);
+
+			expect(valibotToOpenApi(composed, { ...RES, rootName: 'Role' })).toStrictEqual({
+				type: 'object',
+				allOf: [
+					{ $ref: '#/components/schemas/RoleLite' },
+					{
+						type: 'object',
+						properties: {
+							createdAt: { type: 'string', format: 'date-time' },
+							usersCount: { type: 'integer' },
+							isPublic: { type: 'boolean' },
+						},
+						required: ['createdAt', 'usersCount'],
+					},
+				],
+			});
+
+			// 未登録パートの entries もランタイム側 (フラットな v.object) にはマージされている
+			expect(v.is(composed, { id: 'xxxxxxxxxx', createdAt: '2026-01-01T00:00:00.000Z', usersCount: 1 })).toBe(true);
+		});
+
+		test('composeEntity() は object でないパートを拒否する', () => {
+			expect(() => composeEntity('RolePolicies', [v.string()])).toThrow(/is not an object schema/);
 		});
 	});
 

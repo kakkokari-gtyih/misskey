@@ -34,6 +34,15 @@ value: v.any(),
 
 `mi.integer()` は `v.pipe(v.number(), v.integer())`相当 (AJV の `integer` は「数値かつ整数」であって文字列ではない点に注意)。
 
+**例外: 生成元が `any` に依存している `properties` 無し object** — legacy の `{ type: 'object' }` (properties 無し) の TS 型は `SchemaType` 上 **`any` に潰れていた**ため、`mi.anyObject()` (= `Record<string, any>`) に置き換えると生成元 (entity service など、このバッチで編集してはいけないファイル) の代入がコンパイルエラーになることがある (例: `models/json-schema/queue.ts` の `packedQueueJobSchema.progress` に `QueueService` が bullmq の `JobProgress` = `string | boolean | number | object` を代入している)。この場合だけ **型は `any` のまま api.json 出力だけ合わせる**:
+
+```ts
+// 型は legacy と同じ any、api.json 上は { type: 'object' }
+progress: v.pipe(v.any(), mi.openApi({ type: 'object' })),
+```
+
+`v.any()` を使う以上、**なぜ `mi.anyObject()` ではないのか (どの生成元がどの型を代入するのか) をコメントで必ず残す**。
+
 `mi.anyObject()` (= `v.record(v.string(), v.any())`) / `mi.anyArray()` (= `v.array(v.any())`) は、素の `v.record(v.string(), v.any())` / `v.array(v.any())` と**ランタイム的には同一**で、必ず使わなければ壊れるわけではない (`openapi.ts` の変換は値/要素が `v.any()`/`v.unknown()` であることを直接検出して `additionalProperties`/`items` の出力を自動的に省く。マーカーで出力を止めているのではなく、型そのもので判定している)。それでも cookbook としては**必ず `mi.anyObject()`/`mi.anyArray()` を使う** — 「`properties`/`items` 無し」という同じイディオムを機械的に検索・監査できるようにするため、および `v.record(v.string(), v.any())` を見た次のレビュアが「意図的に無検証にした」のか「書き漏らし」なのか判断に迷わないようにするため。
 
 ---
@@ -260,7 +269,7 @@ v.object({
 
 ## R9. allOf
 
-**entity 合成 (entity 世界)**: `packedUserDetailedNotMeSchema` のように、複数の**既に名前付きで登録された** entity (`ref`) を `allOf` で束ねるパターンは `mi.composeEntity(name, parts)` 経由で合成する。シグネチャは `composeEntity<N extends EntityName>(name: N, parts: [AnyValibotSchema, ...AnyValibotSchema[]])` — **第 1 引数が登録名の文字列、第 2 引数が合成元スキーマの配列** (スキーマを直接 2 個以上の引数として渡す形ではない) であることに注意する。`parts` の各要素は事前に `mi.defineEntity()` (または `composeEntity` 自身、内部で `defineEntity` を呼ぶ) で登録済みでなければならず、**未登録のスキーマを渡すと `composeEntity` が throw する**:
+**entity 合成 (entity 世界)**: `packedUserDetailedNotMeSchema` のように、複数の entity (`ref`) を `allOf` で束ねるパターンは `mi.composeEntity(name, parts)` 経由で合成する。シグネチャは `composeEntity<N extends EntityName>(name: N, parts: [AnyValibotSchema, ...AnyValibotSchema[]])` — **第 1 引数が登録名の文字列、第 2 引数が合成元スキーマの配列** (スキーマを直接 2 個以上の引数として渡す形ではない) であることに注意する。`parts` の各要素は **object スキーマ** でなければならない (object 以外を渡すと `composeEntity` が throw する):
 
 ```ts
 // before (models/json-schema/user.ts packedUserDetailedNotMeSchema 相当)
@@ -288,9 +297,35 @@ export const packedMeDetailedSchema = mi.composeEntity('MeDetailed', [/* ... */]
 export type PackedMeDetailed = PackedUserLite & PackedUserDetailedNotMeOnly & PackedMeDetailedOnly;
 ```
 
-`mi.composeEntity()` は各パートの entries を flatten して 1 つの `v.object` 相当にまとめつつ、`allOfRefs` メタデータ (各パートの登録名) を保持する。OpenAPI 変換 (`openapi.ts` の `object` ケース) はこのメタデータを見つけると **properties を出力せず `allOf: [{ $ref: <各パートの名前> }, ...]` だけを出力する** ので、手で `{ ...a.entries, ...b.entries }` のように展開しない — メタデータが失われて properties がそのまま出力されてしまう。
+`mi.composeEntity()` は各パートの entries を flatten して 1 つの `v.object` 相当にまとめつつ、`allOfParts` メタデータ (各パートの登録名 or スキーマ本体) を保持する。OpenAPI 変換 (`openapi.ts` の `object` ケース) はこのメタデータを見つけると **properties を出力せず `allOf: [...]` だけを出力する** ので、手で `{ ...a.entries, ...b.entries }` のように展開しない — メタデータが失われて properties がそのまま出力されてしまう。
 
-**注意 (既知の非対応パターン)**: `packedRoleSchema` (`models/json-schema/role.ts`) のように、`allOf` の 1 要素が名前付き `ref` (`RoleLite`) で、もう 1 要素が **`ref` の無い inline properties** (`createdAt` 等、`refs` に対応する登録名が無い) という混在パターンは、現行の `mi.composeEntity()` (「全パート `defineEntity` 済み」制約) にそのまま当てはまらない。無理に inline 部分だけの仮 entity 名をでっち上げて登録すると `allOf` の出力形が変わりかねないため、**このパターンが出たらエスカレーションする** (inline 部分を独立 entity として登録し直すか、`composeEntity` 自体の対応拡張が必要かは個別判断)。
+**`ref` と inline properties が混在する `allOf`** (`Role` = `allOf: [{ ref: 'RoleLite' }, { inline properties }]`) もそのまま `composeEntity()` に渡してよい。パートは登録済み / 未登録のどちらでもよく、`allOf` の出力が次のように切り替わる:
+
+| パート | `allOf` の出力 |
+|---|---|
+| `mi.defineEntity()` 済み | `{ $ref: '#/components/schemas/<name>' }` |
+| 未登録のプレーンな `v.object` | そのパートを再帰変換した object (`{ type: 'object', properties, required }`) |
+
+```ts
+// before (models/json-schema/role.ts packedRoleSchema 相当)
+// allOf: [{ type: 'object', ref: 'RoleLite' }, { type: 'object', properties: { createdAt: ..., ... } }]
+
+// after: inline パートはレジストリに登録せずそのまま渡す
+const packedRoleDetailedOnlySchema = v.object({
+  createdAt: mi.dateTimeString(),
+  // ...
+});
+
+export const packedRoleSchema = mi.composeEntity('Role', [
+  packedRoleLiteSchema,        // 登録済み → $ref
+  packedRoleDetailedOnlySchema, // 未登録 → インライン展開
+]);
+
+// 公開型は交差型で書く (未登録パートは v.InferOutput でよい)
+export type PackedRole = PackedRoleLite & v.InferOutput<typeof packedRoleDetailedOnlySchema>;
+```
+
+inline パート側の各プロパティの optional 判定は通常どおり (`v.optional()` の有無 = `required` への載り方) なので、**legacy の inline パートに `optional` フラグが無いからといって全部 required にしない** — 変換元がどう出力されていたか (`api.json` の `required`) を必ず確認する。
 
 **`anyOf` 混在の `allOf`** (paramDef 世界。`users/show.ts` の `paramDef` のような、`allOf` の 1 要素が `anyOf` になっているパターン) は valibot に直訳先が無いので**分配して `v.union` 化**する:
 
@@ -574,7 +609,7 @@ v.pipe(
 |---|---|---|---|
 | `mi.defineEntity(name: EntityName, schema)` | `(name, schema) => schema` (同じ schema をそのまま返す) | Valibot 版 packed スキーマを `#/components/schemas/<name>` として登録する | `refs['X'] = packedXSchema` |
 | `mi.entityRef(name: EntityName, opts?: { selfRef?: boolean })` | `(name, opts?) => GenericSchema<Packed<N>>` | **移行期間限定**。未移行 legacy entity への参照プレースホルダ (ランタイム検証なし、OpenAPI は `$ref` を出力)。参照先が legacy 側で `selfRef: true` を持つ場合は `opts.selfRef: true` を渡す (R13) | `{ type: 'object', ref: 'X' }` |
-| `mi.composeEntity(name: EntityName, parts: [schema, ...schema[]])` | `(name, parts) => GenericSchema<...>` | 複数の**登録済み** (`defineEntity` 済み) entity を `allOf` で合成する。第 1 引数は登録名の文字列、第 2 引数はスキーマの配列 (R9) | `{ allOf: [{ ref: 'A' }, { ref: 'B' }, ...] }` (全パートが `ref` の場合のみ) |
+| `mi.composeEntity(name: EntityName, parts: [schema, ...schema[]])` | `(name, parts) => GenericSchema<...>` | 複数の object スキーマを `allOf` で合成する。第 1 引数は登録名の文字列、第 2 引数はスキーマの配列。パートは `defineEntity` 済み (→ `$ref`) でも未登録 (→ インライン展開) でもよい (R9) | `{ allOf: [{ ref: 'A' }, { properties: ... }, ...] }` |
 
 ---
 
@@ -632,5 +667,6 @@ v.pipe(
 
 ## 改訂履歴
 
+- 2026-07-27: PR3c-2 (entity 移行の完遂) の基盤拡張を反映 — R9 の `mi.composeEntity()` が「未登録のプレーンな `v.object` パート」も受け付けるようになり (`allOfRefs` → `allOfParts` メタデータ)、`Role` の `ref` + inline properties 混在 `allOf` が非対応パターンではなくなった。R1 に「legacy 側の型が `any` だった `properties` 無し object」の例外 (`v.pipe(v.any(), mi.openApi({ type: 'object' }))`) を追記。
 - 2026-07-27: PR3b (entity 中核クラスタ) で見つかった穴を追記 — R4 に entity 世界の `optional: false` + `default`、R8 に `properties` + `additionalProperties: true` の併用、R9 に合成 entity の公開型を交差型で書く規則 (TS2589 回避)、R12 に `uri`/`md5` 等の汎用 format、R13 に「手書き型は type エイリアス」「ESM 循環 import は両向き `v.lazy()`」を追加。
 - 2026-07-26: 基盤モジュール (`packages/backend/src/misc/schema/{helpers,metadata,registry,openapi}.ts`) の実装完了に伴い、実装と食い違っていた記述を修正 (R4/R5 の nullable enum を `mi.nullableEnum()` に、R10 の判別子なし oneOf を `v.union()` + `mi.asOneOf()` に、R9 の `mi.composeEntity()` シグネチャを `(name, parts[])` 形式に訂正)。R8 に `mi.anyRecord()` を、R13 に `mi.selfRef()` を追記。ヘルパー一覧・既知の許容差分セクションを新設。

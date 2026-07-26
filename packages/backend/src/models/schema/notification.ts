@@ -11,6 +11,7 @@ import { packedUserLiteSchema } from '@/models/schema/user.js';
 import { packedNoteDraftSchema } from '@/models/schema/note-draft.js';
 import { packedChatRoomInvitationSchema } from '@/models/schema/chat-room-invitation.js';
 import { packedAchievementNameSchema } from '@/models/schema/achievement.js';
+import { packedRoleSchema } from '@/models/schema/role.js';
 
 /**
  * legacy の `baseSchema.properties` 相当。各 variant で spread してから `type` を上書きする
@@ -107,7 +108,7 @@ export const packedNotificationSchema = v.variant('type', [
 	v.object({
 		...baseEntries,
 		type: v.literal('roleAssigned'),
-		role: mi.entityRef('Role'),
+		role: packedRoleSchema,
 	}),
 	v.object({
 		...baseEntries,

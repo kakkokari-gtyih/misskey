@@ -56,6 +56,15 @@ import '@/models/schema/following.js';
 import '@/models/schema/blocking.js';
 import '@/models/schema/muting.js';
 import '@/models/schema/renote-muting.js';
+import '@/models/schema/clip.js';
+import '@/models/schema/note-favorite.js';
+import '@/models/schema/note-reaction.js';
+import '@/models/schema/flash.js';
+import '@/models/schema/gallery-post.js';
+import '@/models/schema/invite-code.js';
+import '@/models/schema/abuse-report-notification-recipient.js';
+import '@/models/schema/reversi-game.js';
+import '@/models/schema/queue.js';
 // #endregion
 
 import type { PackedSignin } from '@/models/schema/signin.js';
@@ -80,6 +89,7 @@ import type {
 	PackedRoleCondFormulaValue,
 	PackedRoleLite,
 	PackedRolePolicies,
+	PackedRole,
 } from '@/models/schema/role.js';
 import type { PackedAchievementName, PackedAchievement } from '@/models/schema/achievement.js';
 import type {
@@ -116,6 +126,15 @@ import type { PackedFollowing } from '@/models/schema/following.js';
 import type { PackedBlocking } from '@/models/schema/blocking.js';
 import type { PackedMuting } from '@/models/schema/muting.js';
 import type { PackedRenoteMuting } from '@/models/schema/renote-muting.js';
+import type { PackedClip } from '@/models/schema/clip.js';
+import type { PackedNoteFavorite } from '@/models/schema/note-favorite.js';
+import type { PackedNoteReaction, PackedNoteReactionWithNote } from '@/models/schema/note-reaction.js';
+import type { PackedFlash } from '@/models/schema/flash.js';
+import type { PackedGalleryPost } from '@/models/schema/gallery-post.js';
+import type { PackedInviteCode } from '@/models/schema/invite-code.js';
+import type { PackedAbuseReportNotificationRecipient } from '@/models/schema/abuse-report-notification-recipient.js';
+import type { PackedReversiGameLite, PackedReversiGameDetailed } from '@/models/schema/reversi-game.js';
+import type { PackedQueueCount, PackedQueueMetrics, PackedQueueJob } from '@/models/schema/queue.js';
 
 /** Valibot 化済み entity の「`#/components/schemas` 名 → packed 出力型」対応表 */
 export type ValibotPackedMap = {
@@ -142,6 +161,7 @@ export type ValibotPackedMap = {
 	RoleCondFormulaValue: PackedRoleCondFormulaValue;
 	RoleLite: PackedRoleLite;
 	RolePolicies: PackedRolePolicies;
+	Role: PackedRole;
 	Achievement: PackedAchievement;
 	AchievementName: PackedAchievementName;
 	UserLite: PackedUserLite;
@@ -189,4 +209,17 @@ export type ValibotPackedMap = {
 	Blocking: PackedBlocking;
 	Muting: PackedMuting;
 	RenoteMuting: PackedRenoteMuting;
+	Clip: PackedClip;
+	NoteFavorite: PackedNoteFavorite;
+	NoteReaction: PackedNoteReaction;
+	NoteReactionWithNote: PackedNoteReactionWithNote;
+	Flash: PackedFlash;
+	GalleryPost: PackedGalleryPost;
+	InviteCode: PackedInviteCode;
+	AbuseReportNotificationRecipient: PackedAbuseReportNotificationRecipient;
+	ReversiGameLite: PackedReversiGameLite;
+	ReversiGameDetailed: PackedReversiGameDetailed;
+	QueueCount: PackedQueueCount;
+	QueueMetrics: PackedQueueMetrics;
+	QueueJob: PackedQueueJob;
 };
