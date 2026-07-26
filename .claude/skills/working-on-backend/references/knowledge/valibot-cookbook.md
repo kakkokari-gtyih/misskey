@@ -582,7 +582,7 @@ v.pipe(
 - アクション無しの `v.pipe(x)` (1 引数だけの pipe) を**書かない** → 素の `x` を使う。
 - `as const` / `satisfies` は valibot スキーマに**不要** (型は valibot が推論する)。
 - **完全に空の `paramDef = {}`** (type キーすら無い、`{ type: 'object', properties: {} }` とは別物) も `v.object({})` に変換してよい — どちらも requestBody 無しの api.json 出力になることを確認済み (実例: `reversi/invitations.ts`)。エスカレーション不要。
-- ハンドラが legacy の `paramDef.properties` を実行時に参照している場合 (実例: `flash/update.ts` の `Object.hasOwn(paramDef.properties, key)`) は、valibot ObjectSchema の **`.entries`** に読み替える (キー集合は不変。`misc/schema/cast.ts` のブリッジ実装と同じアクセスパターン)。
+- ハンドラが legacy の `paramDef.properties` を実行時に参照している場合 (実例: `flash/update.ts` の `Object.hasOwn(paramDef.properties, key)`) は、valibot ObjectSchema の **`.entries`** に読み替える (キー集合は不変。`misc/schema/param-introspect.ts` と同じアクセスパターン)。
 - 型エイリアスは `v.InferOutput<typeof paramDef>` を使う (旧来の `SchemaType<typeof paramDef>` 相当)。
 - **`SchemaType` (legacy 型ヘルパー) の新規使用は禁止** — valibot 化した箇所は `v.InferOutput` に統一する。
 - `meta` オブジェクト、ハンドラ本体 (`super(meta, paramDef, async (ps, me) => {...})` の中身)、SPDX ヘッダー、既存コメントには**触れない** (`paramDef` / entity schema 定義の書き換えに専念する)。

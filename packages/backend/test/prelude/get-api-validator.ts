@@ -4,7 +4,7 @@
  */
 
 import * as v from 'valibot';
-import type { AnyValibotSchema } from '@/misc/schema/bridge.js';
+import type { AnyValibotSchema } from '@/misc/schema/introspect.js';
 
 /**
  * paramDef を「入力が妥当か」を boolean で返す関数に変換する。

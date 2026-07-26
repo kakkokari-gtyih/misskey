@@ -5,7 +5,7 @@
 
 import * as v from 'valibot';
 import type { PackedEntityMap } from '@/models/schema/_entities.js';
-import type { AnyValibotSchema } from './bridge.js';
+import type { AnyValibotSchema } from './introspect.js';
 
 /**
  * OpenAPI (api.json) 上の `#/components/schemas/X` として公開される entity 名。

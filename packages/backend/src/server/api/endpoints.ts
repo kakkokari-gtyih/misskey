@@ -4,9 +4,9 @@
  */
 
 import { permissions } from 'misskey-js';
-import { getCastableParams } from '@/misc/schema/cast.js';
-import type { CastableType } from '@/misc/schema/cast.js';
-import type { AnyValibotSchema } from '@/misc/schema/bridge.js';
+import { getCastableParams } from '@/misc/schema/param-introspect.js';
+import type { CastableType } from '@/misc/schema/param-introspect.js';
+import type { AnyValibotSchema } from '@/misc/schema/introspect.js';
 import type { PackedRolePolicies } from '@/models/schema/role.js';
 
 import * as endpointsObject from './endpoint-list.js';

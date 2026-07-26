@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { unwrapPipe } from './bridge.js';
+import { unwrapPipe } from './introspect.js';
 import { mergeMetadata } from './metadata.js';
-import type { AnyValibotSchema } from './bridge.js';
+import type { AnyValibotSchema } from './introspect.js';
 
 /** JSON でないリクエスト (GET クエリ / multipart) から受けた文字列をキャストすべき型 */
 export type CastableType = 'boolean' | 'number' | 'integer';

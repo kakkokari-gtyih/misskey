@@ -6,7 +6,7 @@
 import * as fs from 'node:fs';
 import * as v from 'valibot';
 import { toInvalidParamInfo } from '@/misc/schema/error.js';
-import type { AnyValibotSchema } from '@/misc/schema/bridge.js';
+import type { AnyValibotSchema } from '@/misc/schema/introspect.js';
 import type { MiLocalUser } from '@/models/User.js';
 import type { MiAccessToken } from '@/models/AccessToken.js';
 import { ApiError } from './error.js';

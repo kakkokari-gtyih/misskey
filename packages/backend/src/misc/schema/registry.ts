@@ -5,9 +5,9 @@
 
 import * as v from 'valibot';
 import { schemaMeta } from './metadata.js';
-import { unwrapPipe } from './bridge.js';
+import { unwrapPipe } from './introspect.js';
 import type { AllOfPart, EntityName } from './metadata.js';
-import type { AnyValibotSchema } from './bridge.js';
+import type { AnyValibotSchema } from './introspect.js';
 
 export type { EntityName };
 

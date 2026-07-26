@@ -4,7 +4,7 @@
  */
 
 import type { Config } from '@/config.js';
-import { resAllowsEmpty } from '@/misc/schema/bridge.js';
+import { resAllowsEmpty } from '@/misc/schema/introspect.js';
 import { valibotToOpenApi } from '@/misc/schema/openapi.js';
 import endpoints from '../endpoints.js';
 import { errors as basicErrors } from './errors.js';

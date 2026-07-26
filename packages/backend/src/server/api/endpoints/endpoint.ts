@@ -6,7 +6,7 @@
 import { Injectable } from '@nestjs/common';
 import * as v from 'valibot';
 import { Endpoint } from '@/server/api/endpoint-base.js';
-import { getParamTypes } from '@/misc/schema/cast.js';
+import { getParamTypes } from '@/misc/schema/param-introspect.js';
 
 // 循環参照を回避
 let endpointsPromise: Promise<typeof import('../endpoints.js').default> | undefined;

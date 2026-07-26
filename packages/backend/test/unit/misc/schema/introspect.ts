@@ -27,7 +27,7 @@ import {
 	unwrapPipe,
 } from '@/misc/schema/index.js';
 
-describe('misc/schema:bridge', () => {
+describe('misc/schema:introspect', () => {
 	describe('isValibotSchema()', () => {
 		test('Valibot スキーマを判別する', () => {
 			expect(isValibotSchema(v.string())).toBe(true);
@@ -153,7 +153,7 @@ describe('misc/schema:registry', () => {
 	});
 });
 
-describe('misc/schema:cast', () => {
+describe('misc/schema:param-introspect', () => {
 	test('boolean / number / integer を抽出する', () => {
 		const paramDef = v.object({
 			limit: limit({ max: 100, def: 10 }),

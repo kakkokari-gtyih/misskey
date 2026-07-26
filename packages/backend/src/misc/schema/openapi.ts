@@ -4,11 +4,11 @@
  */
 
 import * as v from 'valibot';
-import { allowsAbsent, isValibotSchema, unwrapPipe } from './bridge.js';
+import { allowsAbsent, isValibotSchema, unwrapPipe } from './introspect.js';
 import { isSkippedInOpenApi, mergeMetadata } from './metadata.js';
 import { hasUniqueItemsMarker, readCodePointsMarker } from './helpers.js';
 import { lookupEntityName } from './registry.js';
-import type { AnyValibotSchema } from './bridge.js';
+import type { AnyValibotSchema } from './introspect.js';
 import type { CollectedMetadata, EntityName } from './metadata.js';
 
 /** 生成される OpenAPI (3.1) スキーマオブジェクト */

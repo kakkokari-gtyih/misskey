@@ -9,10 +9,10 @@
  * - {@link ./helpers.js}: Misskey 共通の DSL (`misskeyId()` / `limit()` / `maxCodePoints()` など)
  * - {@link ./metadata.js}: OpenAPI 出力用メタデータ (`format()` / `example()` / `selfRef()` など)
  * - {@link ./registry.js}: entity レジストリ (`defineEntity()` / `composeEntity()`)
- * - {@link ./bridge.js}: Valibot スキーマの内省ユーティリティ (`unwrapPipe()` / `allowsAbsent()` など)
+ * - {@link ./introspect.js}: Valibot スキーマの内省ユーティリティ (`unwrapPipe()` / `allowsAbsent()` など)
  * - {@link ./openapi.js}: Valibot → OpenAPI (api.json) コンバータ
  * - {@link ./error.js}: `INVALID_PARAM` の info 組み立て
- * - {@link ./cast.js}: paramDef の内省 (GET / multipart のキャスト対象 / `/endpoint` の型名)
+ * - {@link ./param-introspect.js}: paramDef の内省 (GET / multipart のキャスト対象 / `/endpoint` の型名)
  */
 
 export {
@@ -72,8 +72,8 @@ export {
 	baseTypeOf,
 	allowsAbsent,
 	resAllowsEmpty,
-} from './bridge.js';
-export type { AnyValibotSchema } from './bridge.js';
+} from './introspect.js';
+export type { AnyValibotSchema } from './introspect.js';
 
 export { valibotToOpenApi } from './openapi.js';
 export type { OpenApiSchemaObject, ValibotOpenApiContext } from './openapi.js';
@@ -81,5 +81,5 @@ export type { OpenApiSchemaObject, ValibotOpenApiContext } from './openapi.js';
 export { formatValibotIssues, toInvalidParamInfo } from './error.js';
 export type { InvalidParamInfo, ValibotIssueDetail } from './error.js';
 
-export { getCastableParams, getParamTypes } from './cast.js';
-export type { CastableType } from './cast.js';
+export { getCastableParams, getParamTypes } from './param-introspect.js';
+export type { CastableType } from './param-introspect.js';
