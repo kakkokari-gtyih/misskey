@@ -4,9 +4,10 @@
  */
 
 import type { Config } from '@/config.js';
-import endpoints, { IEndpoint } from '../endpoints.js';
+import { resAllowsEmpty } from '@/misc/schema/bridge.js';
+import endpoints from '../endpoints.js';
 import { errors as basicErrors } from './errors.js';
-import { getSchemas, convertSchemaToOpenApiSchema } from './schemas.js';
+import { getSchemas, convertEndpointSchemaToOpenApi } from './schemas.js';
 
 export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 	const spec = {
@@ -40,9 +41,11 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 		},
 	};
 
-	// 書き換えたりするのでディープコピーしておく。そのまま編集するとメモリ上の値が汚れて次回以降の出力に影響する
-	const copiedEndpoints = JSON.parse(JSON.stringify(endpoints)) as IEndpoint[];
-	for (const endpoint of copiedEndpoints) {
+	// NOTE: endpoints 自体をディープコピーすることはできない (Valibot スキーマは関数を含むため
+	// JSON 往復で壊れる)。代わりに、endpoints から読み取った値を **変換後のプレーンな OpenAPI 構造**
+	// にしてからディープコピーして spec に載せる。こうしないと生成物が endpoints の meta を参照した
+	// ままになり、生成物を書き換えたときにメモリ上の値が汚れて次回以降の出力に影響する
+	for (const endpoint of endpoints) {
 		const errors = {} as any;
 
 		if (endpoint.meta.errors) {
@@ -55,7 +58,7 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 			}
 		}
 
-		const resSchema = endpoint.meta.res ? convertSchemaToOpenApiSchema(endpoint.meta.res, 'res', includeSelfRef) : {};
+		const resSchema = endpoint.meta.res ? convertEndpointSchemaToOpenApi(endpoint.meta.res, 'res', includeSelfRef) : {};
 
 		let desc = (endpoint.meta.description ? endpoint.meta.description : 'No description provided.') + '\n\n';
 
@@ -70,8 +73,10 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 		}
 
 		const requestType = endpoint.meta.requireFile ? 'multipart/form-data' : 'application/json';
-		const schema = { ...convertSchemaToOpenApiSchema(endpoint.params, 'param', false) };
+		const schema = { ...convertEndpointSchemaToOpenApi(endpoint.params, 'param', false) };
 
+		// TODO: paramDef が Valibot 化された endpoint (drive/files/create など) では
+		// properties / required への直接注入ではなく Valibot 側で file を表現する必要がある
 		if (endpoint.meta.requireFile) {
 			schema.properties = {
 				...schema.properties,
@@ -133,7 +138,7 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 						description: 'OK (without any results)',
 					},
 				}),
-				...(endpoint.meta.res?.optional === true || endpoint.meta.res?.nullable === true ? {
+				...(resAllowsEmpty(endpoint.meta.res) ? {
 					'204': {
 						description: 'OK (without any results)',
 					},
@@ -209,7 +214,9 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 			},
 		};
 
-		spec.paths['/' + endpoint.name] = {
+		// ここまでで info はプレーンな OpenAPI 構造 (meta.errors 等の参照は含む) なので、
+		// spec に載せる前にディープコピーして endpoints 側との参照共有を切る
+		spec.paths['/' + endpoint.name] = structuredClone({
 			...(endpoint.meta.allowGet ? {
 				get: {
 					...info,
@@ -220,7 +227,7 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 				...info,
 				operationId: 'post___' + info.operationId,
 			},
-		};
+		});
 	}
 
 	return spec;

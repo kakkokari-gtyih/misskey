@@ -75,6 +75,8 @@ import { packedChatRoomInvitationSchema } from '@/models/json-schema/chat-room-i
 import { packedChatRoomMembershipSchema } from '@/models/json-schema/chat-room-membership.js';
 import { packedAchievementNameSchema, packedAchievementSchema } from '@/models/json-schema/achievement.js';
 import { packedNoteDraftSchema } from '@/models/json-schema/note-draft.js';
+import type * as v from 'valibot';
+import type { valibotRefs } from '@/models/schema/_entities.js';
 
 export const refs = {
 	UserLite: packedUserLiteSchema,
@@ -149,9 +151,29 @@ export const refs = {
 	ChatRoomMembership: packedChatRoomMembershipSchema,
 };
 
-export type Packed<x extends keyof typeof refs> = SchemaType<typeof refs[x]>;
+/**
+ * 移行期間中の entity 名 (legacy {@link refs} と {@link valibotRefs} の和集合)。
+ *
+ * entity を 1 つ Valibot 化するたびに `valibotRefs` へ追記し `refs` から同名エントリを削除するので、
+ * 参照側 (`Packed<'Note'>` など) はどちらのレジストリにあっても壊れない。
+ */
+export type PackedEntityName = keyof typeof refs | keyof typeof valibotRefs;
 
-export type KeyOf<x extends keyof typeof refs> = PropertiesToUnion<typeof refs[x]>;
+/**
+ * packed entity の型。
+ *
+ * **必ず Valibot 側を先に評価すること** (移行済み entity は legacy `refs` から消えるため、
+ * 順序を逆にすると移行済み entity が `never` になる)。
+ */
+export type Packed<x extends PackedEntityName> =
+	x extends keyof typeof valibotRefs ? v.InferOutput<(typeof valibotRefs)[x]> :
+	x extends keyof typeof refs ? SchemaType<(typeof refs)[x]> :
+	never;
+
+export type KeyOf<x extends PackedEntityName> =
+	x extends keyof typeof valibotRefs ? keyof v.InferOutput<(typeof valibotRefs)[x]> & string :
+	x extends keyof typeof refs ? PropertiesToUnion<(typeof refs)[x]> :
+	never;
 type PropertiesToUnion<p extends Schema> = p['properties'] extends NonNullable<Obj> ? keyof p['properties'] : never;
 
 type TypeStringef = 'null' | 'boolean' | 'integer' | 'number' | 'string' | 'array' | 'object' | 'any';

@@ -4,7 +4,10 @@
  */
 
 import { permissions } from 'misskey-js';
-import type { KeyOf, Schema } from '@/misc/json-schema.js';
+import type { KeyOf } from '@/misc/json-schema.js';
+import { getCastableParams } from '@/misc/schema/cast.js';
+import type { CastableType } from '@/misc/schema/cast.js';
+import type { EndpointSchema } from '@/misc/schema/bridge.js';
 
 import * as endpointsObject from './endpoint-list.js';
 
@@ -21,7 +24,7 @@ interface IEndpointMetaBase {
 		};
 	};
 
-	readonly res?: Schema;
+	readonly res?: EndpointSchema;
 
 	/**
 	 * このエンドポイントにリクエストするのにユーザー情報が必須か否か
@@ -127,10 +130,17 @@ export type IEndpointMeta = (Omit<IEndpointMetaBase, 'requireCrential' | 'requir
 export interface IEndpoint {
 	name: string;
 	meta: IEndpointMeta;
-	params: Schema;
+	params: EndpointSchema;
+	/**
+	 * GET / multipart リクエストで `JSON.parse` によるキャストが必要なトップレベルパラメータ。
+	 * (paramDef の内省結果を毎リクエスト計算しないよう、初回アクセス時に 1 回だけ求めてキャッシュする)
+	 */
+	castableParams: Record<string, CastableType>;
 }
 
 const endpoints: IEndpoint[] = Object.entries(endpointsObject).map(([name, ep]) => {
+	let castableParams: Record<string, CastableType> | null = null;
+
 	return {
 		name: name,
 		get meta() {
@@ -138,6 +148,12 @@ const endpoints: IEndpoint[] = Object.entries(endpointsObject).map(([name, ep]) 
 		},
 		get params() {
 			return ep.paramDef;
+		},
+		get castableParams() {
+			if (castableParams == null) {
+				castableParams = getCastableParams(ep.paramDef);
+			}
+			return castableParams;
 		},
 	};
 });

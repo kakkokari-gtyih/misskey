@@ -5,6 +5,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
+import { isValibotSchema } from '@/misc/schema/bridge.js';
 
 // 循環参照を回避
 let endpointsPromise: Promise<typeof import('../endpoints.js').default> | undefined;
@@ -52,8 +53,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const endpoints = await getEndpoints();
 			const ep = endpoints.find(x => x.name === ps.endpoint);
 			if (ep == null) return null;
+			// TODO: paramDef が Valibot 化された endpoint では entries を内省して同等の一覧を返す
+			const properties = isValibotSchema(ep.params) ? {} : ep.params.properties ?? {};
 			return {
-				params: Object.entries(ep.params.properties ?? {}).map(([k, v]) => ({
+				params: Object.entries(properties).map(([k, v]) => ({
 					name: k,
 					type: v.type ? v.type.charAt(0).toUpperCase() + v.type.slice(1) : 'string',
 				})),
