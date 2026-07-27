@@ -536,12 +536,11 @@ function chooseFileFromDrive(ev: PointerEvent) {
 
 uploader.events.on('itemUploaded', ({ item }) => {
 	if (!item.uploaded) return;
-	const attachesOrder = attaches.value.findIndex(f => f.id === item.id);
-	const attachOrderOrder = attachOrder.get(item.id);
-	if (attachesOrder >= 0 || attachOrderOrder != null) {
-		const index = attachesOrder >= 0 ? attachOrderOrder ?? attachesOrder : attachOrderOrder ?? attaches.value.length;
+	// アップロード済みのアイテムはattaches由来の順序を持たないため、attachOrderのみを引き継ぐ
+	const order = attachOrder.get(item.id);
+	if (order != null) {
 		attachOrder.delete(item.id);
-		attachOrder.set(item.uploaded.id, index);
+		attachOrder.set(item.uploaded.id, order);
 	}
 	files.value.push(item.uploaded);
 	uploader.removeItem(item);
@@ -562,8 +561,16 @@ function handleUploaderItemAbort(id: string) {
 	if (props.mock) return;
 	const item = uploader.items.value.find(i => i.id === id);
 	if (!item) return;
-	if (posting.value && attaches.value.length > 1) {
-		// このアップロードが止まってもファイルがなくならない場合はアイテムを削除して投稿を続行
+	if (!posting.value) return;
+
+	// このアップロードが止まっても投稿可能な内容が残る場合はアイテムを削除して投稿を続行
+	const remainingAttaches = attaches.value.filter(a => a.id !== id);
+	const hasPostableContent = 1 <= textLength.value ||
+		1 <= remainingAttaches.length ||
+		poll.value != null ||
+		renoteTargetNote.value != null ||
+		quoteId.value != null;
+	if (hasPostableContent) {
 		detachAttaches(id);
 	}
 }
@@ -809,6 +816,7 @@ function clear() {
 	poll.value = null;
 	quoteId.value = null;
 	scheduledAt.value = null;
+	attachOrder.clear();
 	uploader.reset();
 }
 
@@ -1108,6 +1116,7 @@ async function post(ev?: PointerEvent) {
 
 		// アップロード失敗したものがあったら中止
 		if (uploader.items.value.some(x => x.uploaded == null)) {
+			posting.value = false;
 			return;
 		}
 	}
@@ -1177,6 +1186,7 @@ async function post(ev?: PointerEvent) {
 				type: 'error',
 				text: 'cannot find the token of the selected account.',
 			});
+			posting.value = false;
 			return;
 		}
 	}

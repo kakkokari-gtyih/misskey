@@ -18,7 +18,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				role="button"
 				tabindex="0"
 				@click="handleClick(item, $event)"
-				@keydown.space.enter="showFileMenu(item, $event)"
+				@keydown.space.enter="handleClick(item, $event)"
 				@contextmenu.prevent.stop="showFileMenu(item, $event)"
 			>
 				<MkDriveFileThumbnail v-if="item.type === 'driveFile'" :data-id="item.id" :class="$style.thumbnail" :file="item.file" fit="cover"/>
@@ -106,7 +106,8 @@ const emit = defineEmits<{
 //#region objectUrlMap
 const objectUrlMap = new Map<string, string>();
 
-watch(() => props.modelValue, () => {
+// progress等のネストしたプロパティの更新で走らないよう、idの並びだけを監視する
+watch(() => props.modelValue.map(item => item.id), () => {
 	for (const item of props.modelValue) {
 		if (!objectUrlMap.has(item.id) && item.type === 'uploaderItem') {
 			objectUrlMap.set(item.id, URL.createObjectURL(item.file.file));
@@ -119,7 +120,7 @@ watch(() => props.modelValue, () => {
 			objectUrlMap.delete(item);
 		}
 	}
-}, { immediate: true, deep: true });
+}, { immediate: true });
 
 onUnmounted(() => {
 	for (const url of objectUrlMap.values()) {
