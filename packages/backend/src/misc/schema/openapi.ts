@@ -290,8 +290,7 @@ function wrappedOf(base: AnyValibotSchema): AnyValibotSchema {
 /**
  * `v.optional(x, def)` / `v.nullish(x, def)` の default を出力する。
  *
- * default 付きのキーは required から除外される ({@link allowsAbsent} 参照) ので、
- * legacy の「AJV useDefaults + required に載せない」挙動と一致する。
+ * default 付きのキーは required から除外される ({@link allowsAbsent} 参照)
  */
 function applyDefault(out: OpenApiSchemaObject, base: AnyValibotSchema): void {
 	if (!('default' in base)) return;

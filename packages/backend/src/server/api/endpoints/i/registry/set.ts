@@ -14,8 +14,6 @@ export const meta = {
 	kind: 'write:account',
 } as const;
 
-// NOTE: legacy は `required: ['scope']` と `default: []` が同居していたが、AJV useDefaults は
-// required チェック前に default を埋めるため実際には省略可能だった。実態に合わせて v.optional(x, []) にする
 export const paramDef = v.object({
 	key: v.pipe(v.string(), mi.minCodePoints(1)),
 	// json-schema 側も型未指定で無検証だったため、意味を変えないよう v.any() を維持

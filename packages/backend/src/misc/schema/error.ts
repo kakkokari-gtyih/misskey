@@ -20,9 +20,6 @@ export type ValibotIssueDetail = {
 
 /**
  * `v.safeParse()` の issues を dot-path 付きの配列へ変換する。
- *
- * 現行 (AJV) は `errors[0].schemaPath` を返していたが、Valibot 化に伴い
- * **値のパス** を返すよう改善する (計画の意図的改善)。
  */
 export function formatValibotIssues(issues: readonly v.BaseIssue<unknown>[]): ValibotIssueDetail[] {
 	return issues.map(issue => {

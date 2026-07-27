@@ -42,7 +42,6 @@ export function hasUniqueItemsMarker(action: unknown): boolean {
 /**
  * Misskey ID (aid/meid/ulid/objectid) の形。
  *
- * 現行 [endpoint-base.ts](../../server/api/endpoint-base.ts) の `ajv.addFormat('misskey:id', ...)` と同一。
  * **この定数がプロジェクト唯一の正典** なので、各所で正規表現を書き写さないこと。
  */
 export const MISSKEY_ID_REGEX = /^[a-zA-Z0-9]+$/;
@@ -149,7 +148,6 @@ export function maxCodePoints(requirement: number) {
  * 配列の `uniqueItems: true` 相当。
  *
  * `Set` による同一性比較なので **プリミティブ要素の配列専用**
- * (オブジェクト要素の重複は検出できない。AJV の `uniqueItems` は deep-equal で比較するため注意)。
  */
 export function uniqueArray() {
 	return Object.assign(

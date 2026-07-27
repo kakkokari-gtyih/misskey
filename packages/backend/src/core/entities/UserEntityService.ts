@@ -167,8 +167,6 @@ export class UserEntityService implements OnModuleInit {
 	}
 
 	//#region Validators
-	// NOTE: 旧実装は AJV (`ajv.compile()`) で検証していた。断片が Valibot 化されたので
-	// `v.is()` (= 検証結果を boolean で返す。呼び出し側は真偽値としてしか使っていない) に置き換える。
 	public validateLocalUsername = (value: unknown): boolean => v.is(localUsernameSchema, value);
 	public validatePassword = (value: unknown): boolean => v.is(passwordSchema, value);
 	public validateName = (value: unknown): boolean => v.is(nameSchema, value);

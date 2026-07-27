@@ -12,7 +12,7 @@
 ## 目的と前提
 
 - スキーマには 2 つの世界がある: **paramDef 世界** (`server/api/endpoints/**/*.ts` の `export const paramDef`。リクエストの検証とハンドラ引数 `ps` の型付け) と **entity 世界** (`models/schema/*.ts` の `packed*Schema`。レスポンスの型定義と OpenAPI 生成)。旧 json-schema 時代は前者が `required` 配列、後者がプロパティ単位の `optional` / `nullable` フラグとオプショナルの表現方法が違ったが、**Valibot ではどちらも同じ 4 象限 (R3) に帰着する**。
-- 旧構成では両者が `Schema` 型 (`@/misc/json-schema.js`) を共有し AJV で検証していた。この基盤は PR-F で撤去済みで、現在は `Endpoint` 基底クラス / `gen-spec.ts` とも Valibot スキーマのみを受け付ける。
+- 旧構成では両者が `Schema` 型 (`@/misc/json-schema.js`) を共有し AJV で検証していた。この基盤は撤去済みで、現在は `Endpoint` 基底クラス / `gen-spec.ts` とも Valibot スキーマのみを受け付ける。
 - ヘルパーは `@/misc/schema/index.js` から `import * as mi from '@/misc/schema/index.js';` で使う。**このヘルパー層は実装中**であり、関数名・シグネチャは本文書が正 (source of truth)。実装時に本文書と食い違うヘルパーを見つけたら、本文書に合わせて実装を直すか、本文書側の更新を提案すること (どちらを直すかは PR で明示する)。
 - 生の `v.*` (valibot 本体) は `import * as v from 'valibot';` で使う。
 - **大原則**: この文書がカバーしていない構造・パターンに出くわしたら、**無理にひねり出した書き方をしない**。既存スキーマの書き換えなら「検証の意味を変える」リスクの方が大きいので手を止めて相談する。新規スキーマなら、既存の類似 endpoint がどう書いているかを先に確認する。
@@ -280,7 +280,7 @@ v.object({
   v.pipe(v.object({ dsn: v.string() }), mi.openApi({ additionalProperties: true }))
   ```
 
-**注意 (重要)**: `v.object(...)` は valibot の既定動作として、スキーマに定義されていない未知キーを**出力 (parse 結果) から除去する**。AJV + 独自ブリッジのこれまでの挙動は `properties` に無いキーも入力オブジェクトにそのまま素通しさせていた (デフォルトでは `additionalProperties` 制約自体が無ければ弾かれもしないし削除もされない)。したがって:
+**注意 (重要)**: `v.object(...)` は valibot の既定動作として、スキーマに定義されていない未知キーを**出力 (parse 結果) から除去する**。
 
 1. 移行対象のハンドラ内で `ps.<properties に無いキー>` のような静的アクセスが無いか確認する (無ければ実害はない)。
 2. `Object.keys(ps)` やスプレッド `{ ...ps }` 経由で動的にキーを扱っている箇所、または `ps` をそのまま外部 (DB 挿入、他サービス呼び出し等) に渡している箇所がないか確認する。
@@ -685,12 +685,3 @@ v.pipe(
 5. **backend テストはローカルで実行せず CI に任せる** (`pnpm --filter backend test` 等を対話環境で実行して DB を汚さないこと)。
 
 意図的に API を変えた場合は allowlist 化して空 diff にしたうえで、その理由を PR 説明に明記する。
-
----
-
-## 改訂履歴
-
-- 2026-07-27: PR-F (legacy 機構の完全撤去) を反映 — 移行完了に伴い本文書の位置づけを「移行手順書」から「新規スキーマ作成の規約集」に変更。`mi.entityRef()` の撤去 (R13 / ヘルパー一覧)、`Packed<>` / `KeyOf<>` / `SchemaType` / `Schema` / `refs` / `ajv` 依存の削除を追記。
-- 2026-07-27: PR3c-2 (entity 移行の完遂) の基盤拡張を反映 — R9 の `mi.composeEntity()` が「未登録のプレーンな `v.object` パート」も受け付けるようになり (`allOfRefs` → `allOfParts` メタデータ)、`Role` の `ref` + inline properties 混在 `allOf` が非対応パターンではなくなった。R1 に「legacy 側の型が `any` だった `properties` 無し object」の例外 (`v.pipe(v.any(), mi.openApi({ type: 'object' }))`) を追記。
-- 2026-07-27: PR3b (entity 中核クラスタ) で見つかった穴を追記 — R4 に entity 世界の `optional: false` + `default`、R8 に `properties` + `additionalProperties: true` の併用、R9 に合成 entity の公開型を交差型で書く規則 (TS2589 回避)、R12 に `uri`/`md5` 等の汎用 format、R13 に「手書き型は type エイリアス」「ESM 循環 import は両向き `v.lazy()`」を追加。
-- 2026-07-26: 基盤モジュール (`packages/backend/src/misc/schema/{helpers,metadata,registry,openapi}.ts`) の実装完了に伴い、実装と食い違っていた記述を修正 (R4/R5 の nullable enum を `mi.nullableEnum()` に、R10 の判別子なし oneOf を `v.union()` + `mi.asOneOf()` に、R9 の `mi.composeEntity()` シグネチャを `(name, parts[])` 形式に訂正)。R8 に `mi.anyRecord()` を、R13 に `mi.selfRef()` を追記。ヘルパー一覧・既知の許容差分セクションを新設。

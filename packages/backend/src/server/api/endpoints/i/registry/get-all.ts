@@ -16,8 +16,6 @@ export const meta = {
 	res: mi.anyObject(),
 } as const;
 
-// NOTE: legacy は `required: ['scope']` と `default: []` が同居していたが、AJV useDefaults は
-// required チェック前に default を埋めるため実際には省略可能だった。実態に合わせて v.optional(x, []) にする
 export const paramDef = v.object({
 	scope: v.optional(v.array(v.pipe(v.string(), v.regex(/^[a-zA-Z0-9_]+$/))), []),
 	domain: v.nullish(v.string()),

@@ -17,7 +17,6 @@ import { DBAntennaImportJobData } from '../types.js';
 import type * as Bull from 'bullmq';
 
 // NOTE: api.json には現れない (endpoint の paramDef ではなく、インポートファイルの検証用) スキーマ。
-// 旧実装は独立した AJV インスタンスで `compile<ExportedAntenna>()` していた。
 const exportedAntennaSchema = v.object({
 	name: v.pipe(v.string(), mi.minCodePoints(1), mi.maxCodePoints(100)),
 	src: v.picklist(['home', 'all', 'users', 'list', 'users_blacklist']),
@@ -56,9 +55,6 @@ export class ImportAntennasProcessorService {
 		try {
 			for (const antenna of job.data.antenna) {
 				if (antenna.keywords.length === 0 || antenna.keywords[0].every(x => x === '')) continue;
-				// NOTE: 旧 AJV validator は default を持たないので入力を書き換えなかった。
-				// safeParse の output (未知キーを落とした新オブジェクト) は使わず、
-				// 検証の成否だけを見て元の `antenna` をそのまま使う (ランタイム挙動を維持する)。
 				if (!v.safeParse(exportedAntennaSchema, antenna).success) {
 					this.logger.warn('Validation Failed');
 					continue;

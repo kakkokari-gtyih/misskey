@@ -2,7 +2,7 @@
 
 [`IEndpointMeta`](../../../../../packages/backend/src/server/api/endpoints.ts) の全フィールドと [Valibot](https://valibot.dev/) `paramDef` / `res` の実用パターン、それと PR レビューで頻発する落とし穴を 1 つにまとめたページ。新規 / 既存 endpoint 編集時に開く。
 
-**スキーマは Valibot に統一されている** (AJV + 独自 JSON Schema (`Schema` / `SchemaType` / `refs` / `Packed<>`) は撤去済み)。既存スキーマの書き換え規則・ヘルパーの網羅表は [valibot-cookbook.md](valibot-cookbook.md) を参照。本ページは「新しく endpoint を書くとき手元に置く早見表」。
+**スキーマは Valibot に統一されている**。既存スキーマの書き換え規則・ヘルパーの網羅表は [valibot-cookbook.md](valibot-cookbook.md) を参照。本ページは「新しく endpoint を書くとき手元に置く早見表」。
 
 ## 目次
 

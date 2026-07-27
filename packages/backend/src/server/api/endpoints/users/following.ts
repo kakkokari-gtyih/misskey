@@ -48,11 +48,6 @@ export const meta = {
 	},
 } as const;
 
-// legacy の `allOf: [{ anyOf: [...] }, { 共通プロパティ }]` を、共通プロパティを各 anyOf 分岐へ
-// 分配してから union 化したもの (cookbook R9)。AJV の anyOf より valibot の v.union の方が厳密
-// (最初にマッチした分岐の出力だけを採用する) になる意図的な挙動変更。
-// NOTE: プロパティ順は元の宣言順 (limit が sinceDate/untilDate の後) を保つため
-//       mi.paginationEntries() は使わず個別に書いている (cookbook R15)。
 const commonEntries = {
 	sinceId: v.optional(mi.misskeyId()),
 	untilId: v.optional(mi.misskeyId()),
@@ -61,6 +56,7 @@ const commonEntries = {
 	limit: mi.limit({ max: 100, def: 10 }),
 	birthday: v.pipe(
 		v.nullish(birthdaySchema),
+		mi.deprecated(),
 		v.description('@deprecated use get-following-users-by-birthday instead.'),
 	),
 };

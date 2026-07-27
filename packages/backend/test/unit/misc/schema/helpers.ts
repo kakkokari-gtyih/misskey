@@ -35,10 +35,6 @@ describe('misc/schema:helpers', () => {
 			expect(v.safeParse(schema, 123).success).toBe(false);
 			expect(v.safeParse(schema, null).success).toBe(false);
 		});
-
-		test('正規表現は現行 AJV format (misskey:id) と同一', () => {
-			expect(MISSKEY_ID_REGEX.source).toBe('^[a-zA-Z0-9]+$');
-		});
 	});
 
 	describe('integer()', () => {

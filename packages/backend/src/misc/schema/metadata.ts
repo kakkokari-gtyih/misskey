@@ -131,7 +131,7 @@ export function omitKeywords<TInput = any>(...keys: readonly string[]) {
 /**
  * OpenAPI 変換時に無視される validation アクションであることを示すマーカー。
  *
- * 例: `misskeyId()` の regex は AJV の `format: 'misskey:id'` と等価なので、
+ * 例: `misskeyId()` の regex は json-schema の `format: 'misskey:id'` と等価なので、
  * OpenAPI 上は `format` だけを出し `pattern` は出さない (現行 api.json と一致させる)。
  */
 export const OPENAPI_SKIP: unique symbol = Symbol('misskey:openApiSkip');
