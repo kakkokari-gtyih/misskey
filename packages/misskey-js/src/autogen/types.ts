@@ -35331,7 +35331,10 @@ export interface operations {
                     untilDate?: number;
                     /** @default 10 */
                     limit?: number;
-                    /** @description @deprecated use get-following-users-by-birthday instead. */
+                    /**
+                     * @deprecated
+                     * @description @deprecated use get-following-users-by-birthday instead.
+                     */
                     birthday?: string | null;
                 } | {
                     username: string;
@@ -35345,7 +35348,10 @@ export interface operations {
                     untilDate?: number;
                     /** @default 10 */
                     limit?: number;
-                    /** @description @deprecated use get-following-users-by-birthday instead. */
+                    /**
+                     * @deprecated
+                     * @description @deprecated use get-following-users-by-birthday instead.
+                     */
                     birthday?: string | null;
                 };
             };
