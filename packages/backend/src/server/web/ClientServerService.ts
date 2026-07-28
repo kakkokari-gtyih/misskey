@@ -210,6 +210,12 @@ export class ClientServerService {
 		const configUrl = new URL(this.config.url);
 		const staticAssetNotFound = createMiddleware(async (ctx: HonoContext) => ctx.body(null, 404));
 		const rewriteStaticPath = (prefix: string) => (path: string) => path.startsWith(prefix) ? path.slice(prefix.length) : path;
+		// serveStatic の onFound はレスポンス生成後に呼ばれるためヘッダーを設定できない。
+		// そのため serveStatic より前段のミドルウェアとしてヘッダーを設定する。
+		const staticHeaders = (headers: Record<string, string>) => createMiddleware(async (ctx: HonoContext, next) => {
+			for (const [name, value] of Object.entries(headers)) ctx.header(name, value);
+			await next();
+		});
 
 		hono.use(async (ctx, next) => {
 			if (
@@ -227,20 +233,14 @@ export class ClientServerService {
 		if (this.config.frontendEmbedManifestExists) {
 			this.clientLoggerService.logger.info(`[ClientServerService] Using built frontend vite assets. ${this.frontendViteOut}`);
 
-			hono.get('/vite/*', serveStatic({
+			hono.get('/vite/*', staticHeaders({ 'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable` }), serveStatic({
 				root: this.frontendViteOut,
 				rewriteRequestPath: rewriteStaticPath('/vite'),
-				onFound: (_, ctx) => {
-					ctx.header('Cache-Control', `max-age=${ms('30 days') / 1000}, immutable`);
-				},
 			}), handleRequestRedirectToOmitSearch, staticAssetNotFound);
 
-			hono.get('/embed_vite/*', serveStatic({
+			hono.get('/embed_vite/*', staticHeaders({ 'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable` }), serveStatic({
 				root: this.frontendEmbedViteOut,
 				rewriteRequestPath: rewriteStaticPath('/embed_vite'),
-				onFound: (_, ctx) => {
-					ctx.header('Cache-Control', `max-age=${ms('30 days') / 1000}, immutable`);
-				},
 			}), handleRequestRedirectToOmitSearch, staticAssetNotFound);
 		} else {
 			this.clientLoggerService.logger.info(`[ClientServerService] Proxying to Vite dev server. ${configUrl.origin}`);
@@ -271,36 +271,24 @@ export class ClientServerService {
 
 		//#region static assets
 
-		hono.get('/static-assets/*', serveStatic({
+		hono.get('/static-assets/*', staticHeaders({ 'Cache-Control': `max-age=${ms('7 days') / 1000}` }), serveStatic({
 			root: this.staticAssets,
 			rewriteRequestPath: rewriteStaticPath('/static-assets'),
-			onFound: (_, ctx) => {
-				ctx.header('Cache-Control', `max-age=${ms('7 days') / 1000}`);
-			},
 		}), staticAssetNotFound);
 
-		hono.get('/client-assets/*', serveStatic({
+		hono.get('/client-assets/*', staticHeaders({ 'Cache-Control': `max-age=${ms('7 days') / 1000}` }), serveStatic({
 			root: this.clientAssets,
 			rewriteRequestPath: rewriteStaticPath('/client-assets'),
-			onFound: (_, ctx) => {
-				ctx.header('Cache-Control', `max-age=${ms('7 days') / 1000}`);
-			},
 		}), staticAssetNotFound);
 
-		hono.get('/assets/*', serveStatic({
+		hono.get('/assets/*', staticHeaders({ 'Cache-Control': `max-age=${ms('7 days') / 1000}` }), serveStatic({
 			root: this.assets,
 			rewriteRequestPath: rewriteStaticPath('/assets'),
-			onFound: (_, ctx) => {
-				ctx.header('Cache-Control', `max-age=${ms('7 days') / 1000}`);
-			},
 		}), staticAssetNotFound);
 
-		hono.get('/tarball/*', serveStatic({
+		hono.get('/tarball/*', staticHeaders({ 'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable` }), serveStatic({
 			root: this.tarball,
 			rewriteRequestPath: rewriteStaticPath('/tarball'),
-			onFound: (_, ctx) => {
-				ctx.header('Cache-Control', `max-age=${ms('30 days') / 1000}, immutable`);
-			},
 		}), handleRequestRedirectToOmitSearch, staticAssetNotFound);
 
 		hono.get('/favicon.ico', serveStatic({
@@ -311,21 +299,17 @@ export class ClientServerService {
 			path: resolve(this.staticAssets, 'apple-touch-icon.png'),
 		}));
 
-		hono.get('/fluent-emoji/:filename{[0-9a-f-]+\\.png}', serveStatic({
+		hono.get('/fluent-emoji/:filename{[0-9a-f-]+\\.png}', staticHeaders({ 'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable` }), serveStatic({
 			root: this.fluentEmojiDir,
 			rewriteRequestPath: rewriteStaticPath('/fluent-emoji'),
-			onFound: (_, ctx) => {
-				ctx.header('Cache-Control', `max-age=${ms('30 days') / 1000}, immutable`);
-			},
 		}), staticAssetNotFound);
 
-		hono.get('/twemoji/:filename{[0-9a-f-]+\\.svg}', serveStatic({
+		hono.get('/twemoji/:filename{[0-9a-f-]+\\.svg}', staticHeaders({
+			'Content-Security-Policy': 'default-src \'none\'; style-src \'unsafe-inline\'',
+			'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable`,
+		}), serveStatic({
 			root: this.twemojiDir,
 			rewriteRequestPath: rewriteStaticPath('/twemoji'),
-			onFound: (_, ctx) => {
-				ctx.header('Content-Security-Policy', 'default-src \'none\'; style-src \'unsafe-inline\'');
-				ctx.header('Cache-Control', `max-age=${ms('30 days') / 1000}, immutable`);
-			},
 		}), staticAssetNotFound);
 
 		hono.get('/twemoji-badge/:filename{[0-9a-f-]+\\.png}', async (ctx) => {
@@ -459,10 +443,12 @@ export class ClientServerService {
 			return user && (await this.feedService.packFeed(user));
 		};
 
+		/** `@alice.atom` のようなパスパラメータから、`alice` 部分だけを取り出す。 */
+		const toAcct = (param: string, suffix = '') => param.slice(1, suffix.length > 0 ? -suffix.length : undefined);
+
 		// Atom
-		hono.get('/@:user.atom', async (ctx) => {
-			const user = ctx.req.param('user');
-			if (user == null) return await renderBase(ctx);
+		hono.get('/:acct{@[^/]+\\.atom}', async (ctx) => {
+			const user = toAcct(ctx.req.param('acct'), '.atom');
 
 			const feed = await getFeed(user);
 
@@ -476,9 +462,8 @@ export class ClientServerService {
 		});
 
 		// RSS
-		hono.get('/@:user.rss', async (ctx) => {
-			const user = ctx.req.param('user');
-			if (user == null) return await renderBase(ctx);
+		hono.get('/:acct{@[^/]+\\.rss}', async (ctx) => {
+			const user = toAcct(ctx.req.param('acct'), '.rss');
 
 			const feed = await getFeed(user);
 
@@ -492,9 +477,8 @@ export class ClientServerService {
 		});
 
 		// JSON
-		hono.get('/@:user.json', async (ctx) => {
-			const user = ctx.req.param('user');
-			if (user == null) return await renderBase(ctx);
+		hono.get('/:acct{@[^/]+\\.json}', async (ctx) => {
+			const user = toAcct(ctx.req.param('acct'), '.json');
 
 			const feed = await getFeed(user);
 
@@ -509,9 +493,8 @@ export class ClientServerService {
 
 		//#region SSR
 		// User
-		hono.get('/@:user/:sub?', async (ctx) => {
-			const userParam = ctx.req.param('user');
-			if (userParam == null) return await renderBase(ctx);
+		hono.get('/:acct{@[^/]+}/:sub?', async (ctx) => {
+			const userParam = toAcct(ctx.req.param('acct'));
 
 			const { username, host } = Acct.parse(userParam);
 			const user = await this.usersRepository.findOneBy({
@@ -624,9 +607,8 @@ export class ClientServerService {
 		});
 
 		// Page
-		hono.get('/@:user/pages/:page', async (ctx) => {
-			const userParam = ctx.req.param('user');
-			if (userParam == null) return await renderBase(ctx);
+		hono.get('/:acct{@[^/]+}/pages/:page', async (ctx) => {
+			const userParam = toAcct(ctx.req.param('acct'));
 
 			const { username, host } = Acct.parse(userParam);
 			const user = await this.usersRepository.findOneBy({

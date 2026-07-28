@@ -814,15 +814,16 @@ export class ActivityPubServerService {
 			return await this.userInfo(ctx, user);
 		});
 
-		hono.get('/@:acct', async (ctx, next) => {
+		// Honoはセグメント全体が`:`で始まる場合のみパラメータとして扱うため、`@`込みで受けて後から取り除く。
+		hono.get('/:acct{@[^/]+}', async (ctx, next) => {
 			vary(ctx, 'Accept');
 			if (!this.wantsActivityPub(ctx)) {
 				await next();
 				return;
 			}
 
-			const acctParam = ctx.req.param('acct');
-			if (acctParam == null) {
+			const acctParam = ctx.req.param('acct').slice(1);
+			if (acctParam === '') {
 				return ctx.body(null, 404);
 			}
 

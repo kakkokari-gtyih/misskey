@@ -105,7 +105,8 @@ export class FileServerService {
 			return ctx.redirect(`${this.config.url}/files/${ctx.req.param('key')}`, 301);
 		});
 
-		hono.get('/proxy/:url*', this.proxyHandler.handle);
+		// Honoの`:url*`は`url*`という名前のパラメータになり複数セグメントも受けられないため、wildcardで受ける。
+		hono.get('/proxy/*', this.proxyHandler.handle);
 
 		hono.onError(this.errorHandler);
 

@@ -41,9 +41,18 @@ export class FileServerProxyHandler {
 		private imageProcessingService: ImageProcessingService,
 	) {}
 
+	/**
+	 * `/proxy/<path>` の `<path>` 部分を取り出す。
+	 * Honoのパスパラメータはセグメントを跨げないため、pathから直接切り出す。
+	 */
+	private getProxyPath(ctx: HonoContext): string {
+		const prefix = '/proxy/';
+		return ctx.req.path.startsWith(prefix) ? ctx.req.path.slice(prefix.length) : '';
+	}
+
 	@bindThis
 	public async handle(ctx: HonoContext): Promise<Response> {
-		const url = ctx.req.query('url') || `https://${ctx.req.param('url')}`;
+		const url = ctx.req.query('url') || `https://${this.getProxyPath(ctx)}`;
 
 		if (typeof url !== 'string') {
 			return ctx.body(null, 400);
@@ -97,7 +106,7 @@ export class FileServerProxyHandler {
 	private async redirectToExternalProxy(ctx: HonoContext) {
 		ctx.header('Cache-Control', 'public, max-age=259200'); // 3 days
 
-		const url = new URL(`${this.config.mediaProxy}/${ctx.req.param('url') || ''}`);
+		const url = new URL(`${this.config.mediaProxy}/${this.getProxyPath(ctx)}`);
 
 		for (const [key, value] of Object.entries(ctx.req.query())) {
 			url.searchParams.append(key, value);

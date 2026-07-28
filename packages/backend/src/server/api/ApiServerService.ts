@@ -105,20 +105,20 @@ export class ApiServerService {
 			return result;
 		}
 
-		const status = ctx.res.status === 200 ? 200 : ctx.res.status;
-
+		// statusを明示すると、handlerがctx.status()で設定した値を上書きしてしまうため渡さない。
+		// (Honoは引数が無い場合にctx.status()の値を使う)
 		if (result == null) {
-			return ctx.body(null, status as never);
+			return ctx.body(null);
 		}
 
 		if (typeof result === 'string') {
 			if (ctx.res.headers.get('Content-Type') == null) {
 				ctx.header('Content-Type', 'application/json');
 			}
-			return ctx.body(result, status as never);
+			return ctx.body(result);
 		}
 
-		return ctx.json(result, status as never);
+		return ctx.json(result);
 	}
 
 	@bindThis

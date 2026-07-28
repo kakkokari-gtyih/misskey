@@ -490,6 +490,13 @@ describe('FileServerService', () => {
 			expect(res.headers.get('content-security-policy')).toBe(CSP);
 		});
 
+		test('パス部分を外部メディアプロキシへ引き継ぐ', async () => {
+			const res = await externalApp.request('/proxy/preview/img.webp?url=https%3A%2F%2Fexample.com%2Fimg.png');
+
+			expect(res.status).toBe(301);
+			expect(res.headers.get('location') ?? '').toContain('https://media-proxy.test/preview/img.webp');
+		});
+
 		test('misskey User-Agent を拒否する', async () => {
 			const res = await app.request('/proxy/any?url=https%3A%2F%2Fexample.com%2Fimg.png', {
 				headers: { 'user-agent': 'misskey/1.0' },

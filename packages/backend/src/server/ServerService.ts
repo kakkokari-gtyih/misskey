@@ -188,9 +188,10 @@ export class ServerService implements OnApplicationShutdown {
 			return ctx.redirect(url.toString(), 301);
 		});
 
-		hono.get('/avatar/@:acct', async (ctx) => {
-			const acct = ctx.req.param('acct');
-			if (acct == null) {
+		// Honoはセグメント全体が`:`で始まる場合のみパラメータとして扱うため、`@`込みで受けて後から取り除く。
+		hono.get('/avatar/:acct{@[^/]+}', async (ctx) => {
+			const acct = ctx.req.param('acct').slice(1);
+			if (acct === '') {
 				return ctx.body(null, 400);
 			}
 
