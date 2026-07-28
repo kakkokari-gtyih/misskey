@@ -87,7 +87,7 @@ export class ServerService implements OnApplicationShutdown {
 			await next();
 		});
 		await registerHttpServerInstrumentation(hono, this.config);
-		registerHttpAccessLog(fastify);
+		registerHttpAccessLog(hono);
 
 		if (this.config.url.startsWith('https') && !this.config.disableHsts) {
 			hono.use(async (ctx, next) => {

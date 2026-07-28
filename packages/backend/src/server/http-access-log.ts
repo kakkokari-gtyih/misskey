@@ -4,26 +4,29 @@
  */
 
 import { Buffer } from 'node:buffer';
-import type { FastifyInstance } from 'fastify';
+import { routePath } from 'hono/route';
 import { logManager } from '@/logging/logging-runtime.js';
 import type { LogManager } from '@/logging/LogManager.js';
 import type { LogTraceContext } from '@/logging/types.js';
-
-type AccessRequestState = {
-	traceContext?: LogTraceContext;
-	errorType?: string;
-	requestBody?: unknown;
-	responseBody?: unknown;
-};
+import type { Context, Hono } from 'hono';
+import type { ApiEnv } from './api/ApiServerTypes.js';
 
 type CapturedBody = {
 	value: unknown;
 };
 
+type AccessLogParams = {
+	statusCode: number;
+	durationMs: number;
+	response: Response | null;
+	ownRouteIndex: number;
+	errorType?: string;
+	traceContext?: LogTraceContext;
+};
+
 /** Content-Typeから本文の種類だけを取り出します。 */
-function getMediaType(value: string | string[] | number | undefined): string | undefined {
-	const first = Array.isArray(value) ? value[0] : value;
-	return typeof first === 'string' ? first.split(';', 1)[0].trim().toLowerCase() : undefined;
+function getMediaType(value: string | null | undefined): string | undefined {
+	return typeof value === 'string' ? value.split(';', 1)[0].trim().toLowerCase() : undefined;
 }
 
 /** 秘匿処理を適用できるJSON・form・text本文か判定します。 */
@@ -38,24 +41,6 @@ function isSupportedMediaType(value: string | undefined): boolean {
 function isJsonMediaType(value: string | undefined): boolean {
 	return value === 'application/json'
 		|| (value?.startsWith('application/') === true && value.endsWith('+json'));
-}
-
-/** Streamやバイナリを本文ログの対象から外します。 */
-function isStream(value: unknown): boolean {
-	if (typeof value !== 'object' || value === null) return false;
-	try {
-		const candidate = value as {
-			pipe?: unknown;
-			getReader?: unknown;
-			[Symbol.asyncIterator]?: unknown;
-		};
-		return typeof candidate.pipe === 'function'
-			|| typeof candidate.getReader === 'function'
-			|| typeof candidate[Symbol.asyncIterator] === 'function';
-	} catch {
-		// 本文のgetterが壊れていても、ログ処理が応答を失敗させないよう除外します。
-		return true;
-	}
 }
 
 /** JSON文字列を構造化し、解析できない場合は元の文字列を保持します。 */
@@ -79,26 +64,38 @@ function parseFormBody(value: string): Record<string, string | string[]> {
 	return result;
 }
 
-/** 送受信本文から、ログへ渡せる値だけを取り出します。 */
-function captureBody(value: unknown, contentType: string | string[] | number | undefined): CapturedBody | undefined {
-	const mediaType = getMediaType(contentType);
-	if (!isSupportedMediaType(mediaType) || isStream(value)) return undefined;
+/** 読み取った本文を、Content-Typeに応じてログへ渡せる値へ変換します。 */
+function captureBody(text: string, mediaType: string | undefined): CapturedBody {
+	if (isJsonMediaType(mediaType)) return { value: parseJsonBody(text) };
+	if (mediaType === 'application/x-www-form-urlencoded') return { value: parseFormBody(text) };
+	return { value: text };
+}
 
-	if (isJsonMediaType(mediaType)) {
-		if (typeof value === 'string') return { value: parseJsonBody(value) };
-		if (Buffer.isBuffer(value)) return { value: parseJsonBody(value.toString('utf8')) };
-		return { value };
+/**
+ * downstreamのhandlerが既に読み取ったリクエスト本文だけをbodyCacheから取り出します。
+ * リクエストのstreamには触れないため、handlerが本文を読まない経路では何も記録しません。
+ * bodyCacheは型定義上は解析後の値ですが、実際にはその値のPromiseを保持しています。
+ */
+async function readRequestBody(ctx: Context<ApiEnv>): Promise<string | undefined> {
+	const cache = ctx.req.bodyCache as { text?: Promise<string>; arrayBuffer?: Promise<ArrayBuffer> };
+	try {
+		// req.json()はtextを、req.parseBody()はarrayBufferを経由するため、この2つだけを参照します。
+		if (cache.text != null) return await cache.text;
+		if (cache.arrayBuffer != null) return Buffer.from(await cache.arrayBuffer).toString('utf8');
+	} catch {
+		// 本文の読み取りに失敗しても、ログ処理が応答へ影響しないよう無視します。
 	}
-
-	if (mediaType === 'application/x-www-form-urlencoded') {
-		if (typeof value === 'string') return { value: parseFormBody(value) };
-		if (Buffer.isBuffer(value)) return { value: parseFormBody(value.toString('utf8')) };
-	}
-	if (typeof value === 'string') return { value };
-	if (Buffer.isBuffer(value)) return { value: value.toString('utf8') };
-	// form parserなどが返す構造化済みの本文も、通常の正規化処理へ渡します。
-	if (typeof value === 'object' && value !== null) return { value };
 	return undefined;
+}
+
+/** 応答本文を複製して読み取り、呼び出し元が返す応答自体は変更しません。 */
+async function readResponseBody(response: Response): Promise<string | undefined> {
+	try {
+		return await response.clone().text();
+	} catch {
+		// 本文の読み取りに失敗しても、ログ処理が応答へ影響しないよう無視します。
+		return undefined;
+	}
 }
 
 /** Errorから本文を含めない型名だけを取り出します。 */
@@ -110,73 +107,107 @@ function getErrorType(error: unknown): string {
 	return 'Error';
 }
 
-/** content-lengthを安全なバイト数へ変換し、未知の応答ではnullを返します。 */
-function getResponseSize(value: string | string[] | number | undefined): number | null {
-	const first = Array.isArray(value) ? value[0] : value;
-	const size = typeof first === 'number' ? first : typeof first === 'string' && /^\d+$/.test(first) ? Number(first) : NaN;
-	return Number.isSafeInteger(size) && size >= 0 ? size : null;
+/**
+ * 実際に応答を返したルート定義を取り出し、一致するルートが無い場合はnullを返します。
+ * routePathは既定でrouteIndex、すなわち応答を返したhandlerのルートを返すため、
+ * このmiddleware自身のindexから進んでいなければどのルートにも到達していないと判断します。
+ */
+function getRoute(ctx: Context<ApiEnv>, ownRouteIndex: number): string | null {
+	if (ctx.req.routeIndex <= ownRouteIndex) return null;
+	const path = routePath(ctx);
+	return path === '' ? null : path;
 }
 
-/** Fastify全体へAccess log用のリクエスト・エラー・応答フックを登録します。 */
-export function registerHttpAccessLog(fastify: FastifyInstance, manager: LogManager = logManager): void {
+/**
+ * content-lengthを安全なバイト数へ変換し、未知の応答ではnullを返します。
+ * Web標準のResponseはcontent-lengthを持たないことが多いため、
+ * 本文を読み取っている場合はそのバイト数で補います。
+ */
+function getResponseSize(response: Response | null, body: string | undefined): number | null {
+	if (response == null) return null;
+
+	const raw = response.headers.get('content-length');
+	if (raw != null) {
+		const size = /^\d+$/.test(raw) ? Number(raw) : NaN;
+		return Number.isSafeInteger(size) && size >= 0 ? size : null;
+	}
+
+	if (body != null) return Buffer.byteLength(body, 'utf8');
+	return response.body == null ? 0 : null;
+}
+
+/** 応答から必要な値を集め、LogManagerへAccess logを渡します。 */
+async function writeAccessLog(manager: LogManager, ctx: Context<ApiEnv>, params: AccessLogParams): Promise<void> {
+	if (!manager.shouldWriteAccess(params.statusCode)) return;
+
+	const bodyConfiguration = manager.getAccessLogConfiguration().bodies;
+	const response = params.response;
+
+	let requestBody: CapturedBody | undefined;
+	if (bodyConfiguration.request) {
+		const mediaType = getMediaType(ctx.req.header('content-type'));
+		if (isSupportedMediaType(mediaType)) {
+			const text = await readRequestBody(ctx);
+			if (text != null) requestBody = captureBody(text, mediaType);
+		}
+	}
+
+	let responseText: string | undefined;
+	let responseBody: CapturedBody | undefined;
+	if (response != null && bodyConfiguration.response && response.body != null) {
+		const mediaType = getMediaType(response.headers.get('content-type'));
+		if (isSupportedMediaType(mediaType)) {
+			responseText = await readResponseBody(response);
+			if (responseText != null) responseBody = captureBody(responseText, mediaType);
+		}
+	}
+
+	manager.writeAccess({
+		method: ctx.req.method,
+		route: getRoute(ctx, params.ownRouteIndex),
+		statusCode: params.statusCode,
+		durationMs: params.durationMs,
+		responseSizeBytes: getResponseSize(response, responseText),
+		...(params.errorType !== undefined ? { errorType: params.errorType } : {}),
+		...(requestBody !== undefined ? { requestBody: requestBody.value } : {}),
+		...(responseBody !== undefined ? { responseBody: responseBody.value } : {}),
+		...(params.traceContext !== undefined ? { traceContext: params.traceContext } : {}),
+	});
+}
+
+/** Hono全体へAccess log用のmiddlewareを登録します。 */
+export function registerHttpAccessLog(app: Hono<ApiEnv>, manager: LogManager = logManager): void {
 	if (!manager.isAccessLogEnabled()) return;
 
-	const states = new WeakMap<object, AccessRequestState>();
-
 	// HTTP計装の後に登録し、リクエスト開始時のactiveなTrace Contextを保存します。
-	fastify.addHook('onRequest', (request, _reply, done) => {
-		states.set(request, {
-			traceContext: manager.getActiveTraceContext(),
+	app.use(async (ctx, next) => {
+		const traceContext = manager.getActiveTraceContext();
+		const startedAt = performance.now();
+		const ownRouteIndex = ctx.req.routeIndex;
+
+		try {
+			await next();
+		} catch (error) {
+			// onErrorが処理しなかった例外もログへ残し、応答の生成はHono側へそのまま委ねます。
+			await writeAccessLog(manager, ctx, {
+				statusCode: 500,
+				durationMs: performance.now() - startedAt,
+				response: null,
+				ownRouteIndex,
+				errorType: getErrorType(error),
+				traceContext,
+			});
+			throw error;
+		}
+
+		await writeAccessLog(manager, ctx, {
+			statusCode: ctx.res.status,
+			durationMs: performance.now() - startedAt,
+			response: ctx.res,
+			ownRouteIndex,
+			// Honoはhandlerが投げた例外をonErrorで応答へ変換したとき、その例外をContextへ残します。
+			...(ctx.error !== undefined ? { errorType: getErrorType(ctx.error) } : {}),
+			traceContext,
 		});
-		done();
-	});
-
-	// Fastifyが応答へ変換したErrorから、型名だけをリクエストへ一時保存します。
-	fastify.addHook('onError', (request, _reply, error, done) => {
-		const state = states.get(request) ?? {};
-		state.errorType = getErrorType(error);
-		states.set(request, state);
-		done();
-	});
-
-	// 送信前のpayloadを読み取りますが、元の値は変更せず、そのまま次のhookへ渡します。
-	fastify.addHook('onSend', (request, reply, payload, done) => {
-		if (!manager.shouldWriteAccess(reply.statusCode)) {
-			done(null, payload);
-			return;
-		}
-
-		const bodyConfiguration = manager.getAccessLogConfiguration().bodies;
-		const state = states.get(request) ?? {};
-		if (bodyConfiguration.request && !('requestBody' in state)) {
-			// ActivityPubもFastifyが解析したrequest.bodyだけを対象にし、rawBodyやheaderは参照しません。
-			const captured = captureBody(request.body, request.headers['content-type']);
-			if (captured !== undefined) state.requestBody = captured.value;
-		}
-		if (bodyConfiguration.response && !('responseBody' in state)) {
-			const captured = captureBody(payload, reply.getHeader('content-type'));
-			if (captured !== undefined) state.responseBody = captured.value;
-		}
-		states.set(request, state);
-		done(null, payload);
-	});
-
-	// 応答完了時にFastifyの値を集め、LogManagerへAccess logを渡します。
-	fastify.addHook('onResponse', (request, reply, done) => {
-		const state = states.get(request);
-		const input = {
-			method: request.method,
-			route: request.routeOptions.url ?? null,
-			statusCode: reply.statusCode,
-			durationMs: reply.elapsedTime,
-			responseSizeBytes: getResponseSize(reply.getHeader('content-length')),
-			...(state?.errorType !== undefined ? { errorType: state.errorType } : {}),
-			...(state != null && 'requestBody' in state ? { requestBody: state.requestBody } : {}),
-			...(state != null && 'responseBody' in state ? { responseBody: state.responseBody } : {}),
-			...(state?.traceContext !== undefined ? { traceContext: state.traceContext } : {}),
-		};
-		manager.writeAccess(input);
-		states.delete(request);
-		done();
 	});
 }
