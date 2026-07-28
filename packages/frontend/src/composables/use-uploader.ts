@@ -237,7 +237,7 @@ export function useUploader(options: {
 			});
 
 			if (item.file.type.startsWith('image/') || item.file.type.startsWith('video/')) {
-					menu.push({
+				menu.push({
 					text: i18n.ts.preview,
 					icon: 'ti ti-photo-search',
 					action: async () => {
