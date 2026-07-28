@@ -265,7 +265,7 @@ export class LogManager {
 		return resolved.warnings;
 	}
 
-	/** Fastifyフックが参照する正規化済みのAccess log設定を返します。 */
+	/** Honoフックが参照する正規化済みのAccess log設定を返します。 */
 	public getAccessLogConfiguration(): ResolvedAccessLogConfiguration {
 		return this.accessConfiguration;
 	}

@@ -32,7 +32,7 @@ let shuttingDown = false;
  *
  * 注意: このプロジェクトでは app.enableShutdownHooks() が一切呼ばれていないため、
  * NestJSのOnApplicationShutdown経由のgraceful shutdown(GlobalModule.dispose()によるDB/Redis切断、
- * QueueProcessorService.stop()によるqueue drain、ServerService.dispose()によるfastify/WebSocket close)は
+ * QueueProcessorService.stop()によるqueue drain、ServerService.dispose()によるHono/WebSocket close)は
  * SIGTERM/SIGINTを起点には発火しない。このhandlerはそれらを経由せず、登録された終了処理を実行して即exitする。
  * 将来enableShutdownHooks()を配線する場合は、この即exitとNestJS側のshutdown sequenceが競合しないよう順序を設計すること。
  */
