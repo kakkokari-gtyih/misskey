@@ -456,8 +456,7 @@ export class ClientServerService {
 				ctx.header('Content-Type', 'application/atom+xml; charset=utf-8');
 				return ctx.body(feed.atom1());
 			} else {
-				ctx.status(404);
-				return;
+				return ctx.body(null, 404);
 			}
 		});
 
@@ -471,8 +470,7 @@ export class ClientServerService {
 				ctx.header('Content-Type', 'application/rss+xml; charset=utf-8');
 				return ctx.body(feed.rss2());
 			} else {
-				ctx.status(404);
-				return;
+				return ctx.body(null, 404);
 			}
 		});
 
@@ -486,8 +484,7 @@ export class ClientServerService {
 				ctx.header('Content-Type', 'application/json');
 				return ctx.json(feed.json1());
 			} else {
-				ctx.status(404);
-				return;
+				return ctx.body(null, 404);
 			}
 		});
 
@@ -551,8 +548,7 @@ export class ClientServerService {
 			});
 
 			if (user == null) {
-				ctx.status(404);
-				return;
+				return ctx.body(null, 404);
 			}
 
 			vary(ctx, 'Accept');
@@ -930,9 +926,8 @@ export class ClientServerService {
 
 		// streamingに非WebSocketリクエストが来た場合にbase htmlをキャシュ付きで返すと、Proxy等でそのパスがキャッシュされておかしくなる
 		hono.get('/streaming', async (ctx) => {
-			ctx.status(503);
 			ctx.header('Cache-Control', 'private, max-age=0');
-			return;
+			return ctx.body(null, 503);
 		});
 
 		// Render base html for all requests

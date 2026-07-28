@@ -57,14 +57,12 @@ export class UrlPreviewService implements OnApplicationShutdown {
 	) {
 		const url = ctx.req.query('url');
 		if (typeof url !== 'string') {
-			ctx.status(400);
-			return;
+			return ctx.body(null, 400);
 		}
 
 		const _lang = ctx.req.queries('lang') ?? [];
 		if (_lang.length > 1) {
-			ctx.status(400);
-			return;
+			return ctx.body(null, 400);
 		}
 		const lang = _lang[0];
 
