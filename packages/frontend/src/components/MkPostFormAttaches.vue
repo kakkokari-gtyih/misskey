@@ -72,7 +72,7 @@ export type Attach = {
 </script>
 
 <script lang="ts" setup>
-import { inject, watch, onUnmounted } from 'vue';
+import { inject } from 'vue';
 import * as Misskey from 'misskey-js';
 import type { MenuItem } from '@/types/menu';
 import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
@@ -102,33 +102,6 @@ const emit = defineEmits<{
 	(ev: 'changeDriveFileName', file: Misskey.entities.DriveFile, newName: string): void;
 	(ev: 'showUploaderMenu', uploaderItem: UploaderItem, event: MouseEvent | KeyboardEvent): void;
 }>();
-
-//#region objectUrlMap
-const objectUrlMap = new Map<string, string>();
-
-// progress等のネストしたプロパティの更新で走らないよう、idの並びだけを監視する
-watch(() => props.modelValue.map(item => item.id), () => {
-	for (const item of props.modelValue) {
-		if (!objectUrlMap.has(item.id) && item.type === 'uploaderItem') {
-			objectUrlMap.set(item.id, URL.createObjectURL(item.file.file));
-		}
-	}
-
-	for (const [item, url] of objectUrlMap.entries()) {
-		if (!props.modelValue.find(x => x.id === item)) {
-			URL.revokeObjectURL(url);
-			objectUrlMap.delete(item);
-		}
-	}
-}, { immediate: true });
-
-onUnmounted(() => {
-	for (const url of objectUrlMap.values()) {
-		URL.revokeObjectURL(url);
-	}
-	objectUrlMap.clear();
-});
-//#endregion
 
 function progressDashArray(item: UploaderItem): string {
 	const progress = item.progress ? item.progress.value / item.progress.max : 0;
@@ -252,20 +225,19 @@ function showFileMenu(attach: Attach, ev: MouseEvent | KeyboardEvent): void {
 				text: i18n.ts.preview,
 				icon: 'ti ti-photo-search',
 				action: async () => {
-					const constents = props.modelValue.filter(item => (
-						(item.type.startsWith('image') || item.type.startsWith('video')) &&
-						(item.type === 'driveFile' || objectUrlMap.has(item.id))
-					)).map<Content>(item => ({
-						id: item.id,
-						type: item.type.startsWith('video') ? 'video' as const : 'image' as const,
-						url: item.type === 'driveFile' ? item.file.url : objectUrlMap.get(item.id)!,
-						thumbnailUrl: item.type === 'driveFile' ? item.file.thumbnailUrl : item.file.thumbnail,
-						width: item.type === 'driveFile' ? item.file.properties.width : null,
-						height: item.type === 'driveFile' ? item.file.properties.height : null,
-						filename: item.type === 'driveFile' ? item.file.name : item.file.name,
-						file: item.type === 'driveFile' ? item.file : undefined,
-						//sourceElement: TODO
-					}));
+					const constents = props.modelValue
+						.filter(item => (item.type.startsWith('image') || item.type.startsWith('video')))
+						.map<Content>(item => ({
+							id: item.id,
+							type: item.type.startsWith('video') ? 'video' as const : 'image' as const,
+							url: item.type === 'driveFile' ? item.file.url : item.file.objectUrl,
+							thumbnailUrl: item.type === 'driveFile' ? item.file.thumbnailUrl : item.file.thumbnail,
+							width: item.type === 'driveFile' ? item.file.properties.width : null,
+							height: item.type === 'driveFile' ? item.file.properties.height : null,
+							filename: item.type === 'driveFile' ? item.file.name : item.file.name,
+							file: item.type === 'driveFile' ? item.file : undefined,
+							//sourceElement: TODO
+						}));
 					const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkLightbox.vue').then(x => x.default), {
 						defaultIndex: constents.findIndex(content => content.id === file.id),
 						contents: constents,
