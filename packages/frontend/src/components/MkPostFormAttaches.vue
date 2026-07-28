@@ -225,10 +225,10 @@ function showFileMenu(attach: Attach, ev: MouseEvent | KeyboardEvent): void {
 				text: i18n.ts.preview,
 				icon: 'ti ti-photo-search',
 				action: async () => {
-					const constents = props.modelValue
-						.filter(item => (item.type.startsWith('image') || item.type.startsWith('video')))
+					const contents = props.modelValue
+						.filter(item => (item.type.startsWith('image/') || item.type.startsWith('video/')))
 						.map<Content>(item => ({
-							id: item.id,
+							id: item.file.id,
 							type: item.type.startsWith('video') ? 'video' as const : 'image' as const,
 							url: item.type === 'driveFile' ? item.file.url : item.file.objectUrl,
 							thumbnailUrl: item.type === 'driveFile' ? item.file.thumbnailUrl : item.file.thumbnail,
@@ -239,8 +239,8 @@ function showFileMenu(attach: Attach, ev: MouseEvent | KeyboardEvent): void {
 							//sourceElement: TODO
 						}));
 					const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkLightbox.vue').then(x => x.default), {
-						defaultIndex: constents.findIndex(content => content.id === file.id),
-						contents: constents,
+						defaultIndex: contents.findIndex(content => content.id === file.id),
+						contents: contents,
 					}, {
 						closed: () => dispose(),
 					});

@@ -126,6 +126,7 @@ import type { PostFormProps } from '@/types/post-form.js';
 import type { MenuItem } from '@/types/menu.js';
 import type { PollEditorModelValue } from '@/components/MkPollEditor.vue';
 import type { UploaderItem } from '@/composables/use-uploader.js';
+import type { Content } from '@/components/MkLightbox.item.vue';
 import MkNotePreview from '@/components/MkNotePreview.vue';
 import XPostFormAttaches from '@/components/MkPostFormAttaches.vue';
 import XTextCounter from '@/components/MkPostForm.TextCounter.vue';
@@ -617,7 +618,27 @@ const attaches = computed<Attach[]>({
 
 function handleShowUploaderMenu(item: UploaderItem, ev: MouseEvent | KeyboardEvent) {
 	if (props.mock) return;
-	os.popupMenu(uploader.getMenu(item), ev.currentTarget ?? ev.target);
+	os.popupMenu(uploader.getMenu(item, async () => {
+		const contents = attaches.value
+			.filter(item => (item.type.startsWith('image/') || item.type.startsWith('video/')))
+			.map<Content>(item => ({
+				id: item.file.id,
+				type: item.type.startsWith('video') ? 'video' as const : 'image' as const,
+				url: item.type === 'driveFile' ? item.file.url : item.file.objectUrl,
+				thumbnailUrl: item.type === 'driveFile' ? item.file.thumbnailUrl : item.file.thumbnail,
+				width: item.type === 'driveFile' ? item.file.properties.width : null,
+				height: item.type === 'driveFile' ? item.file.properties.height : null,
+				filename: item.type === 'driveFile' ? item.file.name : item.file.name,
+				file: item.type === 'driveFile' ? item.file : undefined,
+				//sourceElement: TODO
+			}));
+		const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkLightbox.vue').then(x => x.default), {
+			defaultIndex: contents.findIndex(content => content.id === item.id),
+			contents: contents,
+		}, {
+			closed: () => dispose(),
+		});
+	}), ev.currentTarget ?? ev.target);
 }
 
 function setVisibility() {
