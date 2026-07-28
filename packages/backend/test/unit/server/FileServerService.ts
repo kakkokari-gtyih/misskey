@@ -4,27 +4,28 @@
  */
 
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
-import { serve } from '@hono/node-server';
-import type { ServerType } from '@hono/node-server';
-import { Hono } from 'hono';
-import type { Context as HonoContext } from 'hono';
-import { describe, expect, test, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, expect, test, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import sharp from 'sharp';
-import { DataSource, type Repository } from 'typeorm';
-import { initTestDb, randomString } from '../../utils.js';
+import { DataSource } from 'typeorm';
 import type { AiService } from '@/core/AiService.js';
-import { DownloadService } from '@/core/DownloadService.js';
+import type { DownloadService } from '@/core/DownloadService.js';
 import { FileInfoService } from '@/core/FileInfoService.js';
-import { HttpRequestService } from '@/core/HttpRequestService.js';
 import { ImageProcessingService } from '@/core/ImageProcessingService.js';
 import { InternalStorageService } from '@/core/InternalStorageService.js';
 import { IdService } from '@/core/IdService.js';
 import { LoggerService } from '@/core/LoggerService.js';
 import { VideoProcessingService } from '@/core/VideoProcessingService.js';
+import { StatusError } from '@/misc/status-error.js';
 import { loadConfig, type Config } from '@/config.js';
 import { MiDriveFile } from '@/models/DriveFile.js';
+import { miRepository, type DriveFilesRepository, type MiRepository } from '@/models/_.js';
 import { FileServerService } from '@/server/FileServerService.js';
+import { initTestDb, randomString } from '../../utils.js';
+import type { Hono } from 'hono';
+
+const CSP = 'default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'';
 
 const dummyPath = path.resolve('test/resources/dummy-for-file-server-service.png');
 const dummySize = fs.statSync(dummyPath).size;
@@ -32,133 +33,52 @@ const dummyBuffer = fs.readFileSync(dummyPath);
 const svgBuffer = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"></svg>', 'utf8');
 const textBuffer = Buffer.from('dummy text', 'utf8');
 
-type HonoTestResponse = {
-	statusCode: number;
-	headers: Record<string, string>;
-	body: Uint8Array;
-};
+// リモートのファイルはDownloadServiceの差し替えで再現するため、実在しないホストで構わない。
+const remotePngUrl = 'https://remote.example.com/dummy.png';
+const remoteSvgUrl = 'https://remote.example.com/dummy.svg';
+const remoteTextUrl = 'https://remote.example.com/dummy.txt';
+const remoteFlatPngUrl = 'https://remote.example.com/flat.png';
 
-type HonoTestServer = {
-	inject: (request: {
-		method: string;
-		url: string;
-		headers?: Record<string, string>;
-	}) => Promise<HonoTestResponse>;
-	close: () => Promise<void>;
-};
-
-type ListeningHonoServer = ServerType;
-
-function createHonoTestServer(app: Hono): HonoTestServer {
+/** URLごとの固定データを保存先へ書き出すDownloadServiceを作成します。 */
+function createDownloadServiceStub(files: ReadonlyMap<string, Buffer>): DownloadService {
 	return {
-		inject: async ({ method, url, headers }) => {
-			const response = await app.request(new Request(new URL(url, 'http://127.0.0.1').toString(), {
-				method,
-				headers,
-			}));
+		downloadUrl: async (url: string, destination: string) => {
+			const body = files.get(url);
+			if (body == null) throw new StatusError('404 Not Found', 404, 'Not Found');
 
-			return {
-				statusCode: response.status,
-				headers: Object.fromEntries(Array.from(response.headers.entries(), ([key, value]) => [key.toLowerCase(), value])),
-				body: new Uint8Array(await response.arrayBuffer()),
-			};
+			await fs.promises.writeFile(destination, body);
+
+			// 本来のDownloadServiceと同じく、URLの末尾をファイル名として扱う。
+			return { filename: new URL(url).pathname.split('/').pop() ?? 'untitled' };
 		},
-		close: async () => {},
-	};
+	} as unknown as DownloadService;
 }
 
-async function closeListeningServer(server: ListeningHonoServer): Promise<void> {
-	if (!server.listening) return;
-
-	await new Promise<void>((resolve, reject) => {
-		server.close((err) => {
-			if (err != null) {
-				reject(err);
-				return;
-			}
-
-			resolve();
-		});
-	});
+/** 応答本文を読み切り、ファイルのstreamを確実に閉じます。 */
+async function readBody(response: Response): Promise<Buffer> {
+	return Buffer.from(await response.arrayBuffer());
 }
 
-async function startListeningHonoServer(app: Hono): Promise<{ server: ListeningHonoServer; baseUrl: string; }> {
-	return await new Promise((resolve, reject) => {
-		const onError = (error: Error) => {
-			server.off('error', onError);
-			reject(error);
-		};
-
-		const server = serve({
-			fetch: app.fetch,
-			hostname: '127.0.0.1',
-			port: 0,
-		}, (info) => {
-			server.off('error', onError);
-			resolve({
-				server,
-				baseUrl: `http://127.0.0.1:${info.port}`,
-			});
-		});
-
-		server.once('error', onError);
-	});
-}
-
-async function createRemoteFileServer() {
-	const flatPngBuffer = await sharp({
-		create: { width: 8, height: 8, channels: 3, background: { r: 0, g: 0, b: 0 } },
-	}).png().toBuffer();
-	const app = new Hono();
-	const respondWithBuffer = (ctx: HonoContext, body: Buffer, contentType: string) => {
-		ctx.header('Content-Type', contentType);
-		ctx.header('Content-Length', String(body.length));
-		return ctx.body(new Uint8Array(body));
-	};
-
-	app.get('/dummy.png', (ctx) => respondWithBuffer(ctx, dummyBuffer, 'image/png'));
-
-	app.get('/dummy.svg', (ctx) => respondWithBuffer(ctx, svgBuffer, 'image/svg+xml'));
-
-	app.get('/dummy.txt', (ctx) => respondWithBuffer(ctx, textBuffer, 'text/plain'));
-
-	app.get('/flat.png', (ctx) => respondWithBuffer(ctx, flatPngBuffer, 'image/png'));
-
-	const { server, baseUrl } = await startListeningHonoServer(app);
-
-	return {
-		server,
-		pngUrl: `${baseUrl}/dummy.png`,
-		svgUrl: `${baseUrl}/dummy.svg`,
-		textUrl: `${baseUrl}/dummy.txt`,
-		flatPngUrl: `${baseUrl}/flat.png`,
-	};
+/** WebPへ変換された応答であることを、コンテナのマジックナンバーで確認します。 */
+function expectWebp(body: Buffer): void {
+	expect(body.subarray(0, 4).toString('ascii')).toBe('RIFF');
+	expect(body.subarray(8, 12).toString('ascii')).toBe('WEBP');
 }
 
 describe('FileServerService', () => {
 	let db: DataSource;
-	let honoServer: HonoTestServer;
-	let externalHonoServer: HonoTestServer;
-	let driveFilesRepository: Repository<MiDriveFile>;
+	let app: Hono;
+	let externalApp: Hono;
+	let driveFilesRepository: DriveFilesRepository;
 	let internalStorageService: InternalStorageService;
 	let idService: IdService;
 	let config: Config;
-	let fileServerService: FileServerService;
-	let externalFileServerService: FileServerService;
-	let remoteServer: ListeningHonoServer;
-	let remotePngUrl: string;
-	let remoteSvgUrl: string;
-	let remoteTextUrl: string;
-	let remoteFlatPngUrl: string;
-	const storedPaths: string[] = [];
-	let createdFallbackAssets = false;
-	let fallbackAssetsDir = '';
+	let rootDir: string;
 
 	function writeInternalFile(key: string) {
 		const dest = internalStorageService.resolvePath(key);
 		fs.mkdirSync(path.dirname(dest), { recursive: true });
 		fs.copyFileSync(dummyPath, dest);
-		storedPaths.push(dest);
 	}
 
 	async function insertDriveFile(params: {
@@ -206,9 +126,28 @@ describe('FileServerService', () => {
 	}
 
 	beforeAll(async () => {
-		config = loadConfig();
 		db = await initTestDb(false);
-		driveFilesRepository = db.getRepository(MiDriveFile);
+		driveFilesRepository = db.getRepository(MiDriveFile).extend(miRepository as MiRepository<MiDriveFile>);
+
+		// assets と内部ストレージはどちらも config.rootDir 起点で解決されるため、
+		// rootDir ごと一時ディレクトリへ隔離してリポジトリを書き換えないようにする。
+		rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'misskey-file-server-service-'));
+		const assetsDir = path.join(rootDir, 'packages/backend/src/server/file/assets');
+		fs.mkdirSync(assetsDir, { recursive: true });
+		fs.copyFileSync(dummyPath, path.join(assetsDir, 'dummy.png'));
+		fs.copyFileSync(dummyPath, path.join(assetsDir, 'not-found.png'));
+
+		config = { ...loadConfig(), rootDir };
+
+		const flatPngBuffer = await sharp({
+			create: { width: 8, height: 8, channels: 3, background: { r: 0, g: 0, b: 0 } },
+		}).png().toBuffer();
+		const downloadService = createDownloadServiceStub(new Map([
+			[remotePngUrl, dummyBuffer],
+			[remoteSvgUrl, svgBuffer],
+			[remoteTextUrl, textBuffer],
+			[remoteFlatPngUrl, flatPngBuffer],
+		]));
 
 		const loggerService = new LoggerService();
 		const aiService = {
@@ -216,15 +155,14 @@ describe('FileServerService', () => {
 			detectSensitiveMany: async (sources: Buffer[]) => sources.map(() => null),
 		} as unknown as AiService;
 		const fileInfoService = new FileInfoService(aiService, loggerService);
-		const httpRequestService = new HttpRequestService(config);
-		const downloadService = new DownloadService(config, httpRequestService, loggerService);
 		const imageProcessingService = new ImageProcessingService();
 		const videoProcessingService = new VideoProcessingService(config, imageProcessingService);
 		internalStorageService = new InternalStorageService(config);
 		idService = new IdService(config);
-		fileServerService = new FileServerService(
-			config,
-			driveFilesRepository as any,
+
+		const createFileServerService = (serviceConfig: Config) => new FileServerService(
+			serviceConfig,
+			driveFilesRepository,
 			fileInfoService,
 			downloadService,
 			imageProcessingService,
@@ -233,126 +171,68 @@ describe('FileServerService', () => {
 			loggerService,
 		);
 
-		honoServer = createHonoTestServer(fileServerService.createServer());
-
-		const externalConfig = {
+		app = createFileServerService(config).createServer();
+		externalApp = createFileServerService({
 			...config,
 			mediaProxy: 'https://media-proxy.test',
 			externalMediaProxyEnabled: true,
-		} as Config;
-		externalFileServerService = new FileServerService(
-			externalConfig,
-			driveFilesRepository as any,
-			fileInfoService,
-			downloadService,
-			imageProcessingService,
-			videoProcessingService,
-			internalStorageService,
-			loggerService,
-		);
-		externalHonoServer = createHonoTestServer(externalFileServerService.createServer());
-
-		const remoteServerInfo = await createRemoteFileServer();
-		remoteServer = remoteServerInfo.server;
-		remotePngUrl = remoteServerInfo.pngUrl;
-		remoteSvgUrl = remoteServerInfo.svgUrl;
-		remoteTextUrl = remoteServerInfo.textUrl;
-		remoteFlatPngUrl = remoteServerInfo.flatPngUrl;
-
-		fallbackAssetsDir = path.resolve('src/server/file/assets');
-		if (!fs.existsSync(fallbackAssetsDir)) {
-			fs.mkdirSync(fallbackAssetsDir, { recursive: true });
-			fs.copyFileSync(dummyPath, path.join(fallbackAssetsDir, 'dummy.png'));
-			createdFallbackAssets = true;
-		}
+		}).createServer();
 	});
 
 	afterEach(async () => {
+		vi.unstubAllEnvs();
 		await driveFilesRepository.createQueryBuilder().delete().execute();
-		for (const filePath of storedPaths) {
-			try {
-				fs.unlinkSync(filePath);
-			} catch {
-				// NOP
-			}
-		}
-		storedPaths.length = 0;
 	});
 
 	afterAll(async () => {
-		await honoServer.close();
-		await externalHonoServer.close();
-		await closeListeningServer(remoteServer);
 		await db.destroy();
-		if (createdFallbackAssets) {
-			fs.rmSync(fallbackAssetsDir, { recursive: true, force: true });
-		}
+		fs.rmSync(rootDir, { recursive: true, force: true });
 	});
 
 	describe('GET /files/app-default.jpg', () => {
-		test('GET /files/app-default.jpg ヘッダを検証する', async () => {
-			const prevNodeEnv = process.env.NODE_ENV;
-			process.env.NODE_ENV = 'test';
+		test('ヘッダを検証する', async () => {
+			vi.stubEnv('NODE_ENV', 'test');
 
-			try {
-				const res = await honoServer.inject({
-					method: 'GET',
-					url: '/files/app-default.jpg',
-				});
+			const res = await app.request('/files/app-default.jpg');
 
-				expect(res.statusCode).toBe(200);
-				expect(res.headers['content-security-policy']).toBe('default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'');
-				expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-				expect(res.headers['content-type']).toBe('image/jpeg');
-				expect(res.headers['access-control-allow-origin']).toBeUndefined();
-			} finally {
-				process.env.NODE_ENV = prevNodeEnv;
-			}
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-security-policy')).toBe(CSP);
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-type')).toBe('image/jpeg');
+			expect(res.headers.get('access-control-allow-origin')).toBeNull();
+			expect(await readBody(res)).toEqual(dummyBuffer);
 		});
 
-		test('GET /files/app-default.jpg development で CORS を許可する', async () => {
-			const prevNodeEnv = process.env.NODE_ENV;
-			process.env.NODE_ENV = 'development';
+		test('development で CORS を許可する', async () => {
+			vi.stubEnv('NODE_ENV', 'development');
 
-			try {
-				const res = await honoServer.inject({
-					method: 'GET',
-					url: '/files/app-default.jpg',
-				});
+			const res = await app.request('/files/app-default.jpg');
 
-				expect(res.statusCode).toBe(200);
-				expect(res.headers['access-control-allow-origin']).toBe('*');
-			} finally {
-				process.env.NODE_ENV = prevNodeEnv;
-			}
+			expect(res.status).toBe(200);
+			expect(res.headers.get('access-control-allow-origin')).toBe('*');
+			await readBody(res);
 		});
 
-		test('GET /files/app-default.jpg?x=1 クエリを除去してリダイレクトする', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: '/files/app-default.jpg?x=1',
-			});
+		test('クエリを除去してリダイレクトする', async () => {
+			const res = await app.request('/files/app-default.jpg?x=1');
 
-			expect(res.statusCode).toBe(301);
-			expect(res.headers.location).toBe('/files/app-default.jpg');
-			expect(res.headers['content-security-policy']).toBe('default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'');
+			expect(res.status).toBe(301);
+			expect(res.headers.get('location')).toBe('/files/app-default.jpg');
+			expect(res.headers.get('content-security-policy')).toBe(CSP);
 		});
 	});
 
 	describe('GET /files/:key', () => {
-		test('GET /files/:key 404 のときダミー画像を返す', async () => {
-			const accessKey = randomString();
+		test('404 のときダミー画像を返す', async () => {
+			const res = await app.request(`/files/${randomString()}`);
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${accessKey}`,
-			});
-
-			expect(res.statusCode).toBe(404);
-			expect(res.headers['cache-control']).toBe('public, max-age=0');
+			expect(res.status).toBe(404);
+			expect(res.headers.get('cache-control')).toBe('public, max-age=0');
+			expect(res.headers.get('content-type')).toBe('image/png');
+			expect(await readBody(res)).toEqual(dummyBuffer);
 		});
 
-		test('GET /files/:key 画像配信ヘッダを検証する', async () => {
+		test('画像配信ヘッダを検証する', async () => {
 			const accessKey = randomString();
 			writeInternalFile(accessKey);
 			await insertDriveFile({
@@ -361,20 +241,18 @@ describe('FileServerService', () => {
 				isLink: false,
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${accessKey}`,
-			});
+			const res = await app.request(`/files/${accessKey}`);
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-security-policy']).toBe('default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers['content-type']).toBe('image/png');
-			expect(res.headers['content-length']).toBe(String(dummySize));
-			expect(res.headers['content-disposition'] ?? '').toMatch(/^inline;/);
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-security-policy')).toBe(CSP);
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-type')).toBe('image/png');
+			expect(res.headers.get('content-length')).toBe(String(dummySize));
+			expect(res.headers.get('content-disposition') ?? '').toMatch(/^inline;/);
+			expect(await readBody(res)).toEqual(dummyBuffer);
 		});
 
-		test('GET /files/:key Range で部分配信する', async () => {
+		test('Range で部分配信する', async () => {
 			const accessKey = randomString();
 			writeInternalFile(accessKey);
 			await insertDriveFile({
@@ -383,23 +261,18 @@ describe('FileServerService', () => {
 				isLink: false,
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${accessKey}`,
-				headers: {
-					range: 'bytes=0-3',
-				},
-			});
+			const res = await app.request(`/files/${accessKey}`, { headers: { range: 'bytes=0-3' } });
 
-			expect(res.statusCode).toBe(206);
-			expect(res.headers['content-range']).toBe(`bytes 0-3/${dummySize}`);
-			expect(res.headers['accept-ranges']).toBe('bytes');
-			expect(res.headers['content-length']).toBe('4');
-			expect(res.headers['content-type']).toBe('image/png');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
+			expect(res.status).toBe(206);
+			expect(res.headers.get('content-range')).toBe(`bytes 0-3/${dummySize}`);
+			expect(res.headers.get('accept-ranges')).toBe('bytes');
+			expect(res.headers.get('content-length')).toBe('4');
+			expect(res.headers.get('content-type')).toBe('image/png');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(await readBody(res)).toEqual(dummyBuffer.subarray(0, 4));
 		});
 
-		test('GET /files/:key Range の終端を補正する', async () => {
+		test('Range の終端を補正する', async () => {
 			const accessKey = randomString();
 			writeInternalFile(accessKey);
 			await insertDriveFile({
@@ -408,21 +281,16 @@ describe('FileServerService', () => {
 				isLink: false,
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${accessKey}`,
-				headers: {
-					range: 'bytes=0-999999',
-				},
-			});
+			const res = await app.request(`/files/${accessKey}`, { headers: { range: 'bytes=0-999999' } });
 
-			expect(res.statusCode).toBe(206);
-			expect(res.headers['content-range']).toBe(`bytes 0-${dummySize - 1}/${dummySize}`);
-			expect(res.headers['accept-ranges']).toBe('bytes');
-			expect(res.headers['content-length']).toBe(String(dummySize));
+			expect(res.status).toBe(206);
+			expect(res.headers.get('content-range')).toBe(`bytes 0-${dummySize - 1}/${dummySize}`);
+			expect(res.headers.get('accept-ranges')).toBe('bytes');
+			expect(res.headers.get('content-length')).toBe(String(dummySize));
+			expect(await readBody(res)).toEqual(dummyBuffer);
 		});
 
-		test('GET /files/:key thumbnail の Range で部分配信する', async () => {
+		test('thumbnail の Range で部分配信する', async () => {
 			const accessKey = randomString();
 			const thumbnailKey = randomString();
 			writeInternalFile(thumbnailKey);
@@ -434,23 +302,18 @@ describe('FileServerService', () => {
 				name: 'sample.png',
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${thumbnailKey}`,
-				headers: {
-					range: 'bytes=0-3',
-				},
-			});
+			const res = await app.request(`/files/${thumbnailKey}`, { headers: { range: 'bytes=0-3' } });
 
-			expect(res.statusCode).toBe(206);
-			expect(res.headers['content-range']).toBe(`bytes 0-3/${dummySize}`);
-			expect(res.headers['accept-ranges']).toBe('bytes');
-			expect(res.headers['content-length']).toBe('4');
-			expect(res.headers['content-type']).toBe('image/png');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
+			expect(res.status).toBe(206);
+			expect(res.headers.get('content-range')).toBe(`bytes 0-3/${dummySize}`);
+			expect(res.headers.get('accept-ranges')).toBe('bytes');
+			expect(res.headers.get('content-length')).toBe('4');
+			expect(res.headers.get('content-type')).toBe('image/png');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(await readBody(res)).toEqual(dummyBuffer.subarray(0, 4));
 		});
 
-		test('GET /files/:key thumbnail のファイル名を整形する', async () => {
+		test('thumbnail のファイル名を整形する', async () => {
 			const accessKey = randomString();
 			const thumbnailKey = randomString();
 			writeInternalFile(thumbnailKey);
@@ -462,18 +325,16 @@ describe('FileServerService', () => {
 				name: 'sample.png',
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${thumbnailKey}`,
-			});
+			const res = await app.request(`/files/${thumbnailKey}`);
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-type']).toBe('image/png');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers['content-disposition'] ?? '').toContain('sample-thumb.png');
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toBe('image/png');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-disposition') ?? '').toContain('sample-thumb.png');
+			await readBody(res);
 		});
 
-		test('GET /files/:key webpublic のファイル名を整形する', async () => {
+		test('webpublic のファイル名を整形する', async () => {
 			const accessKey = randomString();
 			const webpublicKey = randomString();
 			writeInternalFile(webpublicKey);
@@ -485,18 +346,16 @@ describe('FileServerService', () => {
 				name: 'sample.png',
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${webpublicKey}`,
-			});
+			const res = await app.request(`/files/${webpublicKey}`);
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-type']).toBe('image/png');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers['content-disposition'] ?? '').toContain('sample-web.png');
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toBe('image/png');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-disposition') ?? '').toContain('sample-web.png');
+			await readBody(res);
 		});
 
-		test('GET /files/:key browsersafe でない MIME は octet-stream になる', async () => {
+		test('browsersafe でない MIME は octet-stream になる', async () => {
 			const accessKey = randomString();
 			writeInternalFile(accessKey);
 			await insertDriveFile({
@@ -506,16 +365,14 @@ describe('FileServerService', () => {
 				type: 'application/x-msdownload',
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${accessKey}`,
-			});
+			const res = await app.request(`/files/${accessKey}`);
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-type']).toBe('application/octet-stream');
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toBe('application/octet-stream');
+			await readBody(res);
 		});
 
-		test('GET /files/:key 204 のときキャッシュ制御を返す', async () => {
+		test('204 のときキャッシュ制御を返す', async () => {
 			const accessKey = randomString();
 			await insertDriveFile({
 				accessKey,
@@ -523,16 +380,13 @@ describe('FileServerService', () => {
 				isLink: false,
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${accessKey}`,
-			});
+			const res = await app.request(`/files/${accessKey}`);
 
-			expect(res.statusCode).toBe(204);
-			expect(res.headers['cache-control']).toBe('max-age=86400');
+			expect(res.status).toBe(204);
+			expect(res.headers.get('cache-control')).toBe('max-age=86400');
 		});
 
-		test('GET /files/:key 外部リンクを取得して配信する', async () => {
+		test('外部リンクを取得して配信する', async () => {
 			const accessKey = randomString();
 			await insertDriveFile({
 				accessKey,
@@ -542,19 +396,17 @@ describe('FileServerService', () => {
 				name: 'remote.png',
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${accessKey}`,
-			});
+			const res = await app.request(`/files/${accessKey}`);
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-type']).toBe('image/png');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers['content-length']).toBe(String(dummyBuffer.length));
-			expect(res.headers['content-disposition'] ?? '').toContain('remote.png');
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toBe('image/png');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-length')).toBe(String(dummyBuffer.length));
+			expect(res.headers.get('content-disposition') ?? '').toContain('remote.png');
+			expect(await readBody(res)).toEqual(dummyBuffer);
 		});
 
-		test('GET /files/:key 外部リンクを Range で部分配信する', async () => {
+		test('外部リンクを Range で部分配信する', async () => {
 			const accessKey = randomString();
 			await insertDriveFile({
 				accessKey,
@@ -564,23 +416,18 @@ describe('FileServerService', () => {
 				name: 'remote.png',
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${accessKey}`,
-				headers: {
-					range: 'bytes=0-3',
-				},
-			});
+			const res = await app.request(`/files/${accessKey}`, { headers: { range: 'bytes=0-3' } });
 
-			expect(res.statusCode).toBe(206);
-			expect(res.headers['content-range']).toBe(`bytes 0-3/${dummyBuffer.length}`);
-			expect(res.headers['accept-ranges']).toBe('bytes');
-			expect(res.headers['content-length']).toBe(String(dummyBuffer.length));
-			expect(res.headers['content-type']).toBe('image/png');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
+			expect(res.status).toBe(206);
+			expect(res.headers.get('content-range')).toBe(`bytes 0-3/${dummyBuffer.length}`);
+			expect(res.headers.get('accept-ranges')).toBe('bytes');
+			expect(res.headers.get('content-length')).toBe(String(dummyBuffer.length));
+			expect(res.headers.get('content-type')).toBe('image/png');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(await readBody(res)).toEqual(dummyBuffer.subarray(0, 4));
 		});
 
-		test('GET /files/:key thumbnail は mediaProxy/static.webp にリダイレクトする', async () => {
+		test('thumbnail は mediaProxy/static.webp にリダイレクトする', async () => {
 			const accessKey = randomString();
 			const thumbnailKey = randomString();
 			await insertDriveFile({
@@ -592,18 +439,15 @@ describe('FileServerService', () => {
 				name: 'remote.png',
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${thumbnailKey}`,
-			});
+			const res = await app.request(`/files/${thumbnailKey}`);
 
-			expect(res.statusCode).toBe(301);
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers.location).toContain(`${config.mediaProxy}/static.webp`);
-			expect(res.headers.location).toContain('static=1');
+			expect(res.status).toBe(301);
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('location') ?? '').toContain(`${config.mediaProxy}/static.webp`);
+			expect(res.headers.get('location') ?? '').toContain('static=1');
 		});
 
-		test('GET /files/:key webpublic svg は mediaProxy/svg.webp にリダイレクトする', async () => {
+		test('webpublic svg は mediaProxy/svg.webp にリダイレクトする', async () => {
 			const accessKey = randomString();
 			const webpublicKey = randomString();
 			await insertDriveFile({
@@ -616,188 +460,144 @@ describe('FileServerService', () => {
 				type: 'image/svg+xml',
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/files/${webpublicKey}`,
-			});
+			const res = await app.request(`/files/${webpublicKey}`);
 
-			expect(res.statusCode).toBe(301);
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers.location).toContain(`${config.mediaProxy}/svg.webp`);
+			expect(res.status).toBe(301);
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('location') ?? '').toContain(`${config.mediaProxy}/svg.webp`);
 		});
 	});
 
 	describe('GET /files/:key/*', () => {
-		test('GET /files/:key/* 正規の /files/:key にリダイレクトする', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: '/files/testkey/extra/path',
-			});
+		test('正規の /files/:key にリダイレクトする', async () => {
+			const res = await app.request('/files/testkey/extra/path');
 
-			expect(res.statusCode).toBe(301);
-			expect(res.headers.location).toBe(`${config.url}/files/testkey`);
-			expect(res.headers['content-security-policy']).toBe('default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'');
+			expect(res.status).toBe(301);
+			expect(res.headers.get('location')).toBe(`${config.url}/files/testkey`);
+			expect(res.headers.get('content-security-policy')).toBe(CSP);
 		});
 	});
 
 	describe('GET /proxy/:url*', () => {
-		test('GET /proxy/:url* 外部メディアプロキシへリダイレクトする', async () => {
-			const res = await externalHonoServer.inject({
-				method: 'GET',
-				url: '/proxy/path-part?url=https%3A%2F%2Fexample.com%2Fimg.png&static=1',
-			});
+		test('外部メディアプロキシへリダイレクトする', async () => {
+			const res = await externalApp.request('/proxy/path-part?url=https%3A%2F%2Fexample.com%2Fimg.png&static=1');
 
-			expect(res.statusCode).toBe(301);
-			expect(res.headers['cache-control']).toBe('public, max-age=259200');
-			expect(res.headers.location).toContain('https://media-proxy.test/');
-			expect(res.headers.location).toContain('url=https%3A%2F%2Fexample.com%2Fimg.png');
-			expect(res.headers.location).toContain('static=1');
-			expect(res.headers['content-security-policy']).toBe('default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'');
+			expect(res.status).toBe(301);
+			expect(res.headers.get('cache-control')).toBe('public, max-age=259200');
+			expect(res.headers.get('location') ?? '').toContain('https://media-proxy.test/');
+			expect(res.headers.get('location') ?? '').toContain('url=https%3A%2F%2Fexample.com%2Fimg.png');
+			expect(res.headers.get('location') ?? '').toContain('static=1');
+			expect(res.headers.get('content-security-policy')).toBe(CSP);
 		});
 
-		test('GET /proxy/:url* misskey User-Agent を拒否する', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: '/proxy/any?url=https%3A%2F%2Fexample.com%2Fimg.png',
-				headers: {
-					'user-agent': 'misskey/1.0',
-				},
+		test('misskey User-Agent を拒否する', async () => {
+			const res = await app.request('/proxy/any?url=https%3A%2F%2Fexample.com%2Fimg.png', {
+				headers: { 'user-agent': 'misskey/1.0' },
 			});
 
-			expect(res.statusCode).toBe(403);
-			expect(res.headers['cache-control']).toBe('max-age=300');
+			expect(res.status).toBe(403);
+			expect(res.headers.get('cache-control')).toBe('max-age=300');
 		});
 
-		test('GET /proxy/:url* origin 指定時は User-Agent 必須を検証する', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: '/proxy/any?url=https%3A%2F%2Fexample.com%2Fimg.png&origin=1',
-				headers: {
-					'user-agent': '',
-				},
+		test('origin 指定時は User-Agent 必須を検証する', async () => {
+			const res = await app.request('/proxy/any?url=https%3A%2F%2Fexample.com%2Fimg.png&origin=1', {
+				headers: { 'user-agent': '' },
 			});
 
-			expect(res.statusCode).toBe(400);
-			expect(res.headers['cache-control']).toBe('max-age=300');
-			expect(res.headers.location).toBeUndefined();
-			expect(res.headers['content-security-policy']).toBe('default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'');
+			expect(res.status).toBe(400);
+			expect(res.headers.get('cache-control')).toBe('max-age=300');
+			expect(res.headers.get('location')).toBeNull();
+			expect(res.headers.get('content-security-policy')).toBe(CSP);
 		});
 
-		test('GET /proxy/:url* emoji 指定で非画像は 404 を返す', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/proxy/any?url=${encodeURIComponent(remoteTextUrl)}&emoji=1`,
-				headers: {
-					'user-agent': 'Mozilla/5.0',
-				},
+		test('emoji 指定で非画像は 404 を返す', async () => {
+			const res = await app.request(`/proxy/any?url=${encodeURIComponent(remoteTextUrl)}&emoji=1`, {
+				headers: { 'user-agent': 'Mozilla/5.0' },
 			});
 
-			expect(res.statusCode).toBe(404);
-			expect(res.headers['cache-control']).toBe('max-age=300');
+			expect(res.status).toBe(404);
+			expect(res.headers.get('cache-control')).toBe('max-age=300');
 		});
 
-		test('GET /proxy/:url* 非画像は 403 を返す', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/proxy/any?url=${encodeURIComponent(remoteTextUrl)}`,
-				headers: {
-					'user-agent': 'Mozilla/5.0',
-				},
+		test('非画像は 403 を返す', async () => {
+			const res = await app.request(`/proxy/any?url=${encodeURIComponent(remoteTextUrl)}`, {
+				headers: { 'user-agent': 'Mozilla/5.0' },
 			});
 
-			expect(res.statusCode).toBe(403);
-			expect(res.headers['cache-control']).toBe('max-age=300');
+			expect(res.status).toBe(403);
+			expect(res.headers.get('cache-control')).toBe('max-age=300');
 		});
 
-		test('GET /proxy/:url* emoji static で webp を返す', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/proxy/any?url=${encodeURIComponent(remotePngUrl)}&emoji=1&static=1`,
-				headers: {
-					'user-agent': 'Mozilla/5.0',
-				},
+		test('emoji static で webp を返す', async () => {
+			const res = await app.request(`/proxy/any?url=${encodeURIComponent(remotePngUrl)}&emoji=1&static=1`, {
+				headers: { 'user-agent': 'Mozilla/5.0' },
 			});
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-type']).toBe('image/webp');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers['content-disposition'] ?? '').toContain('dummy.png.webp');
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toBe('image/webp');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-disposition') ?? '').toContain('dummy.png.webp');
+			expectWebp(await readBody(res));
 		});
 
-		test('GET /proxy/:url* avatar static で webp を返す', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/proxy/any?url=${encodeURIComponent(remotePngUrl)}&avatar=1&static=1`,
-				headers: {
-					'user-agent': 'Mozilla/5.0',
-				},
+		test('avatar static で webp を返す', async () => {
+			const res = await app.request(`/proxy/any?url=${encodeURIComponent(remotePngUrl)}&avatar=1&static=1`, {
+				headers: { 'user-agent': 'Mozilla/5.0' },
 			});
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-type']).toBe('image/webp');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers['content-disposition'] ?? '').toContain('dummy.png.webp');
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toBe('image/webp');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-disposition') ?? '').toContain('dummy.png.webp');
+			expectWebp(await readBody(res));
 		});
 
-		test('GET /proxy/:url* static で webp を返す', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/proxy/any?url=${encodeURIComponent(remotePngUrl)}&static=1`,
-				headers: {
-					'user-agent': 'Mozilla/5.0',
-				},
+		test('static で webp を返す', async () => {
+			const res = await app.request(`/proxy/any?url=${encodeURIComponent(remotePngUrl)}&static=1`, {
+				headers: { 'user-agent': 'Mozilla/5.0' },
 			});
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-type']).toBe('image/webp');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers['content-disposition'] ?? '').toContain('dummy.png.webp');
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toBe('image/webp');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-disposition') ?? '').toContain('dummy.png.webp');
+			expectWebp(await readBody(res));
 		});
 
-		test('GET /proxy/:url* preview で webp を返す', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/proxy/any?url=${encodeURIComponent(remotePngUrl)}&preview=1`,
-				headers: {
-					'user-agent': 'Mozilla/5.0',
-				},
+		test('preview で webp を返す', async () => {
+			const res = await app.request(`/proxy/any?url=${encodeURIComponent(remotePngUrl)}&preview=1`, {
+				headers: { 'user-agent': 'Mozilla/5.0' },
 			});
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-type']).toBe('image/webp');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers['content-disposition'] ?? '').toContain('dummy.png.webp');
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toBe('image/webp');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-disposition') ?? '').toContain('dummy.png.webp');
+			expectWebp(await readBody(res));
 		});
 
-		test('GET /proxy/:url* svg を webp に変換する', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/proxy/any?url=${encodeURIComponent(remoteSvgUrl)}`,
-				headers: {
-					'user-agent': 'Mozilla/5.0',
-				},
+		test('svg を webp に変換する', async () => {
+			const res = await app.request(`/proxy/any?url=${encodeURIComponent(remoteSvgUrl)}`, {
+				headers: { 'user-agent': 'Mozilla/5.0' },
 			});
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-type']).toBe('image/webp');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers['content-disposition'] ?? '').toContain('dummy.svg.webp');
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toBe('image/webp');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-disposition') ?? '').toContain('dummy.svg.webp');
+			expectWebp(await readBody(res));
 		});
 
-		test('GET /proxy/:url* badge で低エントロピー画像は 404 を返す', async () => {
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/proxy/any?url=${encodeURIComponent(remoteFlatPngUrl)}&badge=1`,
-				headers: {
-					'user-agent': 'Mozilla/5.0',
-				},
+		test('badge で低エントロピー画像は 404 を返す', async () => {
+			const res = await app.request(`/proxy/any?url=${encodeURIComponent(remoteFlatPngUrl)}&badge=1`, {
+				headers: { 'user-agent': 'Mozilla/5.0' },
 			});
 
-			expect(res.statusCode).toBe(404);
-			expect(res.headers['cache-control']).toBe('max-age=300');
+			expect(res.status).toBe(404);
+			expect(res.headers.get('cache-control')).toBe('max-age=300');
 		});
 
-		test('GET /proxy/:url* 画像をそのまま返す', async () => {
+		test('画像をそのまま返す', async () => {
 			const accessKey = randomString();
 			writeInternalFile(accessKey);
 			await insertDriveFile({
@@ -806,18 +606,15 @@ describe('FileServerService', () => {
 				isLink: false,
 			});
 
-			const res = await honoServer.inject({
-				method: 'GET',
-				url: `/proxy/any?url=${encodeURIComponent(`${config.url}/files/${accessKey}`)}&origin=1`,
-				headers: {
-					'user-agent': 'Mozilla/5.0',
-				},
+			const res = await app.request(`/proxy/any?url=${encodeURIComponent(`${config.url}/files/${accessKey}`)}&origin=1`, {
+				headers: { 'user-agent': 'Mozilla/5.0' },
 			});
 
-			expect(res.statusCode).toBe(200);
-			expect(res.headers['content-type']).toBe('image/png');
-			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
-			expect(res.headers['content-disposition'] ?? '').toContain('dummy.png');
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toBe('image/png');
+			expect(res.headers.get('cache-control')).toBe('max-age=31536000, immutable');
+			expect(res.headers.get('content-disposition') ?? '').toContain('dummy.png');
+			expect(await readBody(res)).toEqual(dummyBuffer);
 		});
 	});
 });

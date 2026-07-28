@@ -9,7 +9,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Hono } from 'hono';
 import type { Context as HonoContext } from 'hono';
 import { createMiddleware } from 'hono/factory';
-import { serveStatic } from '@hono/node-server/serve-static';
 import type { Config } from '@/config.js';
 import type { DriveFilesRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
@@ -90,13 +89,16 @@ export class FileServerService {
 		hono.use('/files/*', fileRouteMiddleware, handleRequestRedirectToOmitSearch);
 		hono.use('/proxy/*', fileRouteMiddleware);
 
-		hono.get('/files/app-default.jpg', serveStatic({
-			path: resolve(this.assets, 'dummy.png'),
-			onFound: (_, ctx) => {
-				ctx.header('Content-Type', 'image/jpeg');
-				ctx.header('Cache-Control', 'max-age=31536000, immutable');
-			},
-		}));
+		// serveStaticのonFoundは応答の生成後に呼ばれ、そこで指定したheaderは反映されないため、
+		// 固定のassetは自前で読み出してheaderごと組み立てる。
+		hono.get('/files/app-default.jpg', async (ctx) => {
+			const fileBuffer = await fsp.readFile(resolve(this.assets, 'dummy.png'));
+			return ctx.body(bufferToWebStream(fileBuffer), 200, {
+				'Content-Type': 'image/jpeg',
+				'Content-Length': fileBuffer.length.toString(),
+				'Cache-Control': 'max-age=31536000, immutable',
+			});
+		});
 
 		hono.get('/files/:key', this.driveHandler.handle);
 		hono.get('/files/:key/*', (ctx) => {
