@@ -290,6 +290,56 @@ describe('FileServerService', () => {
 			expect(await readBody(res)).toEqual(dummyBuffer);
 		});
 
+		test('末尾ちょうどを指す Range でも Content-Length がずれない', async () => {
+			const accessKey = randomString();
+			writeInternalFile(accessKey);
+			await insertDriveFile({
+				accessKey,
+				storedInternal: true,
+				isLink: false,
+			});
+
+			const res = await app.request(`/files/${accessKey}`, { headers: { range: `bytes=0-${dummySize}` } });
+
+			expect(res.status).toBe(206);
+			expect(res.headers.get('content-range')).toBe(`bytes 0-${dummySize - 1}/${dummySize}`);
+			expect(res.headers.get('content-length')).toBe(String(dummySize));
+			expect(await readBody(res)).toEqual(dummyBuffer);
+		});
+
+		test('末尾からのバイト数指定の Range に対応する', async () => {
+			const accessKey = randomString();
+			writeInternalFile(accessKey);
+			await insertDriveFile({
+				accessKey,
+				storedInternal: true,
+				isLink: false,
+			});
+
+			const res = await app.request(`/files/${accessKey}`, { headers: { range: 'bytes=-4' } });
+
+			expect(res.status).toBe(206);
+			expect(res.headers.get('content-range')).toBe(`bytes ${dummySize - 4}-${dummySize - 1}/${dummySize}`);
+			expect(res.headers.get('content-length')).toBe('4');
+			expect(await readBody(res)).toEqual(dummyBuffer.subarray(-4));
+		});
+
+		test('解釈できない Range は無視して全体を返す', async () => {
+			const accessKey = randomString();
+			writeInternalFile(accessKey);
+			await insertDriveFile({
+				accessKey,
+				storedInternal: true,
+				isLink: false,
+			});
+
+			const res = await app.request(`/files/${accessKey}`, { headers: { range: 'bytes=abc-def' } });
+
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-range')).toBeNull();
+			expect(await readBody(res)).toEqual(dummyBuffer);
+		});
+
 		test('thumbnail の Range で部分配信する', async () => {
 			const accessKey = randomString();
 			const thumbnailKey = randomString();

@@ -8,6 +8,7 @@ import type { IncomingMessage } from 'node:http';
 import { Inject, Injectable } from '@nestjs/common';
 import { Hono } from 'hono';
 import { accepts } from 'hono/accepts';
+import { bodyLimit } from 'hono/body-limit';
 import httpSignature from '@peertube/http-signature';
 import { Brackets, In, IsNull, LessThan, Not } from 'typeorm';
 import secureJson from 'secure-json-parse';
@@ -35,6 +36,8 @@ import type { Context as HonoContext } from 'hono';
 import type { FindOptionsWhere } from 'typeorm';
 
 const ACTIVITY_JSON = 'application/activity+json';
+/** inboxが受け付ける本文の上限 */
+const INBOX_MAX_BODY_SIZE = 1024 * 64;
 const LD_JSON = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
 
 @Injectable()
@@ -558,7 +561,8 @@ export class ActivityPubServerService {
 			return ctx.body(null, 400);
 		}
 
-		if (rawBody.length > 1024 * 64) {
+		// 通常はbodyLimit middlewareが読み込み前に弾くが、念のためここでも確認する
+		if (rawBody.length > INBOX_MAX_BODY_SIZE) {
 			return ctx.body(null, 413);
 		}
 
@@ -763,13 +767,19 @@ export class ActivityPubServerService {
 
 		hono.options('*', (ctx) => ctx.body(null, 204));
 
-		hono.post('/inbox', async (ctx) => {
+		// 本文を読み込む前にサイズ超過を弾く (content-lengthがあれば即座に、無ければ読み込みながら判定される)
+		const inboxBodyLimit = bodyLimit({
+			maxSize: INBOX_MAX_BODY_SIZE,
+			onError: (ctx) => ctx.body(null, 413),
+		});
+
+		hono.post('/inbox', inboxBodyLimit, async (ctx) => {
 			const parsed = await this.parseActivityPubBody(ctx);
 			if (parsed instanceof Response) return parsed;
 			return this.inbox(ctx, parsed.body, parsed.rawBody);
 		});
 
-		hono.post('/users/:user/inbox', async (ctx) => {
+		hono.post('/users/:user/inbox', inboxBodyLimit, async (ctx) => {
 			const parsed = await this.parseActivityPubBody(ctx);
 			if (parsed instanceof Response) return parsed;
 			return this.inbox(ctx, parsed.body, parsed.rawBody);

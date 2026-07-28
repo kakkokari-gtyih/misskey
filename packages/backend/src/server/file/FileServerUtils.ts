@@ -4,7 +4,7 @@
  */
 
 import * as fs from 'node:fs';
-import type { Readable as NodeReadableStream } from 'node:stream';
+import { Readable } from 'node:stream';
 import { FILE_TYPE_BROWSERSAFE } from '@/const.js';
 import { contentDisposition } from '@/misc/content-disposition.js';
 import type { IImageStreamable } from '@/core/ImageProcessingService.js';
@@ -18,20 +18,8 @@ export type RangeStream = {
 };
 
 /** Node FS Streamから、Web標準のReadableStreamに変換するユーティリティ */
-export function nodeStreamToWebStream(stream: NodeReadableStream): ReadableStream<Uint8Array> {
-	return new ReadableStream<Uint8Array>({
-		start(controller) {
-			stream.on('data', (chunk) => {
-				controller.enqueue(new Uint8Array(typeof chunk === 'string' ? Buffer.from(chunk) : chunk));
-			});
-			stream.on('end', () => {
-				controller.close();
-			});
-			stream.on('error', (err) => {
-				controller.error(err);
-			});
-		},
-	});
+export function nodeStreamToWebStream(stream: Readable): ReadableStream<Uint8Array> {
+	return Readable.toWeb(stream) as ReadableStream<Uint8Array>;
 }
 
 /** Bufferから、Web標準のReadableStreamに変換するユーティリティ */
@@ -46,21 +34,38 @@ export function bufferToWebStream(data: Buffer): ReadableStream<Uint8Array> {
 
 /**
  * Range リクエストに対応したストリームを作成する
+ *
+ * 解釈できないRangeや満たせないRangeの場合はnullを返す。
+ * (RFC 9110では不正なRangeヘッダーは無視して全体を返してよいとされている)
  */
-export function createRangeStream(rangeHeader: string, size: number, path: string): RangeStream {
-	const parts = rangeHeader.replace(/bytes=/, '').split('-');
-	const start = parseInt(parts[0], 10);
-	let end = parts[1] ? parseInt(parts[1], 10) : size - 1;
-	if (end > size) {
+export function createRangeStream(rangeHeader: string, size: number, path: string): RangeStream | null {
+	// 複数レンジ (bytes=0-1,4-5) には対応せず、単一レンジのみ受け付ける
+	const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+	if (match == null || size <= 0) return null;
+
+	const [, rawStart, rawEnd] = match;
+
+	let start: number;
+	let end: number;
+	if (rawStart === '') {
+		// 末尾からのバイト数指定 (bytes=-500)
+		const suffixLength = Number(rawEnd);
+		if (rawEnd === '' || suffixLength <= 0) return null;
+		start = Math.max(size - suffixLength, 0);
 		end = size - 1;
+	} else {
+		start = Number(rawStart);
+		// ファイル末尾を超える終端は、実際の末尾へ丸める
+		end = rawEnd === '' ? size - 1 : Math.min(Number(rawEnd), size - 1);
 	}
-	const chunksize = end - start + 1;
+
+	if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || start >= size) return null;
 
 	return {
 		stream: fs.createReadStream(path, { start, end }),
 		start,
 		end,
-		chunksize,
+		chunksize: end - start + 1,
 	};
 }
 
@@ -94,13 +99,15 @@ export function handleRangeRequest(
 	path: string,
 ) {
 	const rangeHeader = ctx.req.header('Range');
-	if (rangeHeader && size > 0) {
-		const { stream, start, end, chunksize } = createRangeStream(rangeHeader, size, path);
-		ctx.header('Content-Range', `bytes ${start}-${end}/${size}`);
-		ctx.header('Accept-Ranges', 'bytes');
-		ctx.header('Content-Length', chunksize.toString());
-		ctx.status(206);
-		return stream;
+	if (rangeHeader != null) {
+		const range = createRangeStream(rangeHeader, size, path);
+		if (range != null) {
+			ctx.header('Content-Range', `bytes ${range.start}-${range.end}/${size}`);
+			ctx.header('Accept-Ranges', 'bytes');
+			ctx.header('Content-Length', range.chunksize.toString());
+			ctx.status(206);
+			return range.stream;
+		}
 	}
 	return fs.createReadStream(path);
 }

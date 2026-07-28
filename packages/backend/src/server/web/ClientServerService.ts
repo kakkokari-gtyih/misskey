@@ -233,15 +233,15 @@ export class ClientServerService {
 		if (this.config.frontendEmbedManifestExists) {
 			this.clientLoggerService.logger.info(`[ClientServerService] Using built frontend vite assets. ${this.frontendViteOut}`);
 
-			hono.get('/vite/*', staticHeaders({ 'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable` }), serveStatic({
+			hono.get('/vite/*', handleRequestRedirectToOmitSearch, staticHeaders({ 'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable` }), serveStatic({
 				root: this.frontendViteOut,
 				rewriteRequestPath: rewriteStaticPath('/vite'),
-			}), handleRequestRedirectToOmitSearch, staticAssetNotFound);
+			}), staticAssetNotFound);
 
-			hono.get('/embed_vite/*', staticHeaders({ 'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable` }), serveStatic({
+			hono.get('/embed_vite/*', handleRequestRedirectToOmitSearch, staticHeaders({ 'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable` }), serveStatic({
 				root: this.frontendEmbedViteOut,
 				rewriteRequestPath: rewriteStaticPath('/embed_vite'),
-			}), handleRequestRedirectToOmitSearch, staticAssetNotFound);
+			}), staticAssetNotFound);
 		} else {
 			this.clientLoggerService.logger.info(`[ClientServerService] Proxying to Vite dev server. ${configUrl.origin}`);
 
@@ -286,10 +286,10 @@ export class ClientServerService {
 			rewriteRequestPath: rewriteStaticPath('/assets'),
 		}), staticAssetNotFound);
 
-		hono.get('/tarball/*', staticHeaders({ 'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable` }), serveStatic({
+		hono.get('/tarball/*', handleRequestRedirectToOmitSearch, staticHeaders({ 'Cache-Control': `max-age=${ms('30 days') / 1000}, immutable` }), serveStatic({
 			root: this.tarball,
 			rewriteRequestPath: rewriteStaticPath('/tarball'),
-		}), handleRequestRedirectToOmitSearch, staticAssetNotFound);
+		}), staticAssetNotFound);
 
 		hono.get('/favicon.ico', serveStatic({
 			path: resolve(this.staticAssets, 'favicon.ico'),

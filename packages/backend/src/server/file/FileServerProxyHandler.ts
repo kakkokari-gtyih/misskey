@@ -243,19 +243,21 @@ export class FileServerProxyHandler {
 		ctx: HonoContext,
 	): IImageStreamable {
 		const rangeHeader = ctx.req.header('Range');
-		if (rangeHeader != null && 'file' in file && file.file.size > 0) {
-			const { stream, start, end, chunksize } = createRangeStream(rangeHeader, file.file.size, file.path);
+		if (rangeHeader != null && 'file' in file) {
+			const range = createRangeStream(rangeHeader, file.file.size, file.path);
 
-			ctx.header('Content-Range', `bytes ${start}-${end}/${file.file.size}`);
-			ctx.header('Accept-Ranges', 'bytes');
-			ctx.header('Content-Length', chunksize.toString());
-			ctx.status(206);
+			if (range != null) {
+				ctx.header('Content-Range', `bytes ${range.start}-${range.end}/${file.file.size}`);
+				ctx.header('Accept-Ranges', 'bytes');
+				ctx.header('Content-Length', range.chunksize.toString());
+				ctx.status(206);
 
-			return {
-				data: stream,
-				ext: file.ext,
-				type: file.mime,
-			};
+				return {
+					data: range.stream,
+					ext: file.ext,
+					type: file.mime,
+				};
+			}
 		}
 
 		return {

@@ -138,25 +138,23 @@ export class NodeinfoServerService {
 
 		hono.get(nodeinfo2_1path, async (ctx) => {
 			const base = await cache.fetch(() => this.generateNodeinfoDocument(21));
-			ctx.header('Content-Type', 'application/json; profile="http://nodeinfo.diaspora.software/ns/schema/2.1#"');
 			ctx.header('Cache-Control', 'public, max-age=600');
 			ctx.header('Access-Control-Allow-Headers', 'Accept');
 			ctx.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
 			ctx.header('Access-Control-Allow-Origin', '*');
 			ctx.header('Access-Control-Expose-Headers', 'Vary');
-			return ctx.json({ version: '2.1', ...base });
+			return ctx.json({ version: '2.1', ...base }, 200, { 'Content-Type': 'application/json; profile="http://nodeinfo.diaspora.software/ns/schema/2.1#"' });
 		});
 
 		hono.get(nodeinfo2_0path, async (ctx) => {
 			const base = await cache.fetch(() => this.generateNodeinfoDocument(20));
 			delete (base as any).software.repository;
-			ctx.header('Content-Type', 'application/json; profile="http://nodeinfo.diaspora.software/ns/schema/2.0#"');
 			ctx.header('Cache-Control', 'public, max-age=600');
 			ctx.header('Access-Control-Allow-Headers', 'Accept');
 			ctx.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
 			ctx.header('Access-Control-Allow-Origin', '*');
 			ctx.header('Access-Control-Expose-Headers', 'Vary');
-			return ctx.json({ version: '2.0', ...base });
+			return ctx.json({ version: '2.0', ...base }, 200, { 'Content-Type': 'application/json; profile="http://nodeinfo.diaspora.software/ns/schema/2.0#"' });
 		});
 
 		return hono;

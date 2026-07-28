@@ -81,7 +81,6 @@ export class WellKnownServerService {
 				return ctx.body(null, 403);
 			}
 
-			ctx.header('Content-Type', 'application/json');
 			return ctx.json({
 				links: [{
 					rel: 'lrdd',
@@ -180,11 +179,10 @@ hono.get('/.well-known/change-password', async (ctx) => {
 					{ element: 'Link', attributes: profilePage },
 					{ element: 'Link', attributes: subscribe }));
 			} else {
-				ctx.header('Content-Type', jrd);
 				return ctx.json({
 					subject,
 					links: [self, profilePage, subscribe],
-				});
+				}, 200, { 'Content-Type': jrd });
 			}
 		});
 

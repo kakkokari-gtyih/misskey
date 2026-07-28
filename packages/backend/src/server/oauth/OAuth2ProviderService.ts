@@ -378,8 +378,7 @@ function redirectWithQuery(ctx: HonoContext, redirectUriString: string, payload:
 		redirectUri.searchParams.set(key, value);
 	}
 
-	ctx.status(302);
-	return ctx.redirect(redirectUri.toString());
+	return ctx.redirect(redirectUri.toString(), 302);
 }
 
 @Injectable()
@@ -583,7 +582,6 @@ export class OAuth2ProviderService implements OnApplicationShutdown {
 						error: 'access_denied',
 						...(transaction.request.state ? { state: transaction.request.state } : {}),
 					}, this.config.url));
-					return;
 				}
 
 				const loginToken = firstValue(body.login_token);
