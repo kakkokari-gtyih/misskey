@@ -192,9 +192,7 @@ export class ApiCallService implements OnApplicationShutdown {
 		if (multipartData == null) {
 			return ctx.body(null, 400);
 		}
-
 		const [path, cleanup] = await createTemp();
-		await stream.pipeline(multipartData.file, fs.createWriteStream(path));
 
 		if (multipartData.truncated) {
 			cleanup();
@@ -212,6 +210,7 @@ export class ApiCallService implements OnApplicationShutdown {
 			? authorization.slice(7)
 			: fields['i'];
 		if (token != null && typeof token !== 'string') {
+			cleanup();
 			return ctx.body(null, 400);
 		}
 

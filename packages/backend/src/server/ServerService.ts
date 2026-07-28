@@ -34,6 +34,7 @@ import { OpenApiServerService } from './api/openapi/OpenApiServerService.js';
 import { OAuth2ProviderService } from './oauth/OAuth2ProviderService.js';
 import { ApiEnv } from './api/ApiServerTypes.js';
 import { registerHttpServerInstrumentation } from './http-server-instrumentation.js';
+import { registerHttpAccessLog } from './http-access-log.js';
 
 @Injectable()
 export class ServerService implements OnApplicationShutdown {
@@ -86,6 +87,7 @@ export class ServerService implements OnApplicationShutdown {
 			await next();
 		});
 		await registerHttpServerInstrumentation(hono, this.config);
+		registerHttpAccessLog(fastify);
 
 		if (this.config.url.startsWith('https') && !this.config.disableHsts) {
 			hono.use(async (ctx, next) => {
