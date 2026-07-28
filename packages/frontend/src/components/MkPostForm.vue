@@ -619,11 +619,22 @@ const attaches = computed<Attach[]>({
 function handleShowUploaderMenu(item: UploaderItem, ev: MouseEvent | KeyboardEvent) {
 	if (props.mock) return;
 	os.popupMenu(uploader.getMenu(item, async () => {
+		function getFileType(attach: Attach): 'image' | 'video' | null {
+			if (attach.type === 'driveFile') {
+				if (attach.file.type.startsWith('image/')) return 'image';
+				if (attach.file.type.startsWith('video/')) return 'video';
+			} else if (attach.type === 'uploaderItem') {
+				if (attach.file.file.type.startsWith('image/')) return 'image';
+				if (attach.file.file.type.startsWith('video/')) return 'video';
+			}
+			return null;
+		}
+
 		const contents = attaches.value
-			.filter(item => (item.type.startsWith('image/') || item.type.startsWith('video/')))
+			.filter(item => getFileType(item) != null)
 			.map<Content>(item => ({
 				id: item.file.id,
-				type: item.type.startsWith('video') ? 'video' as const : 'image' as const,
+				type: getFileType(item) ?? 'image',
 				url: item.type === 'driveFile' ? item.file.url : item.file.objectUrl,
 				thumbnailUrl: item.type === 'driveFile' ? item.file.thumbnailUrl : item.file.thumbnail,
 				width: item.type === 'driveFile' ? item.file.properties.width : null,

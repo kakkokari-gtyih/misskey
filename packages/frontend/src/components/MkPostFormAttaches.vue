@@ -225,11 +225,22 @@ function showFileMenu(attach: Attach, ev: MouseEvent | KeyboardEvent): void {
 				text: i18n.ts.preview,
 				icon: 'ti ti-photo-search',
 				action: async () => {
+					function getFileType(attach: Attach): 'image' | 'video' | null {
+						if (attach.type === 'driveFile') {
+							if (attach.file.type.startsWith('image/')) return 'image';
+							if (attach.file.type.startsWith('video/')) return 'video';
+						} else if (attach.type === 'uploaderItem') {
+							if (attach.file.file.type.startsWith('image/')) return 'image';
+							if (attach.file.file.type.startsWith('video/')) return 'video';
+						}
+						return null;
+					}
+
 					const contents = props.modelValue
-						.filter(item => (item.type.startsWith('image/') || item.type.startsWith('video/')))
+						.filter(item => getFileType(item) != null)
 						.map<Content>(item => ({
 							id: item.file.id,
-							type: item.type.startsWith('video') ? 'video' as const : 'image' as const,
+							type: getFileType(item) ?? 'image',
 							url: item.type === 'driveFile' ? item.file.url : item.file.objectUrl,
 							thumbnailUrl: item.type === 'driveFile' ? item.file.thumbnailUrl : item.file.thumbnail,
 							width: item.type === 'driveFile' ? item.file.properties.width : null,
