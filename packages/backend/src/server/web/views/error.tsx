@@ -3,18 +3,21 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { raw } from 'hono/utils/html';
 import { comment } from '@/server/web/views/_.js';
-import type { CommonPropsMinimum } from '@/server/web/views/_.js';
 
 export function ErrorPage(props: {
 	title?: string;
 	code: string;
 	id: string;
 }) {
+	const doctypeTag = raw('<!DOCTYPE html>');
+	const commentTag = raw(comment);
+
 	return (
 		<>
-			{'<!DOCTYPE html>'}
-			{comment}
+			{doctypeTag}
+			{commentTag}
 			<html>
 				<head>
 					<meta charset="UTF-8" />

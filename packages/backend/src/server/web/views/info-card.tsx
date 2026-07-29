@@ -3,19 +3,21 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { raw } from 'hono/utils/html';
 import { comment, CommonPropsMinimum } from '@/server/web/views/_.js';
 import type { MiMeta } from '@/models/Meta.js';
 
 export function InfoCardPage(props: CommonPropsMinimum<{
 	meta: MiMeta;
 }>) {
-	// 変数名をsafeで始めることでエラーをスキップ
-	const safeDescription = props.meta.description;
+	const doctypeTag = raw('<!DOCTYPE html>');
+	const commentTag = raw(comment);
+	const description = raw(props.meta.description ?? '');
 
 	return (
 		<>
-			{'<!DOCTYPE html>'}
-			{comment}
+			{doctypeTag}
+			{commentTag}
 			<html>
 				<head>
 					<meta charset="UTF-8" />
@@ -31,7 +33,7 @@ export function InfoCardPage(props: CommonPropsMinimum<{
 						</header>
 					</a>
 					<div id="content">
-						<div id="description">{safeDescription}</div>
+						<div id="description">{description}</div>
 					</div>
 				</body>
 			</html>
