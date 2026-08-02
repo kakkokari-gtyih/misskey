@@ -224,19 +224,22 @@ const isVideoPlaying = computed(() => videoControl.value?.isPlaying ?? false);
 const isVideoActuallyPlaying = computed(() => videoControl.value?.isActuallyPlaying ?? false);
 let canOpenAnimation = false;
 
-const videoAspectRatio = ref<number | null>(
+/** コンテンツの原寸サイズ。動画でドライブ上のメタデータが無い場合のみ、後から確定する */
+const naturalSize = ref<Size | null>(
 	props.content.width != null && props.content.height != null && props.content.width > 0 && props.content.height > 0
-		? props.content.width / props.content.height
+		? { width: props.content.width, height: props.content.height }
 		: null
 );
+
+const videoAspectRatio = computed(() => naturalSize.value != null ? naturalSize.value.width / naturalSize.value.height : null);
 
 function onVideoLoadedMetadata() {
 	originalContentLoaded.value = true;
 
-	// ドライブ上のメタデータが無い場合に限り、動画自体の初期サイズから縦横比を確定させる
-	if (videoAspectRatio.value != null) return;
+	// ドライブ上のメタデータが無い場合に限り、動画自体の初期サイズから原寸サイズを確定させる
+	if (naturalSize.value != null) return;
 	if (videoEl.value == null || videoEl.value.videoWidth === 0 || videoEl.value.videoHeight === 0) return;
-	videoAspectRatio.value = videoEl.value.videoWidth / videoEl.value.videoHeight;
+	naturalSize.value = { width: videoEl.value.videoWidth, height: videoEl.value.videoHeight };
 }
 
 const headerSize = 30;
@@ -254,33 +257,54 @@ const padding = deviceKind === 'smartphone' ? {
 	left: 30,
 };
 
-// maxからはみ出す場合は縮小、maxに満たない場合は拡大する(contain)
-function calcContentRenderingSize(content: Content) {
-	if (content.width == null || content.height == null || content.width === 0 || content.height === 0) return null;
+const MIN_CONTENT_SIZE_RATIO = 0.4;
+
+// 表示領域からはみ出す場合は縮小する(contain)が、原寸を超えて拡大はしない。
+// ただし原寸が表示領域に対してMIN_CONTENT_SIZE_RATIOに満たないほど小さい場合のみ、その比率まで拡大する
+function calcContentRenderingSize(size: Size | null) {
+	if (size == null) return null;
 
 	const maxWidth = window.innerWidth - padding.left - padding.right;
 	const maxHeight = window.innerHeight - padding.top - padding.bottom;
 
-	const widthRatio = maxWidth / content.width;
-	const heightRatio = maxHeight / content.height;
-	const ratio = widthRatio < heightRatio ? widthRatio : heightRatio;
+	const widthRatio = maxWidth / size.width;
+	const heightRatio = maxHeight / size.height;
+	const containRatio = widthRatio < heightRatio ? widthRatio : heightRatio;
 
-	const width = content.width * ratio;
-	const height = content.height * ratio;
+	const ratio = Math.min(containRatio, Math.max(1, containRatio * MIN_CONTENT_SIZE_RATIO));
+
+	const width = size.width * ratio;
+	const height = size.height * ratio;
 
 	return { width, height };
 }
 
-const contentRenderingSize = calcContentRenderingSize(props.content);
-const getContentRenderingRect = () => contentRenderingSize != null ? {
-	left: (window.innerWidth - contentRenderingSize.width + padding.left - padding.right) / 2,
-	top: (window.innerHeight - contentRenderingSize.height + padding.top - padding.bottom) / 2,
-	width: contentRenderingSize.width,
-	height: contentRenderingSize.height,
+const contentRenderingSize = computed(() => calcContentRenderingSize(naturalSize.value));
+
+const getContentRenderingRect = () => contentRenderingSize.value != null ? {
+	left: (window.innerWidth - contentRenderingSize.value.width + padding.left - padding.right) / 2,
+	top: (window.innerHeight - contentRenderingSize.value.height + padding.top - padding.bottom) / 2,
+	width: contentRenderingSize.value.width,
+	height: contentRenderingSize.value.height,
 } : null;
 
+const contentMaxSize = computed(() => {
+	if (naturalSize.value == null) return null;
+
+	const aspectRatio = naturalSize.value.width / naturalSize.value.height;
+
+	// 表示領域に収めた(contain)ときのサイズ
+	const containedWidth = `min(100cqw, calc(100cqh * ${aspectRatio}))`;
+	const containedHeight = `min(100cqh, calc(100cqw / ${aspectRatio}))`;
+
+	return {
+		width: `max(${naturalSize.value.width}px, calc(${containedWidth} * ${MIN_CONTENT_SIZE_RATIO}))`,
+		height: `max(${naturalSize.value.height}px, calc(${containedHeight} * ${MIN_CONTENT_SIZE_RATIO}))`,
+	};
+});
+
 const hiddenStyle = computed(() => {
-	if (contentRenderingSize == null) {
+	if (contentRenderingSize.value == null) {
 		return {
 			width: '100%',
 			height: '100%',
@@ -288,8 +312,8 @@ const hiddenStyle = computed(() => {
 	}
 
 	return {
-		width: `${contentRenderingSize.width}px`,
-		height: `${contentRenderingSize.height}px`,
+		width: `${contentRenderingSize.value.width}px`,
+		height: `${contentRenderingSize.value.height}px`,
 	};
 });
 
@@ -953,6 +977,8 @@ defineExpose({
 	margin: auto;
 	width: 100%;
 	height: 100%;
+	max-width: v-bind("contentMaxSize?.width ?? 'none'");
+	max-height: v-bind("contentMaxSize?.height ?? 'none'");
 	object-fit: contain;
 }
 
@@ -970,6 +996,7 @@ defineExpose({
 
 .videoSized {
 	width: min(100cqw, calc(100cqh * v-bind("videoAspectRatio ?? 16 / 9")));
+	max-width: v-bind("contentMaxSize?.width ?? 'none'");
 	height: auto;
 	background-color: #000;
 	aspect-ratio: v-bind("videoAspectRatio ?? 16 / 9");
