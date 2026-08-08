@@ -14,12 +14,12 @@ import { sharpBmp } from '@misskey-dev/sharp-read-bmp';
 import * as blurhash from 'blurhash';
 import { Decoder, Demuxer, FilterAPI, Scaler, probe } from 'node-av/api';
 import { AV_PICTURE_TYPE_I } from 'node-av/constants';
-import { AiService } from '@/core/AiService.js';
+import { SensitiveMediaDetectionService } from '@/core/SensitiveMediaDetectionService.js';
 import { LoggerService } from '@/core/LoggerService.js';
 import type Logger from '@/logger.js';
 import { bindThis } from '@/decorators.js';
 import { isMimeImage } from '@/misc/is-mime-image.js';
-import type { Prediction } from '@/core/AiService.js';
+import type { Prediction } from '@/core/SensitiveMediaDetectionService.js';
 import '@/misc/node-av-log.js';
 
 export type FileInfo = {
@@ -73,7 +73,7 @@ export class FileInfoService {
 	private logger: Logger;
 
 	constructor(
-		private aiService: AiService,
+		private sensitiveMediaDetectionService: SensitiveMediaDetectionService,
 		private loggerService: LoggerService,
 	) {
 		this.logger = this.loggerService.getLogger('file-info');
@@ -227,7 +227,7 @@ export class FileInfoService {
 		if (analyzeVideo && (mime === 'image/apng' || mime.startsWith('video/'))) {
 			// 判定対象フレームを選定して正規化済みバッファとして集め、外部サービスへまとめて送る。
 			const frameBuffers = await this.extractFramesForDetection(source);
-			const predictions = await this.aiService.detectSensitiveMany(frameBuffers);
+			const predictions = await this.sensitiveMediaDetectionService.detectSensitiveMany(frameBuffers);
 			const results = predictions.filter((x): x is Prediction[] => x != null).map(x => judgePrediction(x));
 			// 判定に成功したフレームが 0 件のとき（接続先未設定・通信失敗等）は、
 			// Math.ceil(0) との比較が 0 >= 0 で真になり全動画がセンシティブ扱いになってしまうため、
@@ -249,7 +249,7 @@ export class FileInfoService {
 				.flatten({ background: { r: 119, g: 119, b: 119 } }) // 透過部分を18%グレーで塗りつぶす
 				.png()
 				.toBuffer();
-			const result = await this.aiService.detectSensitive(png);
+			const result = await this.sensitiveMediaDetectionService.detectSensitive(png);
 			if (result) {
 				[sensitive, porn] = judgePrediction(result);
 			}
