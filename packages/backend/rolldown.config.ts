@@ -25,7 +25,7 @@ export default defineConfig((args) => {
 		'sharp',
 		'jsdom',
 		're2',
-		/^@seydx\/node-av-.*/,
+		/^node-av(\/|$)/,
 		'ipaddr.js',
 		'file-type',
 		// バンドルするとSentryの自動計装が正しく行われなくなるため外しておく
@@ -80,7 +80,8 @@ export default defineConfig((args) => {
 			},
 			output: {
 				keepNames: true,
-				minify: !isWatchMode,
+				// minify: !isWatchMode,
+				minify: false,
 				sourcemap: isWatchMode,
 				dir: './built',
 				cleanDir: !isWatchMode,
