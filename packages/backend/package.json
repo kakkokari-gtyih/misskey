@@ -147,7 +147,6 @@
 	"devDependencies": {
 		"@kitajs/ts-html-plugin": "4.1.4",
 		"@nestjs/platform-express": "11.1.28",
-		"@rollup/plugin-esm-shim": "0.1.8",
 		"@sentry/vue": "10.65.0",
 		"@sinonjs/fake-timers": "15.4.0",
 		"@types/accepts": "1.3.7",
