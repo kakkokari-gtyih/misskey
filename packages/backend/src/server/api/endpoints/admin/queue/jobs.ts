@@ -21,7 +21,7 @@ export const meta = {
 
 export const paramDef = v.object({
 	queue: v.picklist([...QUEUE_TYPES]),
-	state: v.array(v.picklist(['active', 'wait', 'delayed', 'completed', 'failed', 'paused'])),
+	state: v.array(v.picklist(['active', 'wait', 'delayed', 'completed', 'failed'])),
 	search: v.optional(v.string()),
 });
 
