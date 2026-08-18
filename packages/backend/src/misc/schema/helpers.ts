@@ -48,8 +48,29 @@ export const MISSKEY_ID_REGEX = /^[a-zA-Z0-9]+$/;
 
 /** Unicode コードポイント数を数える */
 export function countCodePoints(value: string): number {
-	// NOTE: 文字列の spread はコードポイント単位で反復する (サロゲートペアを 1 と数える)
-	return [...value].length;
+	return countCodePointsCapped(value, Infinity);
+}
+
+/**
+ * Unicode コードポイント数を `cap + 1` まで数える (超えた時点で打ち切り)。
+ *
+ * `[...value].length` (spread) は呼び出しごとに全コードポイントの配列を確保するため、
+ * リクエスト検証のホットパス (text / cw の長さ検査など) ではアロケーションなしの
+ * ループで数える (AJV の `ucs2length` と同じ方式)。min/max 判定は上限+1 個まで
+ * 数えれば決定できるので、長大な入力でも requirement 分しか走査しない。
+ */
+function countCodePointsCapped(value: string, cap: number): number {
+	let count = 0;
+	for (let i = 0; i < value.length && count <= cap; i++) {
+		const c = value.charCodeAt(i);
+		// high surrogate + low surrogate のペアは 1 コードポイントと数える
+		if (c >= 0xD800 && c <= 0xDBFF && i + 1 < value.length) {
+			const d = value.charCodeAt(i + 1);
+			if (d >= 0xDC00 && d <= 0xDFFF) i++;
+		}
+		count++;
+	}
+	return count;
 }
 
 /**
@@ -122,7 +143,8 @@ export function urlString() {
 export function minCodePoints(requirement: number) {
 	return Object.assign(
 		v.check<string, string>(
-			(input) => countCodePoints(input) >= requirement,
+			// requirement 個数えられた時点で成立が決まる (打ち切り)
+			(input) => countCodePointsCapped(input, requirement) >= requirement,
 			`Invalid length: Expected >=${requirement} code points`,
 		),
 		{ [CODE_POINTS_MARKER]: { bound: 'min', requirement } as CodePointsMarker },
@@ -137,7 +159,8 @@ export function minCodePoints(requirement: number) {
 export function maxCodePoints(requirement: number) {
 	return Object.assign(
 		v.check<string, string>(
-			(input) => countCodePoints(input) <= requirement,
+			// requirement + 1 個目が見つかった時点で違反が決まる (打ち切り)
+			(input) => countCodePointsCapped(input, requirement) <= requirement,
 			`Invalid length: Expected <=${requirement} code points`,
 		),
 		{ [CODE_POINTS_MARKER]: { bound: 'max', requirement } as CodePointsMarker },
