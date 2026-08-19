@@ -1,4 +1,4 @@
-## Unreleased
+## 2026.8.0
 
 ### Note
 - Node.js v22のサポートを終了しました。Node.js v22では動作しません。Node.js v24, v26をご利用ください。
