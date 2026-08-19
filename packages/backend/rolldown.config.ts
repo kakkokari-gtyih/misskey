@@ -80,8 +80,7 @@ export default defineConfig((args) => {
 			},
 			output: {
 				keepNames: true,
-				// minify: !isWatchMode,
-				minify: false,
+				minify: !isWatchMode,
 				sourcemap: isWatchMode,
 				dir: './built',
 				cleanDir: !isWatchMode,
