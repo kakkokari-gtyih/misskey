@@ -34,6 +34,14 @@
 		"generate-api-json": "pnpm compile-config && node ./scripts/generate_api_json.js"
 	},
 	"optionalDependencies": {
+    "@seydx/node-av-darwin-arm64": "6.1.1",
+    "@seydx/node-av-darwin-x64": "6.1.1",
+    "@seydx/node-av-linux-arm64": "6.1.1",
+    "@seydx/node-av-linux-x64": "6.1.1",
+    "@seydx/node-av-win32-arm64-mingw": "6.1.1",
+    "@seydx/node-av-win32-arm64-msvc": "6.1.1",
+    "@seydx/node-av-win32-x64-mingw": "6.1.1",
+    "@seydx/node-av-win32-x64-msvc": "6.1.1",
 		"bufferutil": "4.1.0",
 		"slacc-android-arm-eabi": "0.1.5",
 		"slacc-android-arm64": "0.1.5",
