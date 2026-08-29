@@ -838,6 +838,22 @@ export class ApInboxService {
 			return 'ok: rejected (quoted note is not publicly quotable)';
 		}
 
+		// ホームノートは public の引用を承認しない (ローカルでの引用が home 以下に制限されるのと同じ扱い)
+		// instrument がインラインされていない場合は宛先を判定できないため、自動承認の既定に従って通す
+		if (note.visibility === 'home' && typeof instrument !== 'string') {
+			const publicIds = ['https://www.w3.org/ns/activitystreams#Public', 'as:Public', 'Public'];
+			let isPublicQuote = false;
+			try {
+				isPublicQuote = getApIds(instrument.to).some(id => publicIds.includes(id));
+			} catch {
+				isPublicQuote = false;
+			}
+			if (isPublicQuote) {
+				deliverReject();
+				return 'ok: rejected (home note cannot be quoted publicly)';
+			}
+		}
+
 		// ブロックしている相手には許可しない (スタンプ URL は決定論的なので完全な防御ではない)
 		if (await this.userBlockingService.checkBlocked(note.userId, actor.id)) {
 			deliverReject();
