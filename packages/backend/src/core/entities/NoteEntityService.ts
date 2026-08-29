@@ -414,7 +414,7 @@ export class NoteEntityService implements OnModuleInit {
 			fileIds: note.fileIds,
 			files: packedFiles != null ? this.packAttachedFiles(note.fileIds, packedFiles) : this.driveFileEntityService.packManyByIds(note.fileIds),
 			replyId: note.replyId,
-			renoteId: note.renoteId,
+			renoteId: note.quoteRejected ? null : note.renoteId,
 			channelId: note.channelId ?? undefined,
 			channel: channel ? {
 				id: channel.id,
