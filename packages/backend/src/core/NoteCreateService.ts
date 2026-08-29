@@ -664,6 +664,8 @@ export class NoteCreateService implements OnApplicationShutdown {
 			userId: user.id,
 			localOnly: data.localOnly!,
 			reactionAcceptance: data.reactionAcceptance ?? null,
+			quoteAuthorizationUri: data.quoteAuthorizationUri ?? null,
+			quoteRejected: false,
 			visibility: data.visibility as any,
 			visibleUserIds: data.visibility === 'specified'
 				? data.visibleUsers
@@ -684,7 +686,6 @@ export class NoteCreateService implements OnApplicationShutdown {
 
 		if (data.uri != null) insert.uri = data.uri;
 		if (data.url != null) insert.url = data.url;
-		if (data.quoteAuthorizationUri != null) insert.quoteAuthorizationUri = data.quoteAuthorizationUri;
 
 		// Append mentions data
 		if (mentionedUsers.length > 0) {
