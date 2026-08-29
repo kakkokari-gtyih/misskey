@@ -15,7 +15,6 @@ import { NotePiningService } from '@/core/NotePiningService.js';
 import { UserBlockingService } from '@/core/UserBlockingService.js';
 import { NoteDeleteService } from '@/core/NoteDeleteService.js';
 import { NoteCreateService } from '@/core/NoteCreateService.js';
-import { NotificationService } from '@/core/NotificationService.js';
 import { acquireApObjectLock } from '@/misc/distributed-lock.js';
 import { concat, toArray, toSingle, unique } from '@/misc/prelude/array.js';
 import type Logger from '@/logger.js';
@@ -81,7 +80,6 @@ export class ApInboxService {
 		private userBlockingService: UserBlockingService,
 		private noteCreateService: NoteCreateService,
 		private noteDeleteService: NoteDeleteService,
-		private notificationService: NotificationService,
 		private apResolverService: ApResolverService,
 		private apDbResolverService: ApDbResolverService,
 		private apRendererService: ApRendererService,
@@ -770,10 +768,6 @@ export class ApInboxService {
 		if (!updated.affected) {
 			return 'skip: quote already revoked';
 		}
-
-		this.notificationService.createNotification(note.userId, 'quoteRejected', {
-			noteId: note.id,
-		}, actor.id);
 
 		return 'ok: quote revoked';
 	}

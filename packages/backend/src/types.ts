@@ -10,7 +10,6 @@
  * reply - 投稿に返信された
  * renote - 投稿がRenoteされた
  * quote - 投稿が引用Renoteされた
- * quoteRejected - 自分の引用Renoteが引用元の作者により拒否された
  * reaction - 投稿にリアクションされた
  * pollEnded - 自分のアンケートもしくは自分が投票したアンケートが終了した
  * scheduledNotePosted - 予約したノートが投稿された
@@ -33,7 +32,6 @@ export const notificationTypes = [
 	'reply',
 	'renote',
 	'quote',
-	'quoteRejected',
 	'reaction',
 	'pollEnded',
 	'scheduledNotePosted',
