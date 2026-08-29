@@ -239,6 +239,21 @@ describe('ActivityPub', () => {
 			assert.ok(note?.renoteId != null);
 		});
 
+		test('Note with an object link (application/activity+json) is parsed as a quote', async () => {
+			const { actor, quoted, quoting } = createQuotePair(quotedUri => ({
+				type: 'Link',
+				mediaType: 'application/activity+json',
+				href: quotedUri,
+			}));
+			resolver.register(actor.id, actor);
+			resolver.register(quoted.id, quoted);
+			resolver.register(quoting.id, quoting);
+
+			const note = await noteService.createNote(quoting.id, undefined, resolver, true);
+
+			assert.ok(note?.renoteId != null);
+		});
+
 		test('Note with an object link with _misskey_quote rel is parsed as a quote', async () => {
 			const { actor, quoted, quoting } = createQuotePair(quotedUri => ({
 				type: 'Link',
