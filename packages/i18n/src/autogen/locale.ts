@@ -2601,6 +2601,10 @@ export interface Locale extends ILocale {
      */
     "deletedNote": string;
     /**
+     * 引用元の作者により引用が取り消されました
+     */
+    "quoteRejectedNote": string;
+    /**
      * 非公開のノート
      */
     "invisibleNote": string;
@@ -10901,6 +10905,10 @@ export interface Locale extends ILocale {
          */
         "youGotQuote": ParameterizedString<"name">;
         /**
+         * あなたの引用が引用元の作者により取り消されました
+         */
+        "yourQuoteWasRejected": string;
+        /**
          * {name}がリノートしました
          */
         "youRenoted": ParameterizedString<"name">;
@@ -11033,6 +11041,10 @@ export interface Locale extends ILocale {
              * 引用
              */
             "quote": string;
+            /**
+             * 引用が取り消された
+             */
+            "quoteRejected": string;
             /**
              * リアクション
              */

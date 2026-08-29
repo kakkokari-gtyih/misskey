@@ -187,6 +187,7 @@ type Option = {
 	apEmojis?: string[] | null;
 	uri?: string | null;
 	url?: string | null;
+	quoteAuthorizationUri?: string | null;
 	app?: MiApp | null;
 };
 
@@ -683,6 +684,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 
 		if (data.uri != null) insert.uri = data.uri;
 		if (data.url != null) insert.url = data.url;
+		if (data.quoteAuthorizationUri != null) insert.quoteAuthorizationUri = data.quoteAuthorizationUri;
 
 		// Append mentions data
 		if (mentionedUsers.length > 0) {
@@ -906,7 +908,18 @@ export class NoteCreateService implements OnApplicationShutdown {
 					// 投稿がRenoteかつ投稿者がローカルユーザーかつRenote元の投稿の投稿者がリモートユーザーなら配送
 					if (data.renote && data.renote.userHost !== null) {
 						const u = await this.usersRepository.findOneBy({ id: data.renote.userId });
-						if (u && this.userEntityService.isRemoteUser(u)) dm.addDirectRecipe(u);
+						if (u && this.userEntityService.isRemoteUser(u)) {
+							dm.addDirectRecipe(u);
+
+							// FEP-044f: リモートノートの引用なら QuoteRequest を被引用者へ送る
+							// (互換性のため Create は従来通り即時配送し、承認スタンプは Accept 受信時に後付けする)
+							if (this.isRenote(data) && this.isQuote(data)) {
+								const quoteRequest = this.apRendererService.addContext(
+									await this.apRendererService.renderQuoteRequest(note, data.renote),
+								);
+								this.queueService.deliver(user, quoteRequest, u.inbox, false);
+							}
+						}
 					}
 
 					// フォロワーに配送

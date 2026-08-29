@@ -364,6 +364,72 @@ describe('ActivityPub', () => {
 		});
 	});
 
+	describe('Parse quote (FEP-044f)', () => {
+		function createQuotePair(quoteProps: (quotedUri: string) => Partial<IPost>) {
+			const actor = createRandomActor();
+			const quoted = {
+				'@context': 'https://www.w3.org/ns/activitystreams',
+				id: `${host}/notes/${secureRndstr(8)}`,
+				type: 'Note',
+				attributedTo: actor.id,
+				to: 'https://www.w3.org/ns/activitystreams#Public',
+				content: 'quoted post',
+			};
+			const quoting = {
+				'@context': 'https://www.w3.org/ns/activitystreams',
+				id: `${host}/notes/${secureRndstr(8)}`,
+				type: 'Note',
+				attributedTo: actor.id,
+				to: 'https://www.w3.org/ns/activitystreams#Public',
+				content: 'quoting post',
+				...quoteProps(quoted.id),
+			};
+			return { actor, quoted, quoting };
+		}
+
+		test('Note with FEP-044f quote property (without legacy props) is parsed as a quote', async () => {
+			const { actor, quoted, quoting } = createQuotePair(quotedUri => ({ quote: quotedUri }));
+			resolver.register(actor.id, actor);
+			resolver.register(quoted.id, quoted);
+			resolver.register(quoting.id, quoting);
+
+			const note = await noteService.createNote(quoting.id, undefined, resolver, true);
+
+			assert.ok(note?.renoteId != null);
+			assert.deepStrictEqual(note.quoteAuthorizationUri, null);
+		});
+
+		test('quoteAuthorization is stored without verification', async () => {
+			const stampUri = `${host}/users/alice/stamps/1`;
+			const { actor, quoted, quoting } = createQuotePair(quotedUri => ({
+				quote: quotedUri,
+				_misskey_quote: quotedUri,
+				quoteUrl: quotedUri,
+				quoteAuthorization: stampUri,
+			}));
+			resolver.register(actor.id, actor);
+			resolver.register(quoted.id, quoted);
+			resolver.register(quoting.id, quoting);
+
+			const note = await noteService.createNote(quoting.id, undefined, resolver, true);
+
+			assert.ok(note?.renoteId != null);
+			assert.deepStrictEqual(note.quoteAuthorizationUri, stampUri);
+		});
+
+		test('Unstamped legacy quote is still accepted (compatibility)', async () => {
+			const { actor, quoted, quoting } = createQuotePair(quotedUri => ({ _misskey_quote: quotedUri, quoteUrl: quotedUri }));
+			resolver.register(actor.id, actor);
+			resolver.register(quoted.id, quoted);
+			resolver.register(quoting.id, quoting);
+
+			const note = await noteService.createNote(quoting.id, undefined, resolver, true);
+
+			assert.ok(note?.renoteId != null);
+			assert.deepStrictEqual(note.quoteAuthorizationUri, null);
+		});
+	});
+
 	describe('Name field', () => {
 		test('Truncate long name', async () => {
 			const actor = {
@@ -490,6 +556,65 @@ describe('ActivityPub', () => {
 				id: genAidx(Date.now()),
 				visibility: 'followers',
 			} as MiNote);
+		});
+
+		function createDummyLocalNote(override: Partial<MiNote> = {}): MiNote {
+			return {
+				id: genAidx(Date.now()),
+				userId: 'xxxxxxxx',
+				userHost: null,
+				visibility: 'public',
+				localOnly: false,
+				text: 'test',
+				cw: null,
+				replyId: null,
+				renoteId: null,
+				mentions: [],
+				mentionedRemoteUsers: '[]',
+				tags: [],
+				fileIds: [],
+				emojis: [],
+				hasPoll: false,
+				quoteAuthorizationUri: null,
+				quoteRejected: false,
+				...override,
+			} as MiNote;
+		}
+
+		test('Render a public note with FEP-044f interaction policy', async () => {
+			const rendered = await rendererService.renderNote(createDummyLocalNote(), false);
+
+			assert.deepStrictEqual(rendered.interactionPolicy, {
+				canQuote: {
+					automaticApproval: ['https://www.w3.org/ns/activitystreams#Public'],
+				},
+			});
+		});
+
+		test('Do not render interaction policy for a followers-only note', async () => {
+			const rendered = await rendererService.renderNote(createDummyLocalNote({ visibility: 'followers' }), false);
+
+			assert.deepStrictEqual(rendered.interactionPolicy, undefined);
+		});
+
+		test('genQuoteAuthorizationUrl round-trip', () => {
+			const quotingUri = 'https://host2.test/notes/abcdef123';
+			const url = rendererService.genQuoteAuthorizationUrl('9aaaaaaaaa', quotingUri);
+			const token = url.split('/').at(-1)!;
+
+			assert.ok(url.includes('/notes/9aaaaaaaaa/quote-authorization/'));
+			assert.deepStrictEqual(Buffer.from(token, 'base64url').toString('utf-8'), quotingUri);
+		});
+
+		test('renderQuoteAuthorization does not embed interactingObject', () => {
+			const quotingUri = 'https://host2.test/notes/abcdef123';
+			const quotedNote = createDummyLocalNote();
+			const auth = rendererService.renderQuoteAuthorization(quotedNote, quotingUri);
+
+			assert.deepStrictEqual(auth.type, 'QuoteAuthorization');
+			assert.deepStrictEqual(auth.id, rendererService.genQuoteAuthorizationUrl(quotedNote.id, quotingUri));
+			assert.deepStrictEqual(auth.interactingObject, quotingUri);
+			assert.deepStrictEqual(typeof auth.interactingObject, 'string');
 		});
 	});
 

@@ -28,6 +28,7 @@ const NOTE_REQUIRED_NOTIFICATION_TYPES = new Set([
 	'renote',
 	'renote:grouped',
 	'quote',
+	'quoteRejected',
 	'reaction',
 	'reaction:grouped',
 	'pollEnded',

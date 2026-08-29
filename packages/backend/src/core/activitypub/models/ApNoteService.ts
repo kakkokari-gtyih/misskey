@@ -255,7 +255,17 @@ export class ApNoteService {
 		// 引用
 		let quote: MiNote | undefined | null = null;
 
-		const quoteUris = unique([note._misskey_quote, note.quoteUrl, ...extractQuoteLinkUris(note.tag)].filter(x => x != null));
+		// FEP-044f の quote を優先しつつ、既存の互換プロパティと FEP-e232 の Object Link も解決候補にする
+		let fepQuoteUri: string | null = null;
+		if (note.quote != null) {
+			try {
+				fepQuoteUri = getApId(note.quote);
+			} catch {
+				fepQuoteUri = null;
+			}
+		}
+
+		const quoteUris = unique([fepQuoteUri, note._misskey_quote, note.quoteUrl, ...extractQuoteLinkUris(note.tag)].filter(x => x != null));
 
 		if (quoteUris.length > 0) {
 			const tryResolveNote = async (uri: string): Promise<
@@ -288,6 +298,19 @@ export class ApNoteService {
 
 			if (!quote && hasTemperror) {
 				throw new Error('quote resolve failed');
+			}
+		}
+
+		// FEP-044f: 引用ノートが主張する承認スタンプ URI を保存する (検証はしない)
+		let quoteAuthorizationUri: string | null = null;
+		if (quote != null && note.quoteAuthorization != null) {
+			try {
+				const uri = getApId(note.quoteAuthorization);
+				if (/^https?:\/\//.test(uri) && uri.length <= 1024) {
+					quoteAuthorizationUri = uri;
+				}
+			} catch {
+				// 不正な形は黙って捨てる (enforcement はしない)
 			}
 		}
 
@@ -339,6 +362,7 @@ export class ApNoteService {
 				poll,
 				uri: note.id,
 				url: url,
+				quoteAuthorizationUri,
 			}, silent);
 		} catch (err: any) {
 			if (err.name !== 'duplicated') {
