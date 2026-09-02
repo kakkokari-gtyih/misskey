@@ -102,17 +102,10 @@ export class SystemAccountService implements OnApplicationShutdown {
 
 	@bindThis
 	public async fetch(type: typeof SYSTEM_ACCOUNT_TYPES[number]): Promise<MiLocalUser> {
-		const cached = this.cache.get(type);
-		if (cached) return cached;
+		const systemAccountUser = await this.getUser(type);
 
-		const systemAccount = await this.systemAccountsRepository.findOne({
-			where: { type: type },
-			relations: { user: true },
-		});
-
-		if (systemAccount) {
-			this.cache.set(type, systemAccount.user as MiLocalUser);
-			return systemAccount.user as MiLocalUser;
+		if (systemAccountUser != null) {
+			return systemAccountUser;
 		} else {
 			const created = await this.createCorrespondingUser(type, {
 				username: `system.${type}`, // NOTE: (できれば避けたいが) . が含まれるかどうかでシステムアカウントかどうかを判定している処理もあるので変えないように
