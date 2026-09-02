@@ -477,7 +477,7 @@ export class UserEntityService implements OnModuleInit {
 
 		const isModerator = isMe && isDetailed ? this.roleService.isModerator(user) : undefined;
 		const isAdmin = isMe && isDetailed ? this.roleService.isAdministrator(user) : undefined;
-		const isProxy = (await this.systemAccountService.fetch('proxy')).id === user.id;
+		const isProxy = (await this.systemAccountService.getUser('proxy'))?.id === user.id;
 
 		const unreadAnnouncements = isMe && isDetailed ?
 			(await this.announcementService.getUnreadAnnouncements(user)).map((announcement) => ({

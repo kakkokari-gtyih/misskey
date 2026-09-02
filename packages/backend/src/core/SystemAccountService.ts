@@ -83,6 +83,24 @@ export class SystemAccountService implements OnApplicationShutdown {
 	}
 
 	@bindThis
+	public async getUser(type: typeof SYSTEM_ACCOUNT_TYPES[number]): Promise<MiLocalUser | null> {
+		const cached = this.cache.get(type);
+		if (cached) return cached;
+
+		const systemAccount = await this.systemAccountsRepository.findOne({
+			where: { type: type },
+			relations: { user: true },
+		});
+
+		if (systemAccount) {
+			this.cache.set(type, systemAccount.user as MiLocalUser);
+			return systemAccount.user as MiLocalUser;
+		} else {
+			return null;
+		}
+	}
+
+	@bindThis
 	public async fetch(type: typeof SYSTEM_ACCOUNT_TYPES[number]): Promise<MiLocalUser> {
 		const cached = this.cache.get(type);
 		if (cached) return cached;
