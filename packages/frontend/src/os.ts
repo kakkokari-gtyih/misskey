@@ -7,7 +7,7 @@
 
 import { markRaw, ref, shallowRef, defineAsyncComponent, nextTick } from 'vue';
 import * as Misskey from 'misskey-js';
-import type { Component, MaybeRef, ShallowRef } from 'vue';
+import type { Component, ComponentInstance, MaybeRef, ShallowRef } from 'vue';
 import type { ComponentEmit, ComponentProps as CP } from 'vue-component-type-helpers';
 import type { Form, GetFormResultType } from '@/utility/form.js';
 import type { MenuItem } from '@/types/menu.js';
@@ -184,22 +184,21 @@ type ComponentEmitsObject<C extends Component, IE = OverloadToUnion<ComponentEmi
 		: (...args: any[]) => void;
 }>;
 
+type PopupReturnType<T extends Component> = {
+	dispose: () => void;
+	componentRef: ShallowRef<ComponentInstance<T> | null>;
+};
+
 // NOTE: ジェネリック型つきのコンポーネントでは、emitsの型推論がうまく働かない（型変数を取り出すことはできないため）
 // NOTE: emitsがOverloadToUnionで対応しているオーバーロードの数を超える場合は、OverloadToUnionの個数を増やせばOK
-export function popup<
-	T extends Component,
-	TI extends T extends new (...args: unknown[]) => infer I ? I : T,
->(
+export function popup<T extends Component>(
 	component: T,
 	props: ComponentProps<T>,
 	events: Partial<ComponentEmitsObject<T>> = {},
-): {
-	dispose: () => void;
-	componentRef: ShallowRef<TI | null>;
-} {
+): PopupReturnType<T> {
 	markRaw(component);
 
-	const componentRef = shallowRef<TI | null>(null);
+	const componentRef = shallowRef<ComponentInstance<T> | null>(null);
 
 	const id = ++popupIdCount;
 	const dispose = () => {
@@ -223,17 +222,11 @@ export function popup<
 	};
 }
 
-export async function popupAsyncWithDialog<
-	T extends Component,
-	TI extends T extends new (...args: unknown[]) => infer I ? I : T,
->(
+export async function popupAsyncWithDialog<T extends Component>(
 	componentFetching: Promise<T>,
 	props: ComponentProps<T>,
 	events: Partial<ComponentEmitsObject<T>> = {},
-): Promise<{
-	dispose: () => void;
-	componentRef: ShallowRef<TI | null>;
-}> {
+): Promise<PopupReturnType<T>> {
 	let component: T;
 	let closeWaiting = () => { };
 
