@@ -44,7 +44,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:class="$style.media"
 					:image="media"
 					:raw="raw"
-					:cover="prefer.r.coverMediaList.value"
+					:cover="prefer.s.coverMediaList"
 					@mediaClick="onMediaClick(media)"
 				/>
 			</template>
