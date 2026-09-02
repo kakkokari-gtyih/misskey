@@ -4,7 +4,7 @@
  */
 
 import { defineAsyncComponent, ref, shallowRef, watch } from 'vue';
-import type { Ref, ShallowRef } from 'vue';
+import type { ShallowRef } from 'vue';
 import type MkEmojiPickerWindow_TypeOnly from '@/components/MkEmojiPickerWindow.vue';
 import MkEmojiPickerDialog from '@/components/MkEmojiPickerDialog.vue';
 import { popup } from '@/os.js';
