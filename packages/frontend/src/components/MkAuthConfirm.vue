@@ -21,7 +21,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 				<div :class="$style.headerText">{{ i18n.ts.pleaseSelectAccount }}</div>
 			</div>
-			<div :class="$style.accountSelectorRoot">
+			<div>
 				<div :class="$style.accountSelectorLabel">{{ i18n.ts.selectAccount }}</div>
 				<div :class="$style.accountSelectorList">
 					<template v-for="[id, user] in users">
@@ -63,7 +63,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 			<slot name="consentAdditionalInfo"></slot>
-			<div :class="$style.accountSelectorRoot">
+			<div>
 				<div :class="$style.accountSelectorLabel">
 					{{ i18n.ts._auth.scopeUser }} <button class="_textButton" @click="clickBackToAccountSelect">{{ i18n.ts.switchAccount }}</button>
 				</div>
@@ -117,14 +117,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import * as Misskey from 'misskey-js';
-
 import MkButton from '@/components/MkButton.vue';
-
-import { $i, getAccounts, getAccountWithSigninDialog, getAccountWithSignupDialog } from '@/account.js';
+import { $i } from '@/i.js';
+import { getAccounts, getAccountWithSigninDialog, getAccountWithSignupDialog } from '@/accounts.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
-import { getProxiedImageUrl } from '@/scripts/media-proxy.js';
-import { misskeyApi } from '@/scripts/misskey-api.js';
+import { getProxiedImageUrl } from '@/utility/media-proxy.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 
 const props = defineProps<{
 	name?: string;
@@ -168,9 +167,13 @@ async function init() {
 		for (const user of usersRes) {
 			if (users.value.has(user.id)) continue;
 
+			const account = accounts.find(a => a.id === user.id);
+
+			if (!account || account.token == null) continue;
+
 			users.value.set(user.id, {
 				...user,
-				token: accounts.find(a => a.id === user.id)!.token,
+				token: account.token,
 			});
 		}
 	}
@@ -180,7 +183,7 @@ async function init() {
 
 init();
 
-function clickAddAccount(ev: MouseEvent) {
+function clickAddAccount(ev: PointerEvent) {
 	selectedUser.value = null;
 
 	os.popupMenu([{

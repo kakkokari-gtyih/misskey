@@ -7,6 +7,8 @@ import { PrimaryColumn, Entity, Index, JoinColumn, Column, ManyToOne } from 'typ
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
 
+export type AbuseReportResolveType = 'accept' | 'reject';
+
 @Entity('abuse_user_report')
 export class MiAbuseUserReport {
 	@PrimaryColumn(id())
@@ -16,7 +18,7 @@ export class MiAbuseUserReport {
 	@Column(id())
 	public targetUserId: MiUser['id'];
 
-	@ManyToOne(type => MiUser, {
+	@ManyToOne(() => MiUser, {
 		onDelete: 'CASCADE',
 	})
 	@JoinColumn()
@@ -26,7 +28,7 @@ export class MiAbuseUserReport {
 	@Column(id())
 	public reporterId: MiUser['id'];
 
-	@ManyToOne(type => MiUser, {
+	@ManyToOne(() => MiUser, {
 		onDelete: 'CASCADE',
 	})
 	@JoinColumn()
@@ -38,7 +40,7 @@ export class MiAbuseUserReport {
 	})
 	public assigneeId: MiUser['id'] | null;
 
-	@ManyToOne(type => MiUser, {
+	@ManyToOne(() => MiUser, {
 		onDelete: 'SET NULL',
 	})
 	@JoinColumn()
@@ -76,7 +78,7 @@ export class MiAbuseUserReport {
 	@Column('varchar', {
 		length: 128, nullable: true,
 	})
-	public resolvedAs: 'accept' | 'reject' | null;
+	public resolvedAs: AbuseReportResolveType | null;
 
 	//#region Denormalized fields
 	@Index()
