@@ -6,6 +6,7 @@
 import { defineAsyncComponent, ref, shallowRef, watch } from 'vue';
 import type { Ref, ShallowRef } from 'vue';
 import type MkEmojiPickerWindow_TypeOnly from '@/components/MkEmojiPickerWindow.vue';
+import MkEmojiPickerDialog from '@/components/MkEmojiPickerDialog.vue';
 import { popup } from '@/os.js';
 import { prefer } from '@/preferences.js';
 
@@ -16,18 +17,11 @@ import { prefer } from '@/preferences.js';
  * 一度表示したダイアログを連続で使用できることが望ましいシーンでの利用が想定される。
  */
 class EmojiPicker {
-	private anchorElement: Ref<HTMLElement | null> = ref(null);
-
 	private isWindow: boolean = false;
 	private windowComponentEl: ShallowRef<InstanceType<typeof MkEmojiPickerWindow_TypeOnly> | null> = shallowRef(null);
 	private windowShowing: boolean = false;
 
-	private dialogShowing = ref(false);
-
 	private emojisRef = ref<string[]>([]);
-
-	private onChosen?: (emoji: string) => void;
-	private onClosed?: () => void;
 
 	constructor() {
 		// nop
@@ -45,33 +39,16 @@ class EmojiPicker {
 			// 正常に絵文字ピッカーが表示されない。
 			// なので一度initされたらwindow表示で固定する（設定を変更したら要リロード）
 			this.isWindow = true;
-		} else {
-			await popup(defineAsyncComponent(() => import('@/components/MkEmojiPickerDialog.vue')), {
-				anchorElement: this.anchorElement,
-				pinnedEmojis: this.emojisRef,
-				asReactionPicker: false,
-				manualShowing: this.dialogShowing,
-				choseAndClose: false,
-			}, {
-				done: emoji => {
-					if (this.onChosen) this.onChosen(emoji);
-				},
-				close: () => {
-					this.dialogShowing.value = false;
-				},
-				closed: () => {
-					this.anchorElement.value = null;
-					if (this.onClosed) this.onClosed();
-				},
-			});
 		}
 	}
 
 	public show(opts: {
 		anchorElement: HTMLElement,
-		onChosen?: EmojiPicker['onChosen'],
-		onClosed?: EmojiPicker['onClosed'],
+		onChosen?: (emoji: string) => void,
+		onClosed?: () => void,
 	}) {
+		const anchorRef = shallowRef(opts.anchorElement);
+
 		if (this.isWindow) {
 			if (this.windowShowing) return;
 			this.windowShowing = true;
@@ -90,15 +67,26 @@ class EmojiPicker {
 			});
 			this.windowComponentEl = componentRef;
 		} else {
-			this.anchorElement.value = opts.anchorElement;
-			this.dialogShowing.value = true;
-			this.onChosen = opts.onChosen;
-			this.onClosed = opts.onClosed;
+			// defineAsyncComponentはiOS等でユーザーアクティベーションが失われてfocusが効かなくなるため使用不可
+			const { dispose } = popup(MkEmojiPickerDialog, {
+				anchorElement: anchorRef,
+				pinnedEmojis: this.emojisRef,
+				asReactionPicker: false,
+				choseAndClose: false,
+			}, {
+				done: (emoji: string) => {
+					if (opts.onChosen) opts.onChosen(emoji);
+				},
+				closed: () => {
+					if (opts.onClosed) opts.onClosed();
+					dispose();
+				},
+			});
 		}
 	}
 
 	public closeWindow() {
-		if (this.isWindow && this.windowComponentEl.value) {
+		if (this.windowComponentEl.value != null) {
 			this.windowComponentEl.value.close();
 		}
 	}
