@@ -27,7 +27,7 @@ class EmojiPicker {
 		// nop
 	}
 
-	public async init() {
+	public init() {
 		watch([prefer.r.emojiPaletteForMain, prefer.r.emojiPalettes], () => {
 			this.emojisRef.value = prefer.s.emojiPaletteForMain == null ? prefer.s.emojiPalettes[0].emojis : prefer.s.emojiPalettes.find(palette => palette.id === prefer.s.emojiPaletteForMain)?.emojis ?? [];
 		}, {
