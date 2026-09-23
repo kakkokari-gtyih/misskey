@@ -441,8 +441,8 @@ export class ClientServerService {
 			reply.header('Cache-Control', 'public, max-age=30');
 			return await HtmlTemplateService.replyHtml(reply, BasePage({
 				img: this.meta.bannerUrl ?? undefined,
-				title: this.meta.name ?? 'Misskey',
-				desc: this.meta.description ?? undefined,
+				title: stripHtmlTags(this.meta.name ?? 'Misskey'),
+				desc: this.meta.description != null ? stripHtmlTags(this.meta.description) : undefined,
 				...(await this.htmlTemplateService.getCommonData()),
 				...data,
 			}));
@@ -808,7 +808,7 @@ export class ClientServerService {
 
 			reply.header('Cache-Control', 'public, max-age=3600');
 			return await HtmlTemplateService.replyHtml(reply, BaseEmbed({
-				title: this.meta.name ?? 'Misskey',
+				title: stripHtmlTags(this.meta.name ?? 'Misskey'),
 				...(await this.htmlTemplateService.getCommonData()),
 				embedCtxJson: htmlSafeJsonStringify({
 					user: _user,
@@ -838,7 +838,7 @@ export class ClientServerService {
 
 			reply.header('Cache-Control', 'public, max-age=3600');
 			return await HtmlTemplateService.replyHtml(reply, BaseEmbed({
-				title: this.meta.name ?? 'Misskey',
+				title: stripHtmlTags(this.meta.name ?? 'Misskey'),
 				...(await this.htmlTemplateService.getCommonData()),
 				embedCtxJson: htmlSafeJsonStringify({
 					note: _note,
@@ -859,7 +859,7 @@ export class ClientServerService {
 
 			reply.header('Cache-Control', 'public, max-age=3600');
 			return await HtmlTemplateService.replyHtml(reply, BaseEmbed({
-				title: this.meta.name ?? 'Misskey',
+				title: stripHtmlTags(this.meta.name ?? 'Misskey'),
 				...(await this.htmlTemplateService.getCommonData()),
 				embedCtxJson: htmlSafeJsonStringify({
 					clip: _clip,
@@ -872,7 +872,7 @@ export class ClientServerService {
 
 			reply.header('Cache-Control', 'public, max-age=3600');
 			return await HtmlTemplateService.replyHtml(reply, BaseEmbed({
-				title: this.meta.name ?? 'Misskey',
+				title: stripHtmlTags(this.meta.name ?? 'Misskey'),
 				...(await this.htmlTemplateService.getCommonData()),
 			}));
 		});
