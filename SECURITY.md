@@ -104,6 +104,7 @@ To help us triage your report quickly, please include:
 ## Testing Guidelines
 
 - **Do not test against servers you do not own** (e.g. public Misskey servers) without permission from their administrators. Please use your own local or test environment.
+- If you are testing a vulnerability related to federation, please do so only on your own local or isolated test environment, not on public servers.
 - Do not access, modify, or delete other users' data, and do not perform tests that may disrupt services.
 
 ## Reports Using AI Tools / Automated Scanners
