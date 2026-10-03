@@ -86,7 +86,7 @@ If you are still unsure after investigating, you may report it, but please inclu
 
 A missing check in a single code path is not necessarily a vulnerability. The same protection may be enforced elsewhere (e.g. data that should not be exposed may never be stored or indexed in the first place, or may be filtered when it is serialized).
 
-Before reporting, please confirm that the issue is actually exploitable end-to-end, preferably by reproducing it on a running server. Reports based only on reading part of the code may be closed if the issue cannot be reproduced.
+Before reporting, please confirm that the issue is actually exploitable end-to-end, preferably by reproducing it on a running server on your own environment. Reports based only on reading part of the code may be closed if the issue cannot be reproduced.
 
 However, if the protection elsewhere appears to work only by coincidence rather than by design (e.g. it could easily be removed by commenting out a few lines or by an unrelated change), you may still report it. In that case, a working proof of concept is not required, but please explain why you think the protection is not intentional.
 
