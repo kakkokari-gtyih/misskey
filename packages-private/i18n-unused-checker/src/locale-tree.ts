@@ -41,15 +41,19 @@ export function markSubtree(node: LocaleNode): void {
 	}
 }
 
-export function listUnusedLeaves(root: LocaleNode): string[] {
-	const result: string[] = [];
+export function listLeaves(root: LocaleNode): LocaleNode[] {
+	const result: LocaleNode[] = [];
 	const walk = (node: LocaleNode) => {
 		if (node.children == null) {
-			if (!node.used) result.push(node.path);
+			result.push(node);
 			return;
 		}
 		for (const child of node.children.values()) walk(child);
 	};
 	walk(root);
 	return result;
+}
+
+export function listUnusedLeaves(root: LocaleNode): string[] {
+	return listLeaves(root).filter(node => !node.used).map(node => node.path);
 }
