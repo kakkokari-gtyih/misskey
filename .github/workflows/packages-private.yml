@@ -37,6 +37,7 @@ jobs:
           - diagnostics-backend
           - diagnostics-frontend
           - changelog-checker
+          - i18n-unused-checker
     steps:
       - uses: actions/checkout@v7.0.1
         with:

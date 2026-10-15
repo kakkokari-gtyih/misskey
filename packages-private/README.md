@@ -10,6 +10,7 @@
 | [`diagnostics-backend`](./diagnostics-backend) | バックエンドのメモリ使用量をbase/headで比較し、PRコメント用のMarkdownを生成する |
 | [`diagnostics-frontend`](./diagnostics-frontend) | フロントエンドをブラウザで起動した際のメトリクスと生成されたchunk情報等をbase/headで比較する |
 | [`changelog-checker`](./changelog-checker) | `CHANGELOG.md` の追記内容を検証する |
+| [`i18n-unused-checker`](./i18n-unused-checker) | `locales/ja-JP.yml` のうちソースコードから参照されていないキーを検出する |
 
 ## GitHub Actionsからの呼び出し方
 

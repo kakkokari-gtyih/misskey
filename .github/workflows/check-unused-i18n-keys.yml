@@ -1,0 +1,41 @@
+name: Check unused i18n keys
+
+on:
+  pull_request:
+    branches-ignore:
+      - master
+    paths:
+      - locales/ja-JP.yml
+      - packages/**
+      - '!packages/misskey-js/**'
+      - packages-private/i18n-unused-checker/**
+      - .github/workflows/check-unused-i18n-keys.yml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Checkout base
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.base_ref }}
+          path: _base
+          persist-credentials: false
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.0.10
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+      - run: pnpm --filter i18n-unused-checker... install --frozen-lockfile
+      # head 側のチェッカーで base / head の両方を検査し、このPRで新たに未使用になったキーがあれば失敗させる
+      - name: Check
+        run: >-
+          pnpm --filter i18n-unused-checker check
+          --root "$GITHUB_WORKSPACE" --base "$GITHUB_WORKSPACE/_base"
