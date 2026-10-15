@@ -2257,12 +2257,6 @@ _gallery:
   like: "いいね！"
   unlike: "いいね解除"
 
-_email:
-  _follow:
-    title: "フォローされました"
-  _receiveFollowRequest:
-    title: "フォローリクエストを受け取りました"
-
 _plugin:
   install: "プラグインのインストール"
   installWarn: "信頼できないプラグインはインストールしないでください。"

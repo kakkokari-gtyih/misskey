@@ -1,0 +1,35 @@
+_email:
+  emailSettings: "メール設定"
+  toModerators: "モデレーター各位"
+  _signup:
+    subject: "アカウント登録"
+    body: "アカウントの登録を完了するには、以下のリンクをクリックしてください。"
+  _newLogin:
+    subject: "新しいログインがありました"
+    body: "あなたのアカウントに新しいログインがありました。このログインに心当たりがない場合は、パスワードを変更するなど、アカウントのセキュリティ状態を更新してください。"
+  _resetPassword:
+    subject: "パスワードリセットのリクエスト"
+    body: "パスワードをリセットするには、以下のリンクをクリックしてください。"
+  _verifyEmail:
+    subject: "メールアドレスの確認"
+    body: "メールアドレスを確認するには、以下のリンクをクリックしてください。"
+  _accountDeleted:
+    subject: "アカウントが削除されました"
+    body: "あなたのアカウントは削除されました。"
+  _abuseReport:
+    subject: "新しい通報"
+  _moderatorInactivityWarning:
+    subject: "モデレーター不在の通知"
+    body: "モデレーターが一定期間活動していないようです。あと{time}活動していない状態が続くと招待制に切り替わります。"
+    action: "招待制に切り替わることを望まない場合は、Misskeyにログインして最終アクティブ日時を更新してください。"
+  _invitationOnlyChanged:
+    subject: "招待制に変更されました"
+    body: "モデレーターの活動が{days}日間検出されなかったため、招待制に変更されました。"
+    action: "招待制を解除するには、コントロールパネルにアクセスする必要があります。"
+  _follow:
+    title: "フォローされました"
+  _receiveFollowRequest:
+    title: "フォローリクエストを受け取りました"
+_time:
+  hours: "{n}時間"
+  days: "{n}日間"

@@ -202,10 +202,7 @@ export class NotificationService implements OnApplicationShutdown {
 		return notification;
 	}
 
-	// TODO
-	//const locales = await import('i18n');
-
-	// TODO: locale ファイルをクライアント用とサーバー用で分けたい
+	// TODO: EmailService.sendLocalizedEmail と @/core/email/templates.js を使って実装する
 
 	@bindThis
 	private async emailNotificationFollow(userId: MiUser['id'], follower: MiUser) {

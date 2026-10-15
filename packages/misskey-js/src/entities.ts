@@ -119,6 +119,8 @@ export type SignupRequest = {
 	host?: string;
 	invitationCode?: string;
 	emailAddress?: string;
+	/** 確認メールなどの言語 */
+	lang?: string;
 	'hcaptcha-response'?: string | null;
 	'g-recaptcha-response'?: string | null;
 	'turnstile-response'?: string | null;

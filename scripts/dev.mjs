@@ -261,6 +261,12 @@ try {
 		stderr: process.stderr,
 	});
 
+	startChildProcess('pnpm', ['--filter', 'backend', 'watch-locales'], {
+		cwd: _dirname + '/../',
+		stdout: process.stdout,
+		stderr: process.stderr,
+	});
+
 	startChildProcess('pnpm', ['--filter', 'misskey-reversi', 'watch', '--no-clean'], {
 		cwd: _dirname + '/../',
 		stdout: process.stdout,

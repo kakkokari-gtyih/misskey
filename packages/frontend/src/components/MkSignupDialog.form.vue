@@ -260,6 +260,7 @@ async function onSubmit(): Promise<void> {
 		username: username.value,
 		password: password.value,
 		emailAddress: email.value,
+		lang: config.lang,
 		invitationCode: invitationCode.value,
 		'hcaptcha-response': hCaptchaResponse.value,
 		'm-captcha-response': mCaptchaResponse.value,

@@ -6,7 +6,9 @@ on:
       - packages/i18n/**
       - packages/frontend-shared/build.js
       - packages/frontend-shared/locales.js
+      - packages/backend/scripts/build-locales.mjs
       - locales/**
+      - locales-backend/**
       - .github/workflows/locale.yml
   pull_request:
     branches-ignore:
@@ -15,7 +17,9 @@ on:
       - packages/i18n/**
       - packages/frontend-shared/build.js
       - packages/frontend-shared/locales.js
+      - packages/backend/scripts/build-locales.mjs
       - locales/**
+      - locales-backend/**
       - .github/workflows/locale.yml
 jobs:
   locale_verify:
@@ -36,3 +40,5 @@ jobs:
       - run: pnpm --filter i18n build
       - name: Verify Locales
         run: pnpm --filter frontend-shared verify-locales
+      - name: Verify Backend Locales
+        run: pnpm --filter backend verify-locales

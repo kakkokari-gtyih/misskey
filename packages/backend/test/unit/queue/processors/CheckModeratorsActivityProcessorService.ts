@@ -17,6 +17,7 @@ import { MetaService } from '@/core/MetaService.js';
 import { DI } from '@/di-symbols.js';
 import { QueueLoggerService } from '@/queue/QueueLoggerService.js';
 import { EmailService } from '@/core/EmailService.js';
+import { ServerI18nService } from '@/core/ServerI18nService.js';
 import { SystemWebhookService } from '@/core/SystemWebhookService.js';
 import { AnnouncementService } from '@/core/AnnouncementService.js';
 import { SystemWebhookEventType } from '@/models/SystemWebhook.js';
@@ -94,6 +95,7 @@ describe('CheckModeratorsActivityProcessorService', () => {
 				providers: [
 					CheckModeratorsActivityProcessorService,
 					IdService,
+					ServerI18nService,
 					{
 						provide: RoleService, useFactory: () => ({ getModerators: vi.fn() }),
 					},
@@ -104,7 +106,7 @@ describe('CheckModeratorsActivityProcessorService', () => {
 						provide: AnnouncementService, useFactory: () => ({ create: vi.fn() }),
 					},
 					{
-						provide: EmailService, useFactory: () => ({ sendEmail: vi.fn() }),
+						provide: EmailService, useFactory: () => ({ sendEmail: vi.fn(), sendLocalizedEmail: vi.fn() }),
 					},
 					{
 						provide: SystemWebhookService, useFactory: () => ({
@@ -153,6 +155,7 @@ describe('CheckModeratorsActivityProcessorService', () => {
 		systemWebhook3 = crateSystemWebhook({ on: ['abuseReport'] });
 
 		emailService.sendEmail.mockReturnValue(Promise.resolve());
+		emailService.sendLocalizedEmail.mockReturnValue(Promise.resolve());
 		announcementService.create.mockReturnValue(Promise.resolve({} as never));
 		systemWebhookService.fetchActiveSystemWebhooks.mockResolvedValue([systemWebhook1, systemWebhook2, systemWebhook3]);
 		systemWebhookService.enqueueSystemWebhook.mockReturnValue(Promise.resolve({} as never));
@@ -165,6 +168,7 @@ describe('CheckModeratorsActivityProcessorService', () => {
 		roleService.getModerators.mockReset();
 		announcementService.create.mockReset();
 		emailService.sendEmail.mockReset();
+		emailService.sendLocalizedEmail.mockReset();
 		systemWebhookService.enqueueSystemWebhook.mockReset();
 	});
 
@@ -325,9 +329,9 @@ describe('CheckModeratorsActivityProcessorService', () => {
 			mockModeratorRole([user1, user2, user3, root]);
 			await service.notifyInactiveModeratorsWarning({ time: 1, asDays: 0, asHours: 0 });
 
-			expect(emailService.sendEmail).toHaveBeenCalledTimes(2);
-			expect(emailService.sendEmail.mock.calls[0][0]).toBe('user1@example.com');
-			expect(emailService.sendEmail.mock.calls[1][0]).toBe('root@example.com');
+			expect(emailService.sendLocalizedEmail).toHaveBeenCalledTimes(2);
+			expect(emailService.sendLocalizedEmail.mock.calls[0][0]).toBe('user1@example.com');
+			expect(emailService.sendLocalizedEmail.mock.calls[1][0]).toBe('root@example.com');
 		});
 
 		test('[systemWebhook] "inactiveModeratorsWarning"が有効なSystemWebhookに対して送信される', async () => {

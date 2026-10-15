@@ -10,6 +10,7 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { MiMeta, UserProfilesRepository } from '@/models/_.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { EmailService } from '@/core/EmailService.js';
+import { verifyEmailEmail } from '@/core/email/templates.js';
 import type { Config } from '@/config.js';
 import { DI } from '@/di-symbols.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
@@ -133,9 +134,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 				const link = `${this.config.url}/verify-email/${code}`;
 
-				this.emailService.sendEmail(ps.email, 'Email verification',
-					`To verify email, please click this link:<br><a href="${link}">${link}</a>`,
-					`To verify email, please click this link: ${link}`);
+				this.emailService.sendLocalizedEmail(ps.email, profile.lang, i18n => verifyEmailEmail(i18n, link));
 			}
 
 			return iObj;

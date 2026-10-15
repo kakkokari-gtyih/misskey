@@ -8663,20 +8663,6 @@ export interface Locale extends ILocale {
          */
         "unlike": string;
     };
-    "_email": {
-        "_follow": {
-            /**
-             * フォローされました
-             */
-            "title": string;
-        };
-        "_receiveFollowRequest": {
-            /**
-             * フォローリクエストを受け取りました
-             */
-            "title": string;
-        };
-    };
     "_plugin": {
         /**
          * プラグインのインストール

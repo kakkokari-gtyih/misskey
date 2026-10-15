@@ -157,7 +157,8 @@ export function getConfig(): UserConfig {
 							// split i18n related module to distinct module
 							name: 'i18n',
 							includeDependenciesRecursively: false,
-							test: /i18n\.ts|locale\.ts/,
+							// I18n クラスは i18n パッケージ側にある
+							test: /i18n\.ts|locale\.ts|[\\/]i18n[\\/]built[\\/]I18n\.js/,
 						}],
 					},
 					entryFileNames: `scripts/${localesHash}-[hash:8].js`,

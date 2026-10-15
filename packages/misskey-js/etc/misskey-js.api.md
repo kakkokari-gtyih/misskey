@@ -3479,6 +3479,7 @@ type SignupRequest = {
     host?: string;
     invitationCode?: string;
     emailAddress?: string;
+    lang?: string;
     'hcaptcha-response'?: string | null;
     'g-recaptcha-response'?: string | null;
     'turnstile-response'?: string | null;

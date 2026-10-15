@@ -389,9 +389,9 @@ Storybook 環境はバンドラが別物なので、本番の i18n パッケー�
 - ja-JP.yml にキーを追加した直後に Storybook を起動しても、`preload-locale.ts` 実行前なら反映されない。Storybook を再起動する (`preload-locale.ts` が `/locales` を直接読み込む)
 - stories からの呼び方は通常通り: `i18n.tsx._dialog.charactersBelow({ current: 0, min: 2 })`
 
-### backend での i18n 直接参照は基本無し
+### backend は `/locales` を参照しない
 
-i18n は frontend (および一部の SSR されるエラーページ) でのみ使われる。`packages/backend` 配下から `import { i18n }` するパターンは原則無く、API エラー文言は別ルート (`ApiError` の i18n 化されていないメッセージ + frontend 側で翻訳) で扱う。
+`/locales` (`i18n.ts.*`) は frontend (および一部の SSR されるエラーページ) でのみ使われる。API エラー文言は別ルート (`ApiError` の i18n 化されていないメッセージ + frontend 側で翻訳) で扱う。メールなどサーバーが生成する文言は `/locales-backend` に置く (→ working-on-backend スキルの server-i18n.md)。
 
 ### 改行の扱い
 

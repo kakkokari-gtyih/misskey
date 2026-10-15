@@ -120,7 +120,7 @@ describe('AbuseReportNotificationService', () => {
 						}),
 					},
 					{
-						provide: EmailService, useFactory: () => ({ sendEmail: vi.fn() }),
+						provide: EmailService, useFactory: () => ({ sendEmail: vi.fn(), sendLocalizedEmail: vi.fn() }),
 					},
 					{
 						provide: MetaService, useFactory: () => ({ fetch: vi.fn() }),
@@ -161,6 +161,7 @@ describe('AbuseReportNotificationService', () => {
 
 	afterEach(async () => {
 		emailService.sendEmail.mockClear();
+		emailService.sendLocalizedEmail.mockClear();
 		webhookService.enqueueSystemWebhook.mockClear();
 
 		await usersRepository.createQueryBuilder().delete().execute();

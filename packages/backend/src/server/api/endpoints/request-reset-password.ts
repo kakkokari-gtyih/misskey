@@ -12,6 +12,7 @@ import { IdService } from '@/core/IdService.js';
 import type { Config } from '@/config.js';
 import { DI } from '@/di-symbols.js';
 import { EmailService } from '@/core/EmailService.js';
+import { resetPasswordEmail } from '@/core/email/templates.js';
 import { L_CHARS, secureRndstr } from '@/misc/secure-rndstr.js';
 
 export const meta = {
@@ -91,9 +92,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			const link = `${this.config.url}/reset-password/${token}`;
 
-			this.emailService.sendEmail(ps.email, 'Password reset requested',
-				`To reset password, please click this link:<br><a href="${link}">${link}</a>`,
-				`To reset password, please click this link: ${link}`);
+			this.emailService.sendLocalizedEmail(ps.email, profile.lang, i18n => resetPasswordEmail(i18n, link));
 		});
 	}
 }

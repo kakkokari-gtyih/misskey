@@ -57,15 +57,28 @@ function removeEmpty<T extends ILocale>(obj: T): T {
 	return obj;
 }
 
+function readLocaleFile(file: string, optional: boolean): ILocale {
+	let text: string;
+	try {
+		text = fs.readFileSync(file, 'utf-8');
+	} catch (err) {
+		// 翻訳が未配信 (Crowdin から未同期) の言語はフォールバックに任せる
+		if (optional && (err as NodeJS.ErrnoException).code === 'ENOENT') return {};
+		throw err;
+	}
+	return (loadYaml(clean(text)) ?? {}) as ILocale;
+}
+
 /**
  * 指定ディレクトリの `{lang}.yml` をすべて読み込み、フォールバックを解決した言語ごとのオブジェクトを返す
  *
- * フォールバック順: ja-JP → en-US → 同一言語の primary (例: zh-TW なら zh-CN) → 各言語
+ * フォールバック順: ja-JP → en-US → 同一言語の primary (例: zh-TW なら zh-CN) → 各言語。
+ * ja-JP 以外のファイルが存在しない場合は空として扱う
  * @param localesDir `ja-JP.yml` などが置かれたディレクトリ
  */
 export function loadLocales<T extends ILocale>(localesDir: string): Record<Language, T> {
 	const locales = languages.reduce<Record<Language, ILocale>>((a, lang) => {
-		a[lang] = (loadYaml(clean(fs.readFileSync(path.join(localesDir, `${lang}.yml`), 'utf-8'))) ?? {}) as ILocale;
+		a[lang] = readLocaleFile(path.join(localesDir, `${lang}.yml`), lang !== 'ja-JP');
 		return a;
 	}, {} as Record<Language, ILocale>);
 

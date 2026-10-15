@@ -192,9 +192,10 @@ function runSpdx(base, repoRoot) {
  */
 function runLocaleSafety(changedFiles) {
 	const badLocales = changedFiles.filter((file) => (
-		file.startsWith('locales/') &&
+		(file.startsWith('locales/') || file.startsWith('locales-backend/')) &&
 		file.endsWith('.yml') &&
-		file !== 'locales/ja-JP.yml'
+		file !== 'locales/ja-JP.yml' &&
+		file !== 'locales-backend/ja-JP.yml'
 	));
 	if (badLocales.length === 0) {
 		console.log('Locale safety: PASS');

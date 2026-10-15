@@ -6,7 +6,6 @@
 import { Inject, Injectable, type OnApplicationShutdown } from '@nestjs/common';
 import { Brackets, In, IsNull, Not } from 'typeorm';
 import * as Redis from 'ioredis';
-import sanitizeHtml from 'sanitize-html';
 import { DI } from '@/di-symbols.js';
 import { bindThis } from '@/decorators.js';
 import { GlobalEvents, GlobalEventService } from '@/core/GlobalEventService.js';
@@ -18,6 +17,7 @@ import type {
 	MiUser,
 } from '@/models/_.js';
 import { EmailService } from '@/core/EmailService.js';
+import { abuseReportEmail } from '@/core/email/templates.js';
 import { RoleService } from '@/core/RoleService.js';
 import { RecipientMethod } from '@/models/AbuseReportNotificationRecipient.js';
 import { ModerationLogService } from '@/core/ModerationLogService.js';
@@ -88,7 +88,7 @@ export class AbuseReportNotificationService implements OnApplicationShutdown {
 	 * - モデレータ権限所有者ユーザ(設定画面からメールアドレスの設定を行っているユーザに限る)
 	 * - metaテーブルに設定されているメールアドレス
 	 *
-	 * @see EmailService.sendEmail
+	 * @see EmailService.sendLocalizedEmail
 	 */
 	@bindThis
 	public async notifyMail(abuseReports: MiAbuseUserReport[]) {
@@ -96,29 +96,28 @@ export class AbuseReportNotificationService implements OnApplicationShutdown {
 			return;
 		}
 
-		const recipientEMailAddresses = await this.fetchEMailRecipients().then(it => it
+		const recipients: { email: string; lang: string | null }[] = await this.fetchEMailRecipients().then(it => it
 			.filter(it => it.isActive && it.userProfile?.emailVerified)
-			.map(it => it.userProfile?.email)
+			.map(it => it.userProfile?.email != null ? { email: it.userProfile.email, lang: it.userProfile.lang } : null)
 			.filter(x => x != null),
 		);
 
-		recipientEMailAddresses.push(
-			...(this.meta.email ? [this.meta.email] : []),
+		recipients.push(
+			...(this.meta.email ? [{ email: this.meta.email, lang: null }] : []),
 		);
 
-		if (recipientEMailAddresses.length <= 0) {
+		if (recipients.length <= 0) {
 			return;
 		}
 
-		for (const mailAddress of recipientEMailAddresses) {
+		for (const recipient of recipients) {
 			await Promise.all(
 				abuseReports.map(it => {
 					// TODO: 送信処理はJobQueue化したい
-					return this.emailService.sendEmail(
-						mailAddress,
-						'New Abuse Report',
-						sanitizeHtml(it.comment),
-						sanitizeHtml(it.comment),
+					return this.emailService.sendLocalizedEmail(
+						recipient.email,
+						recipient.lang,
+						i18n => abuseReportEmail(i18n, it.comment),
 					);
 				}),
 			);

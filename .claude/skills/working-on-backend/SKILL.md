@@ -27,6 +27,7 @@ SKILL.md 本体は references への索引だけ。具体的な手順や規約�
 - API endpoint の `meta` / `paramDef` / `res` 完全早見表 + 落とし穴集 → [references/knowledge/api-meta-paramdef.md](references/knowledge/api-meta-paramdef.md)
 - `endpoint-list.ts` への登録方法 (★ 漏れると 404) → [references/knowledge/endpoint-list.md](references/knowledge/endpoint-list.md)
 - backend テストの前提 (`.config/test.yml`) と書き方 / e2e ヘルパー一覧 → [references/knowledge/backend-testing.md](references/knowledge/backend-testing.md)
+- メールなどサーバー側の多言語対応 (`/locales-backend` / `ServerI18nService` / kitajs テンプレート) → [references/knowledge/server-i18n.md](references/knowledge/server-i18n.md)
 
 ## 必ず最後に通る場所
 

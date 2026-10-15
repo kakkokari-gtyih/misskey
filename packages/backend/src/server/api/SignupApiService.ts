@@ -14,6 +14,7 @@ import { IdService } from '@/core/IdService.js';
 import { SignupService } from '@/core/SignupService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { EmailService } from '@/core/EmailService.js';
+import { signupEmail } from '@/core/email/templates.js';
 import { MiLocalUser } from '@/models/User.js';
 import { FastifyReplyError } from '@/misc/fastify-reply-error.js';
 import { bindThis } from '@/decorators.js';
@@ -66,6 +67,8 @@ export class SignupApiService {
 				host?: string;
 				invitationCode?: string;
 				emailAddress?: string;
+				/** 送信するメールの言語 (クライアントの表示言語) */
+				lang?: string;
 				'hcaptcha-response'?: string;
 				'g-recaptcha-response'?: string;
 				'turnstile-response'?: string;
@@ -116,6 +119,7 @@ export class SignupApiService {
 		const host: string | null = process.env.NODE_ENV === 'test' ? (body['host'] ?? null) : null;
 		const invitationCode = body['invitationCode'];
 		const emailAddress = body['emailAddress'];
+		const lang = typeof body['lang'] === 'string' ? body['lang'] : null;
 
 		if (this.meta.emailRequiredForSignup) {
 			if (emailAddress == null || typeof emailAddress !== 'string') {
@@ -211,9 +215,7 @@ export class SignupApiService {
 
 				const link = `${this.config.url}/signup-complete/${code}`;
 
-				this.emailService.sendEmail(emailAddress!, 'Signup',
-					`To complete signup, please click this link:<br><a href="${link}">${link}</a>`,
-					`To complete signup, please click this link: ${link}`);
+				this.emailService.sendLocalizedEmail(emailAddress!, lang, i18n => signupEmail(i18n, link));
 
 				if (ticket) {
 					await this.registrationTicketsRepository.update(ticket.id, {

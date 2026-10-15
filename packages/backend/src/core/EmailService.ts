@@ -16,6 +16,10 @@ import { LoggerService } from '@/core/LoggerService.js';
 import { bindThis } from '@/decorators.js';
 import { HttpRequestService } from '@/core/HttpRequestService.js';
 import { escapeHtml } from '@/misc/escape-html.js';
+import { ServerI18nService } from '@/core/ServerI18nService.js';
+import type { EmailContent } from '@/core/email/templates.js';
+import type { BackendLocale } from '@/i18n/autogen/locale.js';
+import type { I18n } from 'i18n';
 
 @Injectable()
 export class EmailService {
@@ -34,14 +38,37 @@ export class EmailService {
 		private loggerService: LoggerService,
 		private utilityService: UtilityService,
 		private httpRequestService: HttpRequestService,
+		private serverI18nService: ServerI18nService,
 	) {
 		this.logger = this.loggerService.getLogger('email');
 	}
 
+	/**
+	 * 受信者の言語で本文を組み立てて送信する
+	 * @param lang 受信者の言語 (プロフィールの言語設定など)。不明な場合は null
+	 * @param render 本文を組み立てる関数 (`@/core/email/templates.js` のもの)
+	 */
 	@bindThis
-	public async sendEmail(to: string, subject: string, html: string, text: string) {
+	public async sendLocalizedEmail(to: string, lang: string | null | undefined, render: (i18n: I18n<BackendLocale>) => Promise<EmailContent>) {
 		if (!this.meta.enableEmail) return;
 
+		const i18n = await this.serverI18nService.get(lang);
+		const mail = await render(i18n);
+		await this.send(to, mail.subject, mail.html, mail.text, i18n);
+	}
+
+	/**
+	 * @param lang 受信者の言語。メールの共通部分 (フッターなど) の翻訳に使う。本文の翻訳は呼び出し側で行うこと
+	 */
+	@bindThis
+	public async sendEmail(to: string, subject: string, html: string, text: string, lang?: string | null) {
+		if (!this.meta.enableEmail) return;
+
+		await this.send(to, subject, html, text, await this.serverI18nService.get(lang));
+	}
+
+	@bindThis
+	private async send(to: string, subject: string, html: string, text: string, i18n: I18n<BackendLocale>) {
 		const iconUrl = `${this.config.url}/static-assets/mi-white.png`;
 		const emailSettingUrl = `${this.config.url}/settings/email`;
 
@@ -133,7 +160,7 @@ export class EmailService {
 				<div>${ sanitizedHtml }</div>
 			</article>
 			<footer>
-				<a href="${ escapeHtml(emailSettingUrl) }">${ 'Email setting' }</a>
+				<a href="${ escapeHtml(emailSettingUrl) }">${ escapeHtml(i18n.ts._email.emailSettings) }</a>
 			</footer>
 		</main>
 		<nav>
