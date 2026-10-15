@@ -4,10 +4,9 @@
  */
 
 import path from 'node:path';
-import locales from 'i18n';
+import { languages } from 'i18n';
+import { localesDir } from '../../frontend-shared/locales.js';
 import type { Plugin } from 'vite';
-
-const localesDir = path.resolve(__dirname, '../../../locales')
 
 /**
  * 外部ファイルを監視し、必要に応じてwebSocketでメッセージを送るViteプラグイン
@@ -17,7 +16,7 @@ export default function pluginWatchLocales(): Plugin {
 		name: 'watch-locales',
 
 		configureServer(server) {
-			const localeYmlPaths = Object.keys(locales).map(locale => path.join(localesDir, `${locale}.yml`));
+			const localeYmlPaths = languages.map(locale => path.join(localesDir, `${locale}.yml`));
 
 			// watcherにパスを追加
 			server.watcher.add(localeYmlPaths);

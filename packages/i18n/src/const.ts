@@ -34,6 +34,8 @@ export const languages = [
 	'zh-TW',
 ] as const;
 
+export type Language = typeof languages[number];
+
 export const primaries = {
 	'en': 'US',
 	'ja': 'JP',

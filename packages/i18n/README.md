@@ -1,5 +1,17 @@
 # Misskey i18n
 
-Misskey の言語ファイル本体 (ja-JP.yml など) はリポジトリ直下の `/locales` に置かれており、そこから Crowdin 連携やビルド資産が生成されます。
+Misskey の言語ファイルを扱うための共通ヘルパー群です。このパッケージ自身は翻訳データを持たず、どのディレクトリの言語ファイルを扱うかは利用側のパッケージが決めます。npm での外部配布は想定していません。
 
-このパッケージは Misskey モノレポ内で、これらの言語ファイルを共通で扱うためのヘルパー群や型情報をまとめる位置づけです。バックエンド / フロントエンド / Service Worker など各パッケージが同じ翻訳データと型定義を利用できるようにすることを目的としており、npm での外部配布は想定していません。
+| エントリ | 用途 |
+| --- | --- |
+| `i18n` | 実行時 (ブラウザ / Node.js) から参照する言語一覧と型 (`Language`, `ILocale`, `ParameterizedString`) |
+| `i18n/const` | 言語一覧 (`languages`) とフォールバック先 (`primaries`) |
+| `i18n/build` | Node.js 専用のビルド用ユーティリティ。言語ファイルの読み込みとフォールバック解決 (`loadLocales`)、型の生成 (`generateLocaleInterface`)、整合性検査 (`verifyLocales`) |
+
+どのエントリも、import しただけでは言語ファイルを読み込みません。
+
+## 言語ファイルとその担当パッケージ
+
+| 言語ファイル | 担当 | 生成物 |
+| --- | --- | --- |
+| `/locales` (クライアント向け) | `packages/frontend-shared` (`build.js` / `locales.js`) | `js/autogen/locale.d.ts` (型 `Locale`)、`built/_frontend_dist_/locales/*.json` |

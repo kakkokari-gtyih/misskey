@@ -11,7 +11,7 @@ import { applyWithLocale } from './locale-inliner/apply-with-locale.js';
 import { blankLogger } from './logger.js';
 import { detectI18nFacadeChunk } from './locale-inliner/facade-chunk-detection.js';
 import type { Logger } from './logger.js';
-import type { Locale } from 'i18n';
+import type { Locale } from '../frontend-shared/js/autogen/locale.js';
 import type { Manifest as ViteManifest } from 'vite';
 
 export class LocaleInliner {

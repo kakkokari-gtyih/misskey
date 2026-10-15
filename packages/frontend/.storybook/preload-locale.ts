@@ -4,10 +4,10 @@
  */
 
 import { writeFile } from 'node:fs/promises';
-import locales from 'i18n';
+import { loadFrontendLocales } from '../../frontend-shared/locales.js';
 
 await writeFile(
 	new URL('locale.ts', import.meta.url),
-	`export default ${JSON.stringify(locales['ja-JP'], undefined, 2)} as const;`,
+	`export default ${JSON.stringify(loadFrontendLocales()['ja-JP'], undefined, 2)} as const;`,
 	'utf8',
 )

@@ -172,7 +172,7 @@ try {
 	});
 
 	// アセットのビルドで依存しているので一番最初に必要
-	await runChildProcess('pnpm', ['--filter', 'i18n', 'build'], {
+	await runChildProcess('pnpm', ['--filter', 'i18n', '--filter', 'frontend-shared', 'build'], {
 		cwd: _dirname + '/../',
 		stdout: process.stdout,
 		stderr: process.stderr,
@@ -250,6 +250,12 @@ try {
 	});
 
 	startChildProcess('pnpm', ['--filter', 'i18n', 'watch', '--no-clean'], {
+		cwd: _dirname + '/../',
+		stdout: process.stdout,
+		stderr: process.stderr,
+	});
+
+	startChildProcess('pnpm', ['--filter', 'frontend-shared', 'watch'], {
 		cwd: _dirname + '/../',
 		stdout: process.stdout,
 		stderr: process.stderr,

@@ -37,19 +37,19 @@ greeting: "こんにちは、{name}さん"
 
 ## ステップ 2: 型定義の自動再生成
 
-`packages/i18n/build.ts` が `ja-JP.yml` を解析し、TypeScript インターフェースを [packages/i18n/src/autogen/locale.ts](../../../../../packages/i18n/src/autogen/locale.ts) に出力する。
+`packages/frontend-shared/build.js` が `ja-JP.yml` を解析し、TypeScript インターフェースを [packages/frontend-shared/js/autogen/locale.d.ts](../../../../../packages/frontend-shared/js/autogen/locale.d.ts) に出力する。
 
 ### 自動 (推奨)
 
-`pnpm dev` 実行中なら、`packages/i18n` の watch スクリプト (`nodemon ... tsx ./build.ts --watch`) が yml の変更を検知して自動再生成する。
+`pnpm dev` 実行中なら、`packages/frontend-shared` の watch スクリプト (`node build.js --watch`) が yml の変更を検知して自動再生成する。
 
 ### 手動
 
 ```bash
-pnpm --filter i18n generate
+pnpm --filter frontend-shared build
 ```
 
-実体は `tsx scripts/generateLocaleInterface.ts`。
+実体は `node build.js` (型に加えて `built/_frontend_dist_/locales/*.json` も再生成する)。先に `pnpm --filter i18n build` 済みであること。
 
 ### 失敗パターン
 
@@ -75,9 +75,9 @@ import { i18n } from '@/i18n.js';
 ## ステップ 4: 検証
 
 ```bash
-# i18n の型再生成 → typecheck + eslint (lint は generate を呼ばないので順番が必須)
-pnpm --filter i18n generate
-pnpm --filter i18n lint
+# 型再生成 → 各言語ファイルの整合性検査
+pnpm --filter frontend-shared build
+pnpm --filter frontend-shared verify-locales
 
 # frontend で新キー参照箇所の型チェック
 pnpm --filter frontend lint
@@ -95,7 +95,7 @@ git diff --name-only develop -- 'locales/*.yml' | grep -v '^locales/ja-JP\.yml$'
    _notes:
      deleteConfirm: "このノートを削除しますか？"
    ```
-2. `pnpm --filter i18n generate` (または `pnpm dev` で watch 中)
+2. `pnpm --filter frontend-shared build` (または `pnpm dev` で watch 中)
 3. SFC:
    ```vue
    <script setup lang="ts">
@@ -117,6 +117,6 @@ git diff --name-only develop -- 'locales/*.yml' | grep -v '^locales/ja-JP\.yml$'
 
 - [locales/README.md (★ 編集ポリシー根拠)](../../../../../locales/README.md)
 - [locales/ja-JP.yml](../../../../../locales/ja-JP.yml)
-- [packages/i18n/build.ts](../../../../../packages/i18n/build.ts)
-- [packages/i18n/src/autogen/locale.ts (生成物)](../../../../../packages/i18n/src/autogen/locale.ts)
+- [packages/frontend-shared/build.js](../../../../../packages/frontend-shared/build.js)
+- [packages/frontend-shared/js/autogen/locale.d.ts (生成物)](../../../../../packages/frontend-shared/js/autogen/locale.d.ts)
 - [packages/frontend/src/i18n.ts](../../../../../packages/frontend/src/i18n.ts)

@@ -8,7 +8,7 @@ import { defineConfig } from 'vite';
 import { load as loadYaml } from 'js-yaml';
 import { promises as fsp } from 'fs';
 
-import locales from 'i18n';
+import { loadFrontendLocales } from '../frontend-shared/locales.js';
 import meta from '../../package.json';
 import packageInfo from './package.json' with { type: 'json' };
 import pluginUnwindCssModuleClassName from './lib/rollup-plugin-unwind-css-module-class-name.js';
@@ -116,6 +116,7 @@ export function toBase62(n: number): string {
 }
 
 export function getConfig(): UserConfig {
+	const locales = loadFrontendLocales();
 	const localesHash = toBase62(hash(JSON.stringify(locales)));
 
 	return {

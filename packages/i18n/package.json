@@ -12,13 +12,15 @@
 		"./const": {
 			"types": "./built/const.d.ts",
 			"import": "./built/const.js"
+		},
+		"./build": {
+			"types": "./built/build.d.ts",
+			"import": "./built/build.js"
 		}
 	},
 	"scripts": {
-		"generate": "tsx scripts/generateLocaleInterface.ts",
-		"verify": "tsx scripts/verify.ts",
 		"build": "tsx ./build.ts",
-		"watch": "nodemon -w package.json -e json --exec \"tsx ./build.ts --watch\"",
+		"watch": "tsx ./build.ts --watch",
 		"tsd": "tsd",
 		"typecheck": "tsc --noEmit",
 		"lint": "pnpm typecheck && pnpm eslint",

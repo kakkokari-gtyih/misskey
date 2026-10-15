@@ -34,7 +34,8 @@
 	},
 	"include": [
 		"@types/**/*.ts",
-		"js/**/*"
+		"js/**/*",
+		"locales.d.ts"
 	],
 	"exclude": [
 		"node_modules",

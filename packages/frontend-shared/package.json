@@ -3,6 +3,9 @@
 	"type": "module",
 	"private": true,
 	"scripts": {
+		"build": "node build.js",
+		"watch": "node build.js --watch",
+		"verify-locales": "node build.js --verify",
 		"eslint": "eslint './**/*.{js,jsx,ts,tsx}'",
 		"typecheck": "tsc --noEmit",
 		"lint": "pnpm typecheck && pnpm eslint"

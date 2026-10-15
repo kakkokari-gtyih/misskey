@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import url from 'node:url';
 import path from 'node:path';
 import { execa } from 'execa';
-import locales from 'i18n';
+import { loadFrontendLocales } from '../frontend-shared/locales.js';
 import { LocaleInliner } from '../frontend-builder/locale-inliner.js';
 import { createLogger } from '../frontend-builder/logger';
 
@@ -35,7 +35,7 @@ async function buildAllLocale() {
 
 	inliner.collectsModifications();
 
-	await inliner.saveAllLocales(locales);
+	await inliner.saveAllLocales(loadFrontendLocales());
 
 	if (logger.errorCount > 0) {
 		throw new Error(`Build failed with ${logger.errorCount} errors and ${logger.warningCount} warnings.`);

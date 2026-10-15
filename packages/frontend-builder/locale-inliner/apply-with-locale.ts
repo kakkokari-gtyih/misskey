@@ -5,7 +5,8 @@
 
 import MagicString from 'magic-string';
 import { assertNever } from '../utils.js';
-import type { ILocale, Locale } from 'i18n';
+import type { ILocale } from 'i18n';
+import type { Locale } from '../../frontend-shared/js/autogen/locale.js';
 import type { TextModification } from '../locale-inliner.js';
 import type { Logger } from '../logger.js';
 

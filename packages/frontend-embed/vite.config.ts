@@ -4,7 +4,7 @@ import { defineConfig, type UserConfig } from 'vite';
 import { load as loadYaml } from 'js-yaml';
 import { promises as fsp } from 'fs';
 
-import locales from 'i18n';
+import { loadFrontendLocales } from '../frontend-shared/locales.js';
 import meta from '../../package.json';
 import packageInfo from './package.json' with { type: 'json' };
 import pluginJson5 from './lib/vite-plugin-json5.js';
@@ -65,6 +65,7 @@ function toBase62(n: number): string {
 }
 
 export function getConfig(): UserConfig {
+	const locales = loadFrontendLocales();
 	const localesHash = toBase62(hash(JSON.stringify(locales)));
 
 	return {

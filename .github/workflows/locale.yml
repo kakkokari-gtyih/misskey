@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - packages/i18n/**
+      - packages/frontend-shared/build.js
+      - packages/frontend-shared/locales.js
       - locales/**
       - .github/workflows/locale.yml
   pull_request:
@@ -11,6 +13,8 @@ on:
       - master
     paths:
       - packages/i18n/**
+      - packages/frontend-shared/build.js
+      - packages/frontend-shared/locales.js
       - locales/**
       - .github/workflows/locale.yml
 jobs:
@@ -31,5 +35,4 @@ jobs:
       - run: pnpm i --frozen-lockfile
       - run: pnpm --filter i18n build
       - name: Verify Locales
-        working-directory: ./packages/i18n
-        run: pnpm run verify
+        run: pnpm --filter frontend-shared verify-locales

@@ -17,6 +17,7 @@ export default [
 		files: [
 			'@types/**/*.ts',
 			'js/**/*.ts',
+			'locales.d.ts',
 			'**/*.vue',
 		],
 		languageOptions: {

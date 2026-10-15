@@ -35,7 +35,8 @@ const localStorageMock = (() => {
 vi.stubGlobal('localStorage', localStorageMock);
 
 // 中でlocalStorageを使うので上と順番を変えてはいけない
-const { default: locales } = await import('i18n');
+const { loadFrontendLocales } = await import('../../frontend-shared/locales.js');
+const locales = loadFrontendLocales();
 
 fetchMocker.mockIf(/^\/assets\/locales\/.*\.json$/, async () => {
 	return {

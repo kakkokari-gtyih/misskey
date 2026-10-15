@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { Locale } from 'i18n';
+import type { Locale } from '@@/js/autogen/locale.js';
 import type { I18n } from './i18n.js';
 
 type Tsx = I18n<Locale>['tsx'];

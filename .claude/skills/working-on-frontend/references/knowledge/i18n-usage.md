@@ -240,15 +240,15 @@ packages/frontend/src/components/MkXxx.vue
   Property 'newKey' does not exist on type 'Locale'.
 ```
 
-**原因**: ja-JP.yml にキーは追加したが、`packages/i18n` の型生成 (`autogen/locale.ts`) が再生成されていない。
+**原因**: ja-JP.yml にキーは追加したが、`packages/frontend-shared` の型生成 (`js/autogen/locale.d.ts`) が再生成されていない。
 
 **対処**:
 
-- `pnpm dev` を起動中なら、`packages/i18n` の watch (`nodemon ... tsx ./build.ts --watch`) が自動再生成するので、yml 保存後に typecheck をやり直す
-- 一回だけ手動再生成したいなら: `pnpm --filter i18n generate` (実体は `tsx scripts/generateLocaleInterface.ts`)
+- `pnpm dev` を起動中なら、`packages/frontend-shared` の watch (`node build.js --watch`) が自動再生成するので、yml 保存後に typecheck をやり直す
+- 一回だけ手動再生成したいなら: `pnpm --filter frontend-shared build` (先に `pnpm --filter i18n build` 済みであること)
 - 検出経路: `pnpm --filter frontend lint`
 
-実装根拠: [packages/i18n/scripts/generateLocaleInterface.ts](../../../../../packages/i18n/scripts/generateLocaleInterface.ts) (パラメータ抽出の正規表現 `/\{(\w+)\}/g`)。
+実装根拠: [packages/i18n/src/build.ts](../../../../../packages/i18n/src/build.ts) の `generateLocaleInterface` (パラメータ抽出の正規表現 `/\{(\w+)\}/g`)。
 
 ### 型エラー: ts/tsx の取り違え
 
@@ -296,7 +296,7 @@ i18n.tsx.save({...})
 
 ### YAML パース失敗
 
-**症状**: `pnpm --filter i18n generate` 実行時に `YAMLException: ...`、または `pnpm dev` の watch ログにエラー。
+**症状**: `pnpm --filter frontend-shared build` 実行時に `YAMLException: ...`、または `pnpm dev` の watch ログにエラー。
 
 **原因**: 値に YAML の特殊文字 (`<` `>` `:` `'` `&` `*` `|` `>` `#`) を含むのに **クォートしていない**。
 
@@ -319,7 +319,7 @@ YAML の block scalar (`|` / `>`) も使えるが、HTML タグ + プレース�
 
 **症状**: 各言語ファイルの先頭にある `_lang_` (例: ja-JP は `"日本語"`) を別用途で使おうとして上書き。
 
-**原因**: `_lang_` は **言語自身の表記** に予約されている ([packages/i18n/src/autogen/locale.ts](../../../../../packages/i18n/src/autogen/locale.ts) の先頭キー)。
+**原因**: `_lang_` は **言語自身の表記** に予約されている ([packages/frontend-shared/js/autogen/locale.d.ts](../../../../../packages/frontend-shared/js/autogen/locale.d.ts) の先頭キー)。
 
 **対処**: 新規キーは別名にする。
 
@@ -329,16 +329,16 @@ YAML の block scalar (`|` / `>`) も使えるが、HTML タグ + プレース�
 
 **原因**:
 
-- `pnpm dev` ではなく `pnpm --filter frontend watch` だけ起動していて、`packages/i18n` の watch が走っていない
+- `pnpm dev` ではなく `pnpm --filter frontend watch` だけ起動していて、`packages/frontend-shared` の watch が走っていない
 - もしくは frontend へ配信される生成物 (`built/_frontend_dist_/locales/*.json`) がブラウザ側でキャッシュされている
 
-**対処**: ルートの `pnpm dev` を起動する (frontend + backend + i18n watch が全部立ち上がる)。それでも反映しないならブラウザのキャッシュをクリア、または `pnpm --filter i18n build` を手動実行。
+**対処**: ルートの `pnpm dev` を起動する (frontend + backend + frontend-shared watch が全部立ち上がる)。それでも反映しないならブラウザのキャッシュをクリア、または `pnpm --filter frontend-shared build` を手動実行。
 
 ## 制約と補足
 
 ### ICU MessageFormat 非対応
 
-[packages/i18n/scripts/generateLocaleInterface.ts](../../../../../packages/i18n/scripts/generateLocaleInterface.ts) の正規表現は `/\{(\w+)\}/g`。つまり受け付けるのは **`{paramName}` 形式の単純置換のみ**。
+[packages/i18n/src/build.ts](../../../../../packages/i18n/src/build.ts) の `generateLocaleInterface` の正規表現は `/\{(\w+)\}/g`。つまり受け付けるのは **`{paramName}` 形式の単純置換のみ**。
 
 ```yaml
 # NG: ICU plural — そのまま画面に文字列として出るだけ
@@ -386,7 +386,7 @@ Storybook 環境はバンドラが別物なので、本番の i18n パッケー�
 つまり Storybook では:
 
 - **ja-JP の文字列だけが見える** (他言語の検証はできない)
-- ja-JP.yml にキーを追加した直後に Storybook を起動しても、`preload-locale.ts` 実行前なら反映されない。Storybook を再起動するか、`packages/i18n` を一度 build する
+- ja-JP.yml にキーを追加した直後に Storybook を起動しても、`preload-locale.ts` 実行前なら反映されない。Storybook を再起動する (`preload-locale.ts` が `/locales` を直接読み込む)
 - stories からの呼び方は通常通り: `i18n.tsx._dialog.charactersBelow({ current: 0, min: 2 })`
 
 ### backend での i18n 直接参照は基本無し
