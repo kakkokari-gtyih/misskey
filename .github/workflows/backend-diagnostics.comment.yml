@@ -43,7 +43,7 @@ jobs:
       - name: Load PR Number
         id: load-pr-num
         run: echo "pr-number=$(cat artifacts/pr_number)" >> "$GITHUB_OUTPUT"
-      - name: Find heap snapshot artifacts
+      - name: Find heap snapshot and bundle visualizer artifacts
         id: find-heap-snapshot-artifacts
         uses: actions/github-script@v9
         with:
@@ -58,6 +58,7 @@ jobs:
             const artifactNames = {
               base: 'base-heap-snapshot.heapsnapshot',
               head: 'head-heap-snapshot.heapsnapshot',
+              'bundle-visualizer': 'backend-bundle-visualizer.html',
             };
             for (const [label, artifactName] of Object.entries(artifactNames)) {
               const artifact = artifacts.find(artifact => artifact.name === artifactName);
@@ -66,14 +67,17 @@ jobs:
             }
 
       - id: build-comment
-        name: Build memory comment
+        name: Build diagnostics comment
         env:
           MK_MEMORY_HEAP_SNAPSHOT_ARTIFACT_URL_BASE: ${{ steps.find-heap-snapshot-artifacts.outputs.base-url }}
           MK_MEMORY_HEAP_SNAPSHOT_ARTIFACT_URL_HEAD: ${{ steps.find-heap-snapshot-artifacts.outputs.head-url }}
+          MK_BUNDLE_VISUALIZER_ARTIFACT_URL: ${{ steps.find-heap-snapshot-artifacts.outputs.bundle-visualizer-url }}
         run: >-
           pnpm --filter diagnostics-backend run render-md
           "$GITHUB_WORKSPACE/artifacts/memory-base.json"
           "$GITHUB_WORKSPACE/artifacts/memory-head.json"
+          "$GITHUB_WORKSPACE/artifacts/bundle-base.json"
+          "$GITHUB_WORKSPACE/artifacts/bundle-head.json"
           "$GITHUB_WORKSPACE/output.md"
       - uses: thollander/actions-comment-pull-request@v3
         with:

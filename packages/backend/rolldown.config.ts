@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { defineConfig } from 'rolldown';
 import { version as summalyVersion } from '@misskey-dev/summaly';
 import type { Plugin, ExternalOption } from 'rolldown';
@@ -5,6 +6,7 @@ import { execa, execaNode } from 'execa';
 import type { ResultPromise } from 'execa';
 import fkill from 'fkill';
 import esmShim from '@rollup/plugin-esm-shim';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 /**
  * Watchモード時にバックエンドの起動・停止制御を行うプラグイン
@@ -76,6 +78,39 @@ function backendDevServerPlugin(): Plugin {
 	};
 }
 
+/**
+ * diagnostics-backend 用にバンドルの内訳を出力するプラグイン。
+ * `BACKEND_BUNDLE_VISUALIZER=true` のときのみ有効。
+ * サーバー側のコードなので、圧縮後サイズ (gzip / brotli) は計算しない
+ */
+function getBundleVisualizerPlugins(): Plugin[] {
+	if (process.env.BACKEND_BUNDLE_VISUALIZER !== 'true') return [];
+
+	const visualizerOptions = {
+		title: 'Misskey backend bundle visualizer',
+		gzipSize: false,
+		brotliSize: false,
+		projectRoot: path.resolve(import.meta.dirname, '../..'),
+	};
+	const plugins = [
+		visualizer({
+			...visualizerOptions,
+			filename: process.env.BACKEND_BUNDLE_VISUALIZER_FILE,
+			template: 'raw-data',
+		}) as Plugin,
+	];
+
+	if (process.env.BACKEND_BUNDLE_VISUALIZER_HTML_FILE != null) {
+		plugins.push(visualizer({
+			...visualizerOptions,
+			filename: process.env.BACKEND_BUNDLE_VISUALIZER_HTML_FILE,
+			template: 'treemap',
+		}) as Plugin);
+	}
+
+	return plugins;
+}
+
 export default defineConfig((args) => {
 	const isWatchMode = args.watch != null && args.watch !== 'false';
 	const isE2E = args.e2e != null && args.e2e !== 'false';
@@ -145,6 +180,7 @@ export default defineConfig((args) => {
 			plugins: [
 				esmShim(),
 				(isWatchMode ? backendDevServerPlugin() : undefined),
+				...getBundleVisualizerPlugins(),
 			],
 			transform: {
 				define,

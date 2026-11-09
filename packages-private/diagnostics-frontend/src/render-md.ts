@@ -9,7 +9,7 @@ import { readOptionalEnv, readRequiredEnv } from 'diagnostics-shared/env';
 import { collectBundleReport } from './bundle/manifest';
 import { renderFrontendDiagnosticsMarkdown } from './report';
 import type { BrowserMetricsReport } from './browser/types';
-import type { VisualizerReport } from './bundle/visualizer';
+import type { VisualizerReport } from 'diagnostics-shared/bundle';
 
 const args = process.argv.slice(2);
 if (args.length !== 7) {

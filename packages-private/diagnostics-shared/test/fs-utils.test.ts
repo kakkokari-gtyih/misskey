@@ -5,7 +5,7 @@
 
 import { promises as fs } from 'node:fs';
 import { afterEach, expect, test, vi } from 'vitest';
-import { fileExists } from '../../src/bundle/fs-utils';
+import { fileExists } from '../src/fs-utils';
 
 function fsError(code: string) {
 	return Object.assign(new Error(`fs error: ${code}`), { code }) as NodeJS.ErrnoException;

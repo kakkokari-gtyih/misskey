@@ -10,7 +10,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { collectBundleReport } from '../src/bundle/manifest';
 import { renderFrontendDiagnosticsMarkdown } from '../src/report';
 import type { BrowserMeasurementSample, BrowserMetricsReport } from '../src/browser/types';
-import type { VisualizerReport } from '../src/bundle/visualizer';
+import type { VisualizerReport } from 'diagnostics-shared/bundle';
 
 const bundleFixturesDir = join(import.meta.dirname, 'bundle/fixtures');
 const browserFixturesDir = join(import.meta.dirname, 'browser/fixtures');

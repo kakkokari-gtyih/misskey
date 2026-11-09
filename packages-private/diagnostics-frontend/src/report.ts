@@ -7,7 +7,7 @@ import { formatBytes, formatColoredDelta, formatNumber } from 'diagnostics-share
 import { renderHeapSnapshotTable, type HeapSnapshotReport } from 'diagnostics-shared/heap-snapshot';
 import { renderMetricComparisonTable } from 'diagnostics-shared/metric-table';
 import { renderFrontendChunkReport } from './bundle/chunk-report';
-import { collectVisualizerReport, renderVisualizerSummaryTable, type VisualizerReport } from './bundle/visualizer';
+import { collectVisualizerReport, renderVisualizerSummaryTable, type VisualizerReport } from 'diagnostics-shared/bundle';
 import type { CollectedBundleReport } from './bundle/manifest';
 import type { BrowserMeasurementSample, BrowserMetricsReport } from './browser/types';
 

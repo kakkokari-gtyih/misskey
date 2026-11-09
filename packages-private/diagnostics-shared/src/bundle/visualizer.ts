@@ -9,7 +9,7 @@ import {
 	calcAndFormatDeltaPercent,
 	formatBytes,
 	formatNumber,
-} from 'diagnostics-shared/format';
+} from '../format';
 
 /**
  * rollup-plugin-visualizer が出力する `stats.json` のうち、ここで使う部分のみの型。
@@ -136,12 +136,28 @@ export function collectVisualizerReport(data: VisualizerReport) {
 	};
 }
 
+export type VisualizerReportSummary = Pick<ReturnType<typeof collectVisualizerReport>, 'summary' | 'metrics'>;
+
+export type VisualizerSizeMetric = keyof VisualizerReportSummary['metrics'];
+
+const sizeMetricLabels = {
+	renderedLength: 'Rendered',
+	gzipLength: 'Gzip',
+	brotliLength: 'Brotli',
+} as const satisfies Record<VisualizerSizeMetric, string>;
+
 /**
  * NOTE: 以前はこの関数が `string[]` を返しており、呼び出し側の `[...].join('\n')` の
  * 要素として配列のまま埋め込まれていたため、テーブルがカンマ区切りの1行に潰れていた。
  * 呼び出し側で意識しなくて済むよう、ここで文字列にして返す。
+ *
+ * @param sizeMetrics 表示するサイズ列。圧縮後サイズを計測していないビルドでは `renderedLength` のみを渡す
  */
-export function renderVisualizerSummaryTable(base: ReturnType<typeof collectVisualizerReport>, head: ReturnType<typeof collectVisualizerReport>) {
+export function renderVisualizerSummaryTable(
+	base: VisualizerReportSummary,
+	head: VisualizerReportSummary,
+	sizeMetrics: readonly VisualizerSizeMetric[] = ['renderedLength', 'gzipLength', 'brotliLength'],
+) {
 	const summary = [
 		'bundles',
 		'modules',
@@ -151,11 +167,7 @@ export function renderVisualizerSummaryTable(base: ReturnType<typeof collectVisu
 		'dynamicImports',
 	] as const;
 
-	const metrics = [
-		'renderedLength',
-		'gzipLength',
-		'brotliLength',
-	] as const;
+	const columnCount = 1 + summary.length + sizeMetrics.length;
 
 	return [
 		'<table>',
@@ -166,37 +178,35 @@ export function renderVisualizerSummaryTable(base: ReturnType<typeof collectVisu
 		'<th rowspan="2">Modules</th>',
 		'<th rowspan="2">Entries</th>',
 		'<th colspan="2">Imports</th>',
-		'<th colspan="3">Size</th>',
+		sizeMetrics.length === 1 ? `<th rowspan="2">${sizeMetricLabels[sizeMetrics[0]]} size</th>` : `<th colspan="${sizeMetrics.length}">Size</th>`,
 		'</tr>',
 		'<tr>',
 		'<th>Static</th>',
 		'<th>Dynamic</th>',
-		'<th>Rendered</th>',
-		'<th>Gzip</th>',
-		'<th>Brotli</th>',
+		...(sizeMetrics.length === 1 ? [] : sizeMetrics.map((key) => `<th>${sizeMetricLabels[key]}</th>`)),
 		'</tr>',
 		'</thead>',
 		'<tbody>',
 		'<tr>',
 		'<th><b>Base</b></th>',
 		...summary.map((key) => `<td>${formatNumber(base.summary[key])}</td>`),
-		...metrics.map((key) => `<td>${formatBytes(base.metrics[key])}</td>`),
+		...sizeMetrics.map((key) => `<td>${formatBytes(base.metrics[key])}</td>`),
 		'</tr>',
 		'<tr>',
 		'<th><b>Head</b></th>',
 		...summary.map((key) => `<td>${formatNumber(head.summary[key])}</td>`),
-		...metrics.map((key) => `<td>${formatBytes(head.metrics[key])}</td>`),
+		...sizeMetrics.map((key) => `<td>${formatBytes(head.metrics[key])}</td>`),
 		'</tr>',
-		'<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>',
+		`<tr>${'<td></td>'.repeat(columnCount)}</tr>`,
 		'<tr>',
 		'<th><b>Δ</b></th>',
 		...summary.map((key) => `<td>${calcAndFormatDeltaNumber(base.summary[key], head.summary[key], 0)}</td>`),
-		...metrics.map((key) => `<td>${calcAndFormatDeltaBytes(base.metrics[key], head.metrics[key], 1000)}</td>`),
+		...sizeMetrics.map((key) => `<td>${calcAndFormatDeltaBytes(base.metrics[key], head.metrics[key], 1000)}</td>`),
 		'</tr>',
 		'<tr>',
 		'<th><b>Δ&nbsp;(%)</b></th>',
 		...summary.map((key) => `<td>${calcAndFormatDeltaPercent(base.summary[key], head.summary[key], 0.1)}</td>`),
-		...metrics.map((key) => `<td>${calcAndFormatDeltaPercent(base.metrics[key], head.metrics[key], 0.1)}</td>`),
+		...sizeMetrics.map((key) => `<td>${calcAndFormatDeltaPercent(base.metrics[key], head.metrics[key], 0.1)}</td>`),
 		'</tr>',
 		'</tbody>',
 		'</table>',

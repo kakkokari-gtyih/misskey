@@ -5,7 +5,8 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { fileExists, fileSize, normalizePath, traverseDirectory } from './fs-utils';
+import { fileExists, fileSize, normalizePath, traverseDirectory } from 'diagnostics-shared/fs-utils';
+import type { SizeEntry } from 'diagnostics-shared/bundle';
 
 export type BundleManifestChunk = {
 	file: string;
@@ -28,12 +29,8 @@ const locale = 'ja-JP';
  */
 const stableNamedChunks = new Set(['vue', 'i18n']);
 
-export type FileEntry = {
-	comparisonKey: string | null;
-	displayName: string;
-	file: string;
+export type FileEntry = SizeEntry & {
 	manifestKeys: string[];
-	size: number;
 };
 
 export type CollectedBundleReport = {

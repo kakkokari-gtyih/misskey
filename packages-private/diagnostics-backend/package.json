@@ -5,6 +5,7 @@
 	"scripts": {
 		"eslint": "eslint './**/*.{js,jsx,ts,tsx}'",
 		"inspect": "tsx src/inspect.ts",
+		"inspect-bundle": "tsx src/inspect-bundle.ts",
 		"lint": "pnpm typecheck && pnpm eslint",
 		"measure": "tsx src/measure-once.ts",
 		"render-md": "tsx src/render-md.ts",

@@ -63,6 +63,8 @@ jobs:
         cache-dependency-path: |
           base/pnpm-lock.yaml
           head/pnpm-lock.yaml
+    - name: Prepare bundle report output
+      run: mkdir -p "$RUNNER_TEMP/backend-bundle"
     - name: Install base dependencies
       working-directory: base
       run: pnpm i --frozen-lockfile
@@ -74,6 +76,9 @@ jobs:
       run: cp .github/misskey/test.yml .config/default.yml
     - name: Build base
       working-directory: base
+      env:
+        BACKEND_BUNDLE_VISUALIZER: 'true'
+        BACKEND_BUNDLE_VISUALIZER_FILE: ${{ runner.temp }}/backend-bundle/base-bundle-stats.json
       run: pnpm build
     - name: Install head dependencies
       working-directory: head
@@ -86,7 +91,29 @@ jobs:
       run: cp .github/misskey/test.yml .config/default.yml
     - name: Build head
       working-directory: head
+      env:
+        BACKEND_BUNDLE_VISUALIZER: 'true'
+        BACKEND_BUNDLE_VISUALIZER_FILE: ${{ runner.temp }}/backend-bundle/head-bundle-stats.json
+        BACKEND_BUNDLE_VISUALIZER_HTML_FILE: ${{ runner.temp }}/backend-bundle/backend-bundle-visualizer.html
       run: pnpm build
+    # 集計ハーネスはhead側のものを両方に使う。
+    # base が visualizer 導入前のリビジョンだと統計ファイルが無いので、その場合はファイルサイズだけで比較する
+    - name: Inspect backend bundle
+      working-directory: head
+      run: |
+        BUNDLE_DIR="$RUNNER_TEMP/backend-bundle"
+        test -s "$BUNDLE_DIR/head-bundle-stats.json"
+        pnpm --filter diagnostics-backend run inspect-bundle \
+          "$GITHUB_WORKSPACE/base" "$BUNDLE_DIR/base-bundle-stats.json" "$GITHUB_WORKSPACE/bundle-base.json"
+        pnpm --filter diagnostics-backend run inspect-bundle \
+          "$GITHUB_WORKSPACE/head" "$BUNDLE_DIR/head-bundle-stats.json" "$GITHUB_WORKSPACE/bundle-head.json"
+    - name: Upload bundle visualizer
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ runner.temp }}/backend-bundle/backend-bundle-visualizer.html
+        archive: false
+        if-no-files-found: error
+        retention-days: 7
     - name: Measure backend memory usage
       working-directory: head
       env:
@@ -121,6 +148,9 @@ jobs:
         path: |
           memory-base.json
           memory-head.json
+          bundle-base.json
+          bundle-head.json
+        if-no-files-found: error
 
   save-pr-number:
     runs-on: ubuntu-latest

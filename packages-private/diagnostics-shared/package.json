@@ -3,8 +3,10 @@
 	"private": true,
 	"type": "module",
 	"exports": {
+		"./bundle": "./src/bundle/index.ts",
 		"./env": "./src/env.ts",
 		"./format": "./src/format.ts",
+		"./fs-utils": "./src/fs-utils.ts",
 		"./html": "./src/html.ts",
 		"./stats": "./src/stats.ts",
 		"./metric-table": "./src/metric-table.ts",
