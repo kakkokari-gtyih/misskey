@@ -56,10 +56,17 @@ import { trackPromise } from '@/misc/promise-tracker.js';
 import { IdentifiableError } from '@/misc/identifiable-error.js';
 import { CollapsedQueue } from '@/misc/collapsed-queue.js';
 import { CacheService } from '@/core/CacheService.js';
+import { LoggerService } from '@/core/LoggerService.js';
+import type Logger from '@/logger.js';
 import { isQuote, isRenote } from '@/misc/is-renote.js';
 import { extractUrlsForKeyWordCheck } from '@/misc/extract-urls-for-keyword-check.js';
 
 type NotificationType = 'reply' | 'renote' | 'quote' | 'mention';
+
+/** ユーザーの notesCount を溜めてから書き出すまでの時間 (ms) */
+const USER_NOTES_COUNT_FLUSH_INTERVAL = process.env.NODE_ENV !== 'test' ? 5 * 1000 : 0;
+/** notesCount の書き出しで、1 本の UPDATE にまとめるユーザー数の上限 */
+const USER_NOTES_COUNT_FLUSH_CHUNK_SIZE = 1000;
 
 class NotificationManager {
 	private notifier: { id: MiUser['id']; };
@@ -195,6 +202,12 @@ type Option = {
 export class NoteCreateService implements OnApplicationShutdown {
 	#shutdownController = new AbortController();
 	private updateNotesCountQueue: CollapsedQueue<MiNote['id'], number>;
+	private logger: Logger;
+
+	/** ユーザーごとの、まだ DB に書き出していない notesCount の加算数 */
+	#pendingUserNotesCount = new Map<MiUser['id'], number>();
+	#userNotesCountFlushTimer: NodeJS.Timeout | null = null;
+	#disposed = false;
 
 	constructor(
 		@Inject(DI.config)
@@ -270,8 +283,10 @@ export class NoteCreateService implements OnApplicationShutdown {
 		private utilityService: UtilityService,
 		private userBlockingService: UserBlockingService,
 		private cacheService: CacheService,
+		private loggerService: LoggerService,
 	) {
 		this.updateNotesCountQueue = new CollapsedQueue(process.env.NODE_ENV !== 'test' ? 60 * 1000 * 5 : 0, this.collapseNotesCount, this.performUpdateNotesCount);
+		this.logger = this.loggerService.getLogger('note-create');
 	}
 
 	@bindThis
@@ -1046,13 +1061,64 @@ export class NoteCreateService implements OnApplicationShutdown {
 
 	@bindThis
 	private incNotesCountOfUser(user: { id: MiUser['id']; }) {
-		this.usersRepository.createQueryBuilder().update()
-			.set({
-				updatedAt: new Date(),
-				notesCount: () => '"notesCount" + 1',
-			})
-			.where('id = :id', { id: user.id })
-			.execute();
+		this.addPendingUserNotesCount(user.id, 1);
+
+		if (this.#disposed) {
+			// 終了処理の後に来た分は、タイマーを待たずに書き出す
+			trackPromise(this.flushUserNotesCount());
+			return;
+		}
+
+		this.scheduleUserNotesCountFlush();
+	}
+
+	@bindThis
+	private addPendingUserNotesCount(userId: MiUser['id'], incrBy: number) {
+		this.#pendingUserNotesCount.set(userId, (this.#pendingUserNotesCount.get(userId) ?? 0) + incrBy);
+	}
+
+	@bindThis
+	private scheduleUserNotesCountFlush(delay = USER_NOTES_COUNT_FLUSH_INTERVAL) {
+		this.#userNotesCountFlushTimer ??= setTimeout(() => {
+			this.#userNotesCountFlushTimer = null;
+			trackPromise(this.flushUserNotesCount());
+		}, delay);
+	}
+
+	@bindThis
+	private async flushUserNotesCount(): Promise<void> {
+		if (this.#pendingUserNotesCount.size === 0) return;
+
+		const pending = this.#pendingUserNotesCount;
+		this.#pendingUserNotesCount = new Map();
+
+		// 複数のプロセスが同時に書き出したときのロック順をそろえるため、ID 順に並べる
+		const entries = [...pending].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+		const now = new Date();
+
+		for (let i = 0; i < entries.length; i += USER_NOTES_COUNT_FLUSH_CHUNK_SIZE) {
+			const chunk = entries.slice(i, i + USER_NOTES_COUNT_FLUSH_CHUNK_SIZE);
+			try {
+				await this.db.query(
+					`UPDATE "user" AS "u"
+					SET "notesCount" = "u"."notesCount" + "v"."incrBy", "updatedAt" = $3
+					FROM unnest($1::varchar[], $2::int[]) AS "v"("id", "incrBy")
+					WHERE "u"."id" = "v"."id"`,
+					[chunk.map(([id]) => id), chunk.map(([, incrBy]) => incrBy), now],
+				);
+			} catch (err) {
+				// 1 本の UPDATE は全件適用か未適用のどちらかなので、戻して次回に再試行しても二重加算にはならない
+				for (const [id, incrBy] of chunk) {
+					this.addPendingUserNotesCount(id, incrBy);
+				}
+				this.logger.error(`Failed to update notesCount of ${chunk.length} users; will retry`, { stack: err });
+
+				if (!this.#disposed) {
+					// テスト環境 (間隔 0) で DB が落ちたままのときに空回りしないよう、再試行は最低 1 秒あける
+					this.scheduleUserNotesCountFlush(Math.max(USER_NOTES_COUNT_FLUSH_INTERVAL, 1000));
+				}
+			}
+		}
 	}
 
 	@bindThis
@@ -1286,7 +1352,15 @@ export class NoteCreateService implements OnApplicationShutdown {
 	@bindThis
 	public async dispose(): Promise<void> {
 		this.#shutdownController.abort();
-		await this.updateNotesCountQueue.performAllNow();
+		this.#disposed = true;
+		if (this.#userNotesCountFlushTimer != null) {
+			clearTimeout(this.#userNotesCountFlushTimer);
+			this.#userNotesCountFlushTimer = null;
+		}
+		await Promise.all([
+			this.updateNotesCountQueue.performAllNow(),
+			this.flushUserNotesCount(),
+		]);
 	}
 
 	@bindThis

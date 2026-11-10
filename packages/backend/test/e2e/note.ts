@@ -43,6 +43,24 @@ describe('Note', () => {
 		assert.strictEqual(res.body.createdNote.text, post.text);
 	});
 
+	test('投稿した数だけ notesCount が増える', async () => {
+		const user = await signup();
+		await post(user, { text: '1' });
+		await post(user, { text: '2' });
+		await post(user, { text: '3' });
+
+		// notesCount はまとめて非同期に書き出されるので、反映されるまで待つ
+		let notesCount: number | undefined;
+		for (let i = 0; i < 50; i++) {
+			const res = await api('i', {}, user);
+			assert.strictEqual(res.status, 200);
+			notesCount = res.body.notesCount;
+			if (notesCount === 3) break;
+			await new Promise(x => setTimeout(x, 100));
+		}
+		assert.strictEqual(notesCount, 3);
+	});
+
 	test('ファイルを添付できる', async () => {
 		const file = await uploadUrl(alice, 'https://raw.githubusercontent.com/misskey-dev/misskey/develop/packages/backend/test/resources/192.jpg');
 
