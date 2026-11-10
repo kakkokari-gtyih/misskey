@@ -275,13 +275,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async fetchAndCreate(user: {
-		id: MiUser['id'];
-		username: MiUser['username'];
-		host: MiUser['host'];
-		isBot: MiUser['isBot'];
-		isCat: MiUser['isCat'];
-	}, data: {
+	public async fetchAndCreate(user: MiUser, data: {
 		createdAt: Date;
 		replyId: MiNote['id'] | null;
 		renoteId: MiNote['id'] | null;
@@ -440,13 +434,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async create(user: {
-		id: MiUser['id'];
-		username: MiUser['username'];
-		host: MiUser['host'];
-		isBot: MiUser['isBot'];
-		isCat: MiUser['isCat'];
-	}, data: Option, silent = false): Promise<MiNote> {
+	public async create(user: MiUser, data: Option, silent = false): Promise<MiNote> {
 		// チャンネル外にリプライしたら対象のスコープに合わせる
 		// (クライアントサイドでやっても良い処理だと思うけどとりあえずサーバーサイドで)
 		if (data.reply && data.channel && data.reply.channelId !== data.channel.id) {
@@ -747,12 +735,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	private async postNoteCreated(note: MiNote, user: {
-		id: MiUser['id'];
-		username: MiUser['username'];
-		host: MiUser['host'];
-		isBot: MiUser['isBot'];
-	}, data: Option, silent: boolean, tags: string[], mentionedUsers: MinimumUser[]) {
+	private async postNoteCreated(note: MiNote, user: MiUser, data: Option, silent: boolean, tags: string[], mentionedUsers: MinimumUser[]) {
 		this.notesChart.update(note, true);
 		if (note.visibility !== 'specified' && (this.meta.enableChartsForRemoteUser || (user.host == null))) {
 			this.perUserNotesChart.update(user, note, true);
@@ -838,8 +821,12 @@ export class NoteCreateService implements OnApplicationShutdown {
 		if (!silent) {
 			if (this.userEntityService.isLocalUser(user)) this.activeUsersChart.write(user);
 
+			// 投稿者は手元にあるので、pack 内で DB から取り直さないよう渡しておく
+			// note 自体は他の処理でも使うので書き換えずに複製する
+			const noteWithUser: MiNote = { ...note, user };
+
 			// Pack the note
-			const noteObj = await this.noteEntityService.pack(note, null, { skipHide: true, withReactionAndUserPairCache: true });
+			const noteObj = await this.noteEntityService.pack(noteWithUser, null, { skipHide: true, withReactionAndUserPairCache: true });
 
 			this.globalEventService.publishNotesStream(noteObj);
 
@@ -855,7 +842,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 
 			const nm = new NotificationManager(this.mutingsRepository, this.notificationService, this.followingsRepository, user, note);
 
-			await this.createMentionedEvents(mentionedUsers, note, nm);
+			await this.createMentionedEvents(mentionedUsers, noteWithUser, nm);
 
 			// If has in reply to note
 			if (data.reply) {
