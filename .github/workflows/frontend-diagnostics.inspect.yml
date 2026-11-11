@@ -79,19 +79,16 @@ jobs:
           path: head
           submodules: true
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.1.1
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@v3.1.2
         with:
-          package_json_file: head/package.json
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
-        with:
-          node-version-file: head/.node-version
-          cache: pnpm
+          working-directory: head
+          node-version-file: .node-version
+          cache: true
           cache-dependency-path: |
             base/pnpm-lock.yaml
             head/pnpm-lock.yaml
+          install: false
 
       - name: Prepare report output
         shell: bash

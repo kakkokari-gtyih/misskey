@@ -46,12 +46,12 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v6.1.1
-    - uses: actions/setup-node@v7.1.0
+    - name: Setup pnpm and Node.js
+      uses: pnpm/setup@v3.1.2
       with:
         node-version-file: '.node-version'
-        cache: 'pnpm'
+        cache: true
+        install: false
     - run: pnpm i --frozen-lockfile
 
   lint:
@@ -79,12 +79,12 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v6.1.1
-    - uses: actions/setup-node@v7.1.0
+    - name: Setup pnpm and Node.js
+      uses: pnpm/setup@v3.1.2
       with:
         node-version-file: '.node-version'
-        cache: 'pnpm'
+        cache: true
+        install: false
     - run: pnpm i --frozen-lockfile
     - name: Restore eslint cache
       uses: actions/cache@v6.1.0
@@ -110,12 +110,12 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v6.1.1
-    - uses: actions/setup-node@v7.1.0
+    - name: Setup pnpm and Node.js
+      uses: pnpm/setup@v3.1.2
       with:
         node-version-file: '.node-version'
-        cache: 'pnpm'
+        cache: true
+        install: false
     - run: pnpm i --frozen-lockfile
     - run: pnpm --filter "${{ matrix.workspace }}^..." run build
     - run: pnpm --filter ${{ matrix.workspace }} run typecheck
@@ -129,12 +129,12 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v6.1.1
-    - uses: actions/setup-node@v7.1.0
+    - name: Setup pnpm and Node.js
+      uses: pnpm/setup@v3.1.2
       with:
         node-version-file: '.node-version'
-        cache: 'pnpm'
+        cache: true
+        install: false
     - run: pnpm i --frozen-lockfile
     - run: node --test scripts/check-dts.test.mjs
     - run: pnpm check-dts
