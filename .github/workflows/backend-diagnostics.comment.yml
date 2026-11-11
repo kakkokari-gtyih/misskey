@@ -20,9 +20,9 @@ jobs:
         uses: actions/checkout@v7.0.1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6.0.10
+        uses: pnpm/action-setup@v6.1.1
       - name: Use Node.js
-        uses: actions/setup-node@v7.0.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: '.node-version'
           cache: 'pnpm'
@@ -30,7 +30,7 @@ jobs:
         run: pnpm --filter diagnostics-backend... install --frozen-lockfile
 
       - name: Download artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v8.0.2
         with:
           pattern: memory-artifact-*
           path: artifacts
@@ -75,13 +75,13 @@ jobs:
           "$GITHUB_WORKSPACE/artifacts/memory-base.json"
           "$GITHUB_WORKSPACE/artifacts/memory-head.json"
           "$GITHUB_WORKSPACE/output.md"
-      - uses: thollander/actions-comment-pull-request@v3
+      - uses: thollander/actions-comment-pull-request@v3.0.1
         with:
           pr-number: ${{ steps.load-pr-num.outputs.pr-number }}
           comment-tag: show_memory_diff
           file-path: ./output.md
       - name: Tell error to PR
-        uses: thollander/actions-comment-pull-request@v3
+        uses: thollander/actions-comment-pull-request@v3.0.1
         if: failure() && steps.load-pr-num.outputs.pr-number
         with:
           pr-number: ${{ steps.load-pr-num.outputs.pr-number }}

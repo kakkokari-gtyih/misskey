@@ -52,11 +52,11 @@ jobs:
         path: head
         submodules: true
     - name: Setup pnpm
-      uses: pnpm/action-setup@v6.0.10
+      uses: pnpm/action-setup@v6.1.1
       with:
         package_json_file: head/package.json
     - name: Use Node.js
-      uses: actions/setup-node@v7.0.0
+      uses: actions/setup-node@v7.1.0
       with:
         node-version-file: 'head/.node-version'
         cache: 'pnpm'
@@ -101,21 +101,21 @@ jobs:
         "$GITHUB_WORKSPACE/base" "$GITHUB_WORKSPACE/head"
         "$GITHUB_WORKSPACE/memory-base.json" "$GITHUB_WORKSPACE/memory-head.json"
     - name: Upload base heap snapshot
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v7.0.2
       with:
         path: base-heap-snapshot.heapsnapshot
         archive: false
         if-no-files-found: error
         retention-days: 7
     - name: Upload head heap snapshot
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v7.0.2
       with:
         path: head-heap-snapshot.heapsnapshot
         archive: false
         if-no-files-found: error
         retention-days: 7
     - name: Upload Artifact
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v7.0.2
       with:
         name: memory-artifact-results
         path: |
@@ -131,7 +131,7 @@ jobs:
           PR_NUMBER: ${{ github.event.number }}
         run: |
           echo "$PR_NUMBER" > ./pr_number
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: memory-artifact-pr-number
           path: pr_number

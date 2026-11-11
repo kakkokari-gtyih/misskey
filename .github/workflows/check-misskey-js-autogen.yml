@@ -25,11 +25,11 @@ jobs:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - name: setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v6.1.1
 
       - name: setup node
         id: setup-node
-        uses: actions/setup-node@v7.0.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: '.node-version'
           cache: pnpm
@@ -53,7 +53,7 @@ jobs:
 
       # packages/misskey-js/generator/built/autogen
       - name: Upload Generated
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: generated-misskey-js
           path: packages/misskey-js/generator/built/autogen
@@ -72,7 +72,7 @@ jobs:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - name: Upload From Merged
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: actual-misskey-js
           path: packages/misskey-js/src/autogen
@@ -84,13 +84,13 @@ jobs:
       contents: read
     steps:
       - name: download generated-misskey-js
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v8.0.2
         with:
           name: generated-misskey-js
           path: misskey-js-generated
 
       - name: download actual-misskey-js
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v8.0.2
         with:
           name: actual-misskey-js
           path: misskey-js-actual
@@ -120,7 +120,7 @@ jobs:
           echo "$CHANGES" > result/changes
 
       - name: Upload result
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: misskey-js-autogen-result
           path: result
